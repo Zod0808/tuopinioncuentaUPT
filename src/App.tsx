@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { EvaluacionData } from './types';
 import Navigation from './components/Navigation';
 import DataEntryView from './components/DataEntryView';
@@ -99,13 +99,16 @@ function App() {
     }
   }, []);
 
-  // Guardar datos cuando cambien (Firestore y localStorage)
+  // Ref para evitar guardados múltiples simultáneos
+  const savingRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Guardar datos cuando cambien (con debouncing para evitar loops infinitos)
   useEffect(() => {
-    // Guardar en localStorage siempre (como backup)
+    // Guardar en localStorage siempre (como backup) - sin debouncing
     try {
       if (datos.length > 0) {
         localStorage.setItem('evaluacionDatos', JSON.stringify(datos));
-        console.log(`Datos guardados en localStorage: ${datos.length} registros`);
       } else {
         localStorage.removeItem('evaluacionDatos');
       }
@@ -116,16 +119,42 @@ function App() {
       }
     }
 
-    // Guardar en servicios en la nube si están configurados
-    if (isJSONBinConfigured() && datos.length > 0) {
-      saveDataToJSONBin(datos).catch(error => {
-        console.error('Error al guardar en JSONBin:', error);
-      });
-    } else if (isFirebaseConfigured() && datos.length > 0) {
-      saveDataToFirestore(datos).catch(error => {
-        console.error('Error al guardar en Firestore:', error);
-      });
+    // Limpiar timeout anterior
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+
+    // Guardar en servicios en la nube con debouncing (esperar 2 segundos después del último cambio)
+    saveTimeoutRef.current = setTimeout(() => {
+      if (savingRef.current) {
+        return; // Ya hay un guardado en progreso
+      }
+
+      savingRef.current = true;
+
+      const saveToCloud = async () => {
+        try {
+          if (isJSONBinConfigured() && datos.length > 0) {
+            await saveDataToJSONBin(datos);
+          } else if (isFirebaseConfigured() && datos.length > 0) {
+            await saveDataToFirestore(datos);
+          }
+        } catch (error) {
+          console.error('Error al guardar en la nube:', error);
+        } finally {
+          savingRef.current = false;
+        }
+      };
+
+      saveToCloud();
+    }, 2000); // Esperar 2 segundos después del último cambio
+
+    // Cleanup
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [datos]);
 
   const handleDataAdd = (newData: EvaluacionData) => {
@@ -157,13 +186,18 @@ function App() {
     }
   };
 
-  const handleGraficoReady = (element: HTMLElement, index: number) => {
+  // Usar useCallback para evitar recrear la función en cada render
+  const handleGraficoReady = useCallback((element: HTMLElement, index: number) => {
     setGraficosElements(prev => {
+      // Solo actualizar si el elemento realmente cambió
+      if (prev[index] === element) {
+        return prev;
+      }
       const nuevos = [...prev];
       nuevos[index] = element;
       return nuevos;
     });
-  };
+  }, []);
 
   return (
     <div className="app">

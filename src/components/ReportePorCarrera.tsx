@@ -36,11 +36,15 @@ export default function ReportePorCarrera({ datos, onGraficoReady }: ReportePorC
 
   useEffect(() => {
     if (onGraficoReady && carreraSeleccionada) {
-      grafico1Ref.current && onGraficoReady(grafico1Ref.current, 0);
-      grafico2Ref.current && onGraficoReady(grafico2Ref.current, 1);
-      grafico3Ref.current && onGraficoReady(grafico3Ref.current, 2);
+      const timeoutId = setTimeout(() => {
+        grafico1Ref.current && onGraficoReady(grafico1Ref.current, 0);
+        grafico2Ref.current && onGraficoReady(grafico2Ref.current, 1);
+        grafico3Ref.current && onGraficoReady(grafico3Ref.current, 2);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [datos, carreraSeleccionada, onGraficoReady]);
+  }, [datos.length, carreraSeleccionada]); // Solo dependemos de la longitud, no de la función
 
   if (datos.length === 0) {
     return (
