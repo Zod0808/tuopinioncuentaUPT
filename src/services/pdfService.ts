@@ -167,3 +167,243 @@ export async function generarPDF(reporte: ReporteData, graficosElements: HTMLEle
   doc.save(`reporte-evaluacion-${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
+interface DocenteResumen {
+  docente: string;
+  promedioNota: number;
+  cantidadCursos: number;
+  calificacion: string;
+}
+
+interface ResumenData {
+  nombre: string; // carrera o facultad
+  docentes: DocenteResumen[];
+  totalDocentes: number;
+  totalCursos: number;
+  promedioGeneral: number;
+  datosDetalle: EvaluacionData[];
+  promediosPorDocente: Map<string, number>;
+}
+
+export async function generarPDFResumenDocente(
+  resumenes: ResumenData[],
+  tipo: 'carrera' | 'facultad',
+  titulo: string
+): Promise<void> {
+  const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  let yPosition = margin;
+
+  // Título del reporte
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 126, 234);
+  doc.text(titulo, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 8;
+
+  // Subtítulo
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(100, 100, 100);
+  const subtitulo = tipo === 'carrera' 
+    ? 'Resumen Docente por Carrera Profesional'
+    : 'Resumen Docente por Facultad';
+  doc.text(subtitulo, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 8;
+
+  // Fecha
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const fecha = new Date().toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  doc.text(`Fecha de generación: ${fecha}`, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 15;
+
+  // Procesar cada resumen (carrera o facultad)
+  for (const resumen of resumenes) {
+    // Verificar si necesitamos nueva página
+    if (yPosition > pageHeight - 100) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
+    // Título de la carrera/facultad
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(102, 126, 234);
+    doc.text(resumen.nombre, margin, yPosition);
+    yPosition += 8;
+
+    // Estadísticas
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    const statsText = [
+      `Total de Docentes: ${resumen.totalDocentes}`,
+      `Total de Cursos: ${resumen.totalCursos}`,
+      `Promedio General: ${resumen.promedioGeneral.toFixed(2)}/20`
+    ];
+    statsText.forEach((line) => {
+      doc.text(line, margin, yPosition);
+      yPosition += 6;
+    });
+    yPosition += 8;
+
+    // Tabla 1: Resumen Docente
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen Docente', margin, yPosition);
+    yPosition += 8;
+
+    const resumenTableData = resumen.docentes.map((docente, index) => [
+      (index + 1).toString(),
+      docente.docente,
+      docente.promedioNota.toFixed(2),
+      docente.cantidadCursos.toString(),
+      docente.calificacion
+    ]);
+
+    // Agregar fila de promedio general
+    resumenTableData.push([
+      '',
+      'PROMEDIO GENERAL',
+      resumen.promedioGeneral.toFixed(2),
+      resumen.totalCursos.toString(),
+      ''
+    ]);
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['N°', 'Docente', 'Promedio Nota', 'Cantidad Cursos', 'Calificación']],
+      body: resumenTableData,
+      styles: { 
+        fontSize: 9,
+        cellPadding: 3,
+        lineWidth: 0.1
+      },
+      headStyles: { 
+        fillColor: [102, 126, 234],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { cellWidth: 20, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { halign: 'right', cellWidth: 35 },
+        3: { halign: 'center', cellWidth: 35 },
+        4: { halign: 'center', cellWidth: 40 }
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      }
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 15;
+
+    // Tabla 2: Detalle de Cursos
+    if (yPosition > pageHeight - 80) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Detalle de Cursos - ${resumen.nombre}`, margin, yPosition);
+    yPosition += 8;
+
+    const detalleTableData = resumen.datosDetalle.map((dato) => {
+      const promedioDocente = resumen.promediosPorDocente.get(dato.docente) || dato.nota;
+      return [
+        dato.docente,
+        dato.curso,
+        dato.seccion,
+        dato.calificacion,
+        dato.ae01.toFixed(2),
+        dato.ae02.toFixed(2),
+        dato.ae03.toFixed(2),
+        dato.ae04.toFixed(2),
+        dato.nota.toFixed(2),
+        promedioDocente.toFixed(2),
+        dato.encuestados.toString(),
+        dato.noEncuestados.toString()
+      ];
+    });
+
+    // Calcular ancho disponible y distribuir proporcionalmente
+    const availableWidth = pageWidth - (margin * 2);
+    
+    // Anchos fijos para columnas numéricas y pequeñas
+    const fixedWidths = {
+      seccion: 18,
+      calificacion: 28,
+      ae: 20, // Para AE-01 a AE-04
+      nota: 20, // Para Nota y Promedio
+      encuestados: 22 // Para Encuestados y No Encuestados
+    };
+    
+    // Calcular ancho total de columnas fijas
+    const totalFixedWidth = fixedWidths.seccion + fixedWidths.calificacion + 
+                           (fixedWidths.ae * 4) + (fixedWidths.nota * 2) + 
+                           (fixedWidths.encuestados * 2);
+    
+    // Distribuir el espacio restante entre Docente y Curso (60% Docente, 40% Curso)
+    const remainingWidth = availableWidth - totalFixedWidth;
+    const docenteWidth = Math.floor(remainingWidth * 0.55);
+    const cursoWidth = Math.floor(remainingWidth * 0.45);
+    
+    // Usar autoTable con distribución responsive
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Docente', 'Curso', 'Sección', 'Calificación', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Nota', 'Promedio', 'Encuestados', 'No Encuestados']],
+      body: detalleTableData,
+      styles: { 
+        fontSize: 7,
+        cellPadding: 2,
+        lineWidth: 0.1,
+        overflow: 'linebreak'
+      },
+      headStyles: { 
+        fillColor: [102, 126, 234],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8
+      },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { halign: 'left', cellWidth: docenteWidth }, // Docente - responsive
+        1: { halign: 'left', cellWidth: cursoWidth }, // Curso - responsive
+        2: { halign: 'center', cellWidth: fixedWidths.seccion }, // Sección
+        3: { halign: 'center', cellWidth: fixedWidths.calificacion }, // Calificación
+        4: { halign: 'right', cellWidth: fixedWidths.ae }, // AE-01
+        5: { halign: 'right', cellWidth: fixedWidths.ae }, // AE-02
+        6: { halign: 'right', cellWidth: fixedWidths.ae }, // AE-03
+        7: { halign: 'right', cellWidth: fixedWidths.ae }, // AE-04
+        8: { halign: 'right', cellWidth: fixedWidths.nota }, // Nota
+        9: { halign: 'right', cellWidth: fixedWidths.nota }, // Promedio
+        10: { halign: 'center', cellWidth: fixedWidths.encuestados }, // Encuestados
+        11: { halign: 'center', cellWidth: fixedWidths.encuestados } // No Encuestados
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      tableWidth: availableWidth
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 20;
+  }
+
+  // Guardar PDF
+  const fechaArchivo = new Date().toISOString().split('T')[0];
+  const nombreArchivo = tipo === 'carrera'
+    ? `resumen-docente-carrera-${fechaArchivo}.pdf`
+    : `resumen-docente-facultad-${fechaArchivo}.pdf`;
+  doc.save(nombreArchivo);
+}
+

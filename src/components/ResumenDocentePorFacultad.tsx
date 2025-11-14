@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
-import { Building2, Users, BookOpen } from 'lucide-react';
+import { Building2, Users, BookOpen, Download } from 'lucide-react';
+import { generarPDFResumenDocente } from '../services/pdfService';
 
 interface ResumenDocentePorFacultadProps {
   datos: EvaluacionData[];
@@ -116,6 +117,41 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
     ? resumenesPorFacultad.filter(r => r.facultad === facultadSeleccionada)
     : resumenesPorFacultad;
 
+  const handleExportarPDF = async () => {
+    try {
+      const resumenesParaPDF = facultadesAMostrar.map(resumen => {
+        const datosFacultad = datos.filter(d => d.facultad === resumen.facultad);
+        const datosFacultadOrdenados = [...datosFacultad].sort((a, b) => a.docente.localeCompare(b.docente));
+        
+        return {
+          nombre: resumen.facultad,
+          docentes: resumen.docentes.map(d => ({
+            docente: d.docente,
+            promedioNota: d.promedioNota,
+            cantidadCursos: d.cantidadCursos,
+            calificacion: d.calificacion
+          })),
+          totalDocentes: resumen.totalDocentes,
+          totalCursos: resumen.totalCursos,
+          promedioGeneral: resumen.promedioGeneral,
+          datosDetalle: datosFacultadOrdenados,
+          promediosPorDocente: new Map<string, number>(
+            resumen.docentes.map(d => [d.docente, d.promedioNota])
+          )
+        };
+      });
+
+      await generarPDFResumenDocente(
+        resumenesParaPDF,
+        'facultad',
+        'Tu Opinión Cuenta 2025-II'
+      );
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      alert('Error al exportar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   return (
     <div className="resumen-docente-facultad">
       <div className="report-header">
@@ -138,7 +174,17 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
             ))}
           </select>
         </div>
-        <h2>Resumen Docente por Facultad</h2>
+        <div className="report-header-right">
+          <h2>Resumen Docente por Facultad</h2>
+          <button 
+            onClick={handleExportarPDF}
+            className="btn-export-pdf"
+            title="Exportar a PDF"
+          >
+            <Download size={20} />
+            <span>Exportar PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Tablas por facultad */}

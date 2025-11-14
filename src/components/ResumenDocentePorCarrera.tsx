@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
-import { GraduationCap, Users, BookOpen } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, Download } from 'lucide-react';
+import { generarPDFResumenDocente } from '../services/pdfService';
 
 interface ResumenDocentePorCarreraProps {
   datos: EvaluacionData[];
@@ -116,6 +117,41 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
     ? resumenesPorCarrera.filter(r => r.carrera === carreraSeleccionada)
     : resumenesPorCarrera;
 
+  const handleExportarPDF = async () => {
+    try {
+      const resumenesParaPDF = carrerasAMostrar.map(resumen => {
+        const datosCarrera = datos.filter(d => d.carreraProfesional === resumen.carrera);
+        const datosCarreraOrdenados = [...datosCarrera].sort((a, b) => a.docente.localeCompare(b.docente));
+        
+        return {
+          nombre: resumen.carrera,
+          docentes: resumen.docentes.map(d => ({
+            docente: d.docente,
+            promedioNota: d.promedioNota,
+            cantidadCursos: d.cantidadCursos,
+            calificacion: d.calificacion
+          })),
+          totalDocentes: resumen.totalDocentes,
+          totalCursos: resumen.totalCursos,
+          promedioGeneral: resumen.promedioGeneral,
+          datosDetalle: datosCarreraOrdenados,
+          promediosPorDocente: new Map<string, number>(
+            resumen.docentes.map(d => [d.docente, d.promedioNota])
+          )
+        };
+      });
+
+      await generarPDFResumenDocente(
+        resumenesParaPDF,
+        'carrera',
+        'Tu Opinión Cuenta 2025-II'
+      );
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      alert('Error al exportar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   return (
     <div className="resumen-docente-carrera">
       <div className="report-header">
@@ -138,7 +174,17 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
             ))}
           </select>
         </div>
-        <h2>Resumen Docente por Carrera Profesional</h2>
+        <div className="report-header-right">
+          <h2>Resumen Docente por Carrera Profesional</h2>
+          <button 
+            onClick={handleExportarPDF}
+            className="btn-export-pdf"
+            title="Exportar a PDF"
+          >
+            <Download size={20} />
+            <span>Exportar PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Tablas por carrera */}
