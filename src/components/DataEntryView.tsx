@@ -1,6 +1,7 @@
 import { EvaluacionData } from '../types';
 import DataInput from './DataInput';
 import ExcelImporter from './ExcelImporter';
+import DataExporter from './DataExporter';
 import DataTable from './DataTable';
 import Charts from './Charts';
 import InstitutionalReports from './InstitutionalReports';
@@ -29,6 +30,7 @@ export default function DataEntryView({
   return (
     <div className="data-entry-view">
       <ExcelImporter onDataImport={onDataImport} />
+      <DataExporter datos={datos} onDataImport={onDataImport} />
       <DataInput onDataAdd={onDataAdd} datosExistentes={datos} />
       
       {datos.length > 0 && (

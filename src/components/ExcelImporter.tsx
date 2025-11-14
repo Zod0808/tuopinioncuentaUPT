@@ -3,6 +3,8 @@ import { FileSpreadsheet, CheckCircle, AlertCircle, X } from 'lucide-react';
 // @ts-ignore - read-excel-file no tiene tipos oficiales pero funciona correctamente
 import readXlsxFile from 'read-excel-file';
 import { EvaluacionData } from '../types';
+import { isFirebaseConfigured } from '../services/firebaseService';
+import { isJSONBinConfigured } from '../services/jsonbinService';
 
 interface ExcelImporterProps {
   onDataImport: (data: EvaluacionData[]) => void;
@@ -238,9 +240,27 @@ export default function ExcelImporter({ onDataImport }: ExcelImporterProps) {
       // Importar datos
       onDataImport(importedData);
 
+      // Forzar guardado inmediato en localStorage
+      try {
+        const datosExistentes = localStorage.getItem('evaluacionDatos');
+        let datosCompletos: EvaluacionData[] = [];
+        if (datosExistentes) {
+          datosCompletos = JSON.parse(datosExistentes);
+        }
+        datosCompletos = [...datosCompletos, ...importedData];
+        localStorage.setItem('evaluacionDatos', JSON.stringify(datosCompletos));
+        console.log(`Datos importados y guardados: ${importedData.length} nuevos registros, total: ${datosCompletos.length}`);
+      } catch (error) {
+        console.error('Error al guardar datos importados:', error);
+      }
+
+      const cloudStatus = isJSONBinConfigured() || isFirebaseConfigured()
+        ? ' Los datos se están sincronizando con la nube.' 
+        : ' Nota: Para compartir datos entre computadoras, configura JSONBin o Firebase (ver README.md)';
+
       setImportResult({
         success: true,
-        message: `Se importaron ${importedData.length} registros exitosamente`,
+        message: `Se importaron ${importedData.length} registros exitosamente.${cloudStatus}`,
         imported: importedData.length,
         errors: errors.slice(0, 10) // Mostrar solo los primeros 10 errores
       });

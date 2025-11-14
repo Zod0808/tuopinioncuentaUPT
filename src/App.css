@@ -921,7 +921,8 @@
 }
 
 /* Excel Importer Styles */
-.excel-importer {
+.excel-importer,
+.data-exporter {
   background: white;
   border-radius: 12px;
   padding: 2rem;
@@ -1131,6 +1132,113 @@
   border-left: 4px solid #667eea;
   margin-top: 1rem;
   font-size: 0.95rem;
+}
+
+/* Data Exporter Styles */
+.exporter-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #667eea;
+}
+
+.exporter-header h3 {
+  color: #333;
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.exporter-header svg {
+  color: #667eea;
+}
+
+.exporter-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.exporter-action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.btn-export-json,
+.btn-import-json {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.btn-export-json:hover:not(:disabled),
+.btn-import-json:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-export-json:active:not(:disabled),
+.btn-import-json:active {
+  transform: translateY(0);
+}
+
+.btn-export-json:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-import-json {
+  text-align: center;
+}
+
+.action-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.exporter-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.exporter-info p {
+  margin: 0;
+  color: #333;
+}
+
+.exporter-info strong {
+  color: #667eea;
+}
+
+@media (max-width: 768px) {
+  .exporter-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn-export-json,
+  .btn-import-json {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 
 /* Reports View Styles */

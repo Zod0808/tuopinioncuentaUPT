@@ -39,12 +39,17 @@ export default function Charts({ datos, onGraficoReady }: ChartsProps) {
 
   useEffect(() => {
     if (onGraficoReady) {
-      grafico1Ref.current && onGraficoReady(grafico1Ref.current, 0);
-      grafico2Ref.current && onGraficoReady(grafico2Ref.current, 1);
-      grafico3Ref.current && onGraficoReady(grafico3Ref.current, 2);
-      grafico4Ref.current && onGraficoReady(grafico4Ref.current, 3);
+      // Usar setTimeout para evitar loops infinitos
+      const timeoutId = setTimeout(() => {
+        grafico1Ref.current && onGraficoReady(grafico1Ref.current, 0);
+        grafico2Ref.current && onGraficoReady(grafico2Ref.current, 1);
+        grafico3Ref.current && onGraficoReady(grafico3Ref.current, 2);
+        grafico4Ref.current && onGraficoReady(grafico4Ref.current, 3);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [datos, onGraficoReady]);
+  }, [datos.length]); // Solo dependemos de la longitud, no de la función
 
   if (datos.length === 0) {
     return (
