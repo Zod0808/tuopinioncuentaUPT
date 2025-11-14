@@ -107,8 +107,8 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
 
       await generarPDFResumenDocente(
         [resumenParaPDF],
-        'carrera', // Usamos 'carrera' pero el nombre será 'INSTITUCIONAL'
-        'Tu Opinión Cuenta 2025-II'
+        'institucional',
+        'Reporte de Notas de la Plana Docente Institucional'
       );
     } catch (error) {
       console.error('Error al exportar PDF:', error);

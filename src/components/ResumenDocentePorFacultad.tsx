@@ -144,7 +144,7 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
       await generarPDFResumenDocente(
         resumenesParaPDF,
         'facultad',
-        'Tu Opinión Cuenta 2025-II'
+        'Reporte de Notas de la Plana Docente por Facultad'
       );
     } catch (error) {
       console.error('Error al exportar PDF:', error);

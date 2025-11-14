@@ -144,7 +144,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
       await generarPDFResumenDocente(
         resumenesParaPDF,
         'carrera',
-        'Tu Opinión Cuenta 2025-II'
+        'Reporte de Notas de la Plana Docente por Carrera'
       );
     } catch (error) {
       console.error('Error al exportar PDF:', error);

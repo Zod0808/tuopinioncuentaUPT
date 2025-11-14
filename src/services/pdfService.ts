@@ -13,7 +13,7 @@ export async function generarPDF(reporte: ReporteData, graficosElements: HTMLEle
   // Título del reporte
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(102, 126, 234);
+  doc.setTextColor(22, 40, 92); // Azul marino Universidad Privada de Tacna
   doc.text(reporte.titulo, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
 
@@ -110,7 +110,7 @@ export async function generarPDF(reporte: ReporteData, graficosElements: HTMLEle
     head: [['Docente', 'Curso', 'Sección', 'Calificación', 'Nota', 'Encuestados', 'No Encuestados']],
     body: tableData,
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [102, 126, 234] },
+    headStyles: { fillColor: [22, 40, 92] }, // Azul marino Universidad Privada de Tacna
     margin: { left: margin, right: margin }
   });
 
@@ -184,9 +184,19 @@ interface ResumenData {
   promediosPorDocente: Map<string, number>;
 }
 
+// Mapeo de siglas de facultades a nombres completos
+const nombresFacultades: Record<string, string> = {
+  'FAU': 'Facultad de Arquitectura y Urbanismo',
+  'FADE': 'Facultad de Derecho y Ciencias Políticas',
+  'FAING': 'Facultad de Ingeniería',
+  'FAEDCOH': 'Facultad de Educación, Ciencias de la Comunicación, Humanidades',
+  'FACSA': 'Facultad de Ciencias de la Salud',
+  'FACEM': 'Facultad de Ciencias Empresariales'
+};
+
 export async function generarPDFResumenDocente(
   resumenes: ResumenData[],
-  tipo: 'carrera' | 'facultad',
+  tipo: 'carrera' | 'facultad' | 'institucional',
   titulo: string
 ): Promise<void> {
   const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
@@ -198,19 +208,9 @@ export async function generarPDFResumenDocente(
   // Título del reporte
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(102, 126, 234);
+  doc.setTextColor(22, 40, 92); // Azul marino Universidad Privada de Tacna
   doc.text(titulo, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 8;
-
-  // Subtítulo
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  const subtitulo = tipo === 'carrera' 
-    ? 'Resumen Docente por Carrera Profesional'
-    : 'Resumen Docente por Facultad';
-  doc.text(subtitulo, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 8;
+  yPosition += 12; // Aumentar espacio después del título
 
   // Fecha
   doc.setFontSize(10);
@@ -235,8 +235,12 @@ export async function generarPDFResumenDocente(
     // Título de la carrera/facultad
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(102, 126, 234);
-    doc.text(resumen.nombre, margin, yPosition);
+    doc.setTextColor(22, 40, 92); // Azul marino Universidad Privada de Tacna
+    // Si es tipo facultad, convertir sigla a nombre completo
+    const nombreMostrar = tipo === 'facultad' && nombresFacultades[resumen.nombre]
+      ? nombresFacultades[resumen.nombre]
+      : resumen.nombre;
+    doc.text(nombreMostrar, margin, yPosition);
     yPosition += 8;
 
     // Estadísticas
@@ -254,10 +258,10 @@ export async function generarPDFResumenDocente(
     });
     yPosition += 8;
 
-    // Tabla 1: Resumen Docente
+    // Tabla 1: Reporte de Notas de la Plana Docente
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumen Docente', margin, yPosition);
+    doc.text('Reporte de Notas de la Plana Docente', margin, yPosition);
     yPosition += 8;
 
     const resumenTableData = resumen.docentes.map((docente, index) => [
@@ -287,7 +291,7 @@ export async function generarPDFResumenDocente(
         lineWidth: 0.1
       },
       headStyles: { 
-        fillColor: [102, 126, 234],
+        fillColor: [22, 40, 92], // Azul marino Universidad Privada de Tacna
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 10
@@ -315,7 +319,11 @@ export async function generarPDFResumenDocente(
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Detalle de Cursos - ${resumen.nombre}`, margin, yPosition);
+    // Si es tipo facultad, usar nombre completo en el detalle también
+    const nombreDetalle = tipo === 'facultad' && nombresFacultades[resumen.nombre]
+      ? nombresFacultades[resumen.nombre]
+      : resumen.nombre;
+    doc.text(`Detalle de Cursos - ${nombreDetalle}`, margin, yPosition);
     yPosition += 8;
 
     const detalleTableData = resumen.datosDetalle.map((dato) => {
@@ -370,7 +378,7 @@ export async function generarPDFResumenDocente(
         overflow: 'linebreak'
       },
       headStyles: { 
-        fillColor: [102, 126, 234],
+        fillColor: [22, 40, 92], // Azul marino Universidad Privada de Tacna
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8
