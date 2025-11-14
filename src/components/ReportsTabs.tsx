@@ -6,13 +6,14 @@ import ReportePorFacultad from './ReportePorFacultad';
 import ReportePorCarrera from './ReportePorCarrera';
 import ResumenDocentePorCarrera from './ResumenDocentePorCarrera';
 import ResumenDocentePorFacultad from './ResumenDocentePorFacultad';
+import ResumenDocenteInstitucional from './ResumenDocenteInstitucional';
 
 interface ReportsTabsProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
 }
 
-type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad';
+type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional';
 
 interface Tab {
   id: TabType;
@@ -48,6 +49,11 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
       id: 'docente-facultad',
       label: 'Resumen Docente por Facultad',
       icon: <Building2 size={20} />
+    },
+    {
+      id: 'docente-institucional',
+      label: 'Resumen Docente Institucional',
+      icon: <Building2 size={20} />
     }
   ];
 
@@ -63,6 +69,8 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
         return <ResumenDocentePorCarrera datos={datos} />;
       case 'docente-facultad':
         return <ResumenDocentePorFacultad datos={datos} />;
+      case 'docente-institucional':
+        return <ResumenDocenteInstitucional datos={datos} />;
       default:
         return null;
     }
