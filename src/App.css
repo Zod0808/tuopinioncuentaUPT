@@ -602,7 +602,8 @@
   border-color: #667eea;
 }
 
-.career-summary {
+.career-summary,
+.faculty-summary {
   margin-bottom: 3rem;
   padding: 1.5rem;
   background: #f9f9f9;
@@ -610,7 +611,8 @@
   border: 1px solid #e0e0e0;
 }
 
-.career-header {
+.career-header,
+.faculty-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -619,24 +621,28 @@
   border-bottom: 2px solid #667eea;
 }
 
-.career-header svg {
+.career-header svg,
+.faculty-header svg {
   color: #667eea;
 }
 
-.career-header h3 {
+.career-header h3,
+.faculty-header h3 {
   color: #333;
   margin: 0;
   font-size: 1.5rem;
 }
 
-.career-stats {
+.career-stats,
+.faculty-stats {
   display: flex;
   gap: 2rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
 }
 
-.career-stat-item {
+.career-stat-item,
+.faculty-stat-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -647,11 +653,13 @@
   font-size: 0.95rem;
 }
 
-.career-stat-item svg {
+.career-stat-item svg,
+.faculty-stat-item svg {
   color: #667eea;
 }
 
-.career-stat-item strong {
+.career-stat-item strong,
+.faculty-stat-item strong {
   color: #667eea;
   font-size: 1.1rem;
 }
@@ -1562,7 +1570,8 @@
 .reporte-general,
 .reporte-facultad,
 .reporte-carrera,
-.resumen-docente-carrera {
+.resumen-docente-carrera,
+.resumen-docente-facultad {
   width: 100%;
 }
 
