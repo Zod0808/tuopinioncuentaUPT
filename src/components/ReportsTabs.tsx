@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
-import { Building2, GraduationCap, BookOpen, Users } from 'lucide-react';
+import { Building2, GraduationCap, BookOpen, Users, Award } from 'lucide-react';
 import ReporteGeneralUniversidad from './ReporteGeneralUniversidad';
 import ReportePorFacultad from './ReportePorFacultad';
 import ReportePorCarrera from './ReportePorCarrera';
 import ResumenDocentePorCarrera from './ResumenDocentePorCarrera';
 import ResumenDocentePorFacultad from './ResumenDocentePorFacultad';
 import ResumenDocenteInstitucional from './ResumenDocenteInstitucional';
+import ReporteCalificacionPorCarrera from './ReporteCalificacionPorCarrera';
+import ReporteCalificacionPorFacultad from './ReporteCalificacionPorFacultad';
+import ReporteCalificacionInstitucional from './ReporteCalificacionInstitucional';
 
 interface ReportsTabsProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
 }
 
-type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional';
+type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional';
 
 interface Tab {
   id: TabType;
@@ -54,6 +57,21 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
       id: 'docente-institucional',
       label: 'Resumen Docente Institucional',
       icon: <Building2 size={20} />
+    },
+    {
+      id: 'calificacion-carrera',
+      label: 'Calificación por Carrera',
+      icon: <Award size={20} />
+    },
+    {
+      id: 'calificacion-facultad',
+      label: 'Calificación por Facultad',
+      icon: <Award size={20} />
+    },
+    {
+      id: 'calificacion-institucional',
+      label: 'Calificación Institucional',
+      icon: <Building2 size={20} />
     }
   ];
 
@@ -71,6 +89,12 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
         return <ResumenDocentePorFacultad datos={datos} />;
       case 'docente-institucional':
         return <ResumenDocenteInstitucional datos={datos} />;
+      case 'calificacion-carrera':
+        return <ReporteCalificacionPorCarrera datos={datos} />;
+      case 'calificacion-facultad':
+        return <ReporteCalificacionPorFacultad datos={datos} />;
+      case 'calificacion-institucional':
+        return <ReporteCalificacionInstitucional datos={datos} />;
       default:
         return null;
     }

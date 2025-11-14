@@ -1580,7 +1580,10 @@
 .reporte-carrera,
 .resumen-docente-carrera,
 .resumen-docente-facultad,
-.resumen-docente-institucional {
+.resumen-docente-institucional,
+.reporte-calificacion-carrera,
+.reporte-calificacion-facultad,
+.reporte-calificacion-institucional {
   width: 100%;
 }
 
@@ -1761,6 +1764,165 @@
 
   .btn-export-pdf span {
     display: none;
+  }
+}
+
+/* Reporte Calificación por Carrera Styles */
+.calificacion-summary {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.calificacion-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #667eea;
+}
+
+.calificacion-header svg {
+  color: #667eea;
+}
+
+.calificacion-header h3 {
+  color: #333;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.calificacion-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.calificacion-stat-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-badge .stat-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-badge .stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.stat-badge .stat-percentage {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.stat-insatisfactorio {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.stat-aceptable {
+  background: rgba(255, 152, 0, 0.1);
+  color: #ff9800;
+}
+
+.stat-bueno {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.stat-destacado {
+  background: rgba(33, 150, 243, 0.1);
+  color: #2196f3;
+}
+
+.calificacion-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chart-container {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.chart-header svg {
+  color: #667eea;
+}
+
+.chart-header h4 {
+  color: #333;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.chart-wrapper {
+  height: 300px;
+  position: relative;
+}
+
+.calificacion-info {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.calificacion-info p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.calificacion-info strong {
+  color: #667eea;
+}
+
+@media (max-width: 768px) {
+  .calificacion-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .calificacion-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-wrapper {
+    height: 250px;
   }
 }
 
