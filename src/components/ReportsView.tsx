@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Calendar, Download, Trash2, Eye, BarChart3 } from 'lucide-react';
 import { ReporteData, EvaluacionData } from '../types';
-import { generarPDF } from '../services/pdfService';
 import ReportsTabs from './ReportsTabs';
 
 interface ReporteGuardado extends ReporteData {
@@ -64,7 +63,7 @@ export default function ReportsView({ datos, onGraficoReady }: ReportsViewProps)
     }
   };
 
-  const handleRegenerarPDF = async (reporte: ReporteGuardado) => {
+  const handleRegenerarPDF = async (_reporte: ReporteGuardado) => {
     try {
       // Necesitamos los elementos de gráficos, pero como no los tenemos guardados,
       // mostramos un mensaje

@@ -63,9 +63,14 @@ function generarInterpretacionGenerica(request: InterpretacionRequest): string {
   
   if (tipoGrafico === 'bar' || tipoGrafico === 'line') {
     const valores = Object.values(datos);
-    const promedio = Array.isArray(valores) 
-      ? valores.reduce((a: number, b: number) => a + b, 0) / valores.length 
-      : 0;
+    let promedio = 0;
+    
+    if (Array.isArray(valores)) {
+      const numeros = valores.filter((v): v is number => typeof v === 'number');
+      if (numeros.length > 0) {
+        promedio = numeros.reduce((a, b) => a + b, 0) / numeros.length;
+      }
+    }
     
     return `El gráfico "${titulo}" muestra una distribución de datos mediante ${tipoGrafico === 'bar' ? 'barras' : 'líneas'}. 
     El valor promedio observado es de ${promedio.toFixed(2)}. 

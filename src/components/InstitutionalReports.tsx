@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
 import { Users, TrendingUp } from 'lucide-react';
 
