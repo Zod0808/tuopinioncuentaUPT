@@ -302,7 +302,6 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
                       return datosCarreraOrdenados.map((dato, index) => {
                         const promedioDocente = promediosPorDocente.get(dato.docente) || dato.nota;
                         const calificacionCorrecta = calcularCalificacion(dato.nota);
-                        const esPrimeraFilaDelDocente = index === 0 || datosCarreraOrdenados[index - 1].docente !== dato.docente;
                         const rowSpanPromedio = rowSpanMap.get(index);
                         
                         // Verificar si esta fila está dentro de un grupo combinado (pero no es la primera)
