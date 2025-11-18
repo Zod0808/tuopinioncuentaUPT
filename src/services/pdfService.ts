@@ -326,8 +326,58 @@ export async function generarPDFResumenDocente(
     doc.text(`Detalle de Cursos - ${nombreDetalle}`, margin, yPosition);
     yPosition += 8;
 
-    const detalleTableData = resumen.datosDetalle.map((dato) => {
+    // Preparar datos de la tabla y calcular información para combinar celdas
+    // IMPORTANTE: Esta lógica asume que los datos están ordenados alfabéticamente por docente,
+    // de manera que todos los cursos del mismo docente aparecen consecutivamente
+    // Calcular cuántas filas consecutivas tiene cada docente
+    const rowSpansPorDocente: Map<number, number> = new Map();
+    for (let i = 0; i < resumen.datosDetalle.length; i++) {
+      const esPrimeraFilaDelDocente = i === 0 || resumen.datosDetalle[i].docente !== resumen.datosDetalle[i - 1].docente;
+      if (esPrimeraFilaDelDocente) {
+        // Contar cuántas filas consecutivas tiene este docente
+        let contador = 1;
+        for (let j = i + 1; j < resumen.datosDetalle.length; j++) {
+          if (resumen.datosDetalle[j].docente === resumen.datosDetalle[i].docente) {
+            contador++;
+          } else {
+            break;
+          }
+        }
+        if (contador > 1) {
+          rowSpansPorDocente.set(i, contador);
+        }
+      }
+    }
+
+    // Preparar datos de la tabla usando objetos especiales para combinar celdas
+    const detalleTableData = resumen.datosDetalle.map((dato, index) => {
       const promedioDocente = resumen.promediosPorDocente.get(dato.docente) || dato.nota;
+      const esPrimeraFilaDelDocente = index === 0 || resumen.datosDetalle[index - 1].docente !== dato.docente;
+      
+      // Buscar si hay un grupo que empiece antes de esta fila y que incluya esta fila
+      let rowSpanPromedio: number | undefined;
+      let indiceInicioGrupo = -1;
+      for (const [inicio, rowSpan] of rowSpansPorDocente.entries()) {
+        if (inicio <= index && index < inicio + rowSpan) {
+          rowSpanPromedio = rowSpan;
+          indiceInicioGrupo = inicio;
+          break;
+        }
+      }
+
+      // Si es la primera fila del grupo y tiene más de una fila, usar objeto con rowSpan
+      // Si es una fila intermedia del grupo, poner string vacío
+      // Si no, usar el valor normal
+      let promedioCell: string | { content: string; rowSpan: number };
+      if (esPrimeraFilaDelDocente && rowSpanPromedio && rowSpanPromedio > 1 && indiceInicioGrupo === index) {
+        promedioCell = { content: promedioDocente.toFixed(2), rowSpan: rowSpanPromedio };
+      } else if (indiceInicioGrupo >= 0 && indiceInicioGrupo !== index) {
+        // Filas intermedias que están siendo combinadas - dejar vacío
+        promedioCell = '';
+      } else {
+        promedioCell = promedioDocente.toFixed(2);
+      }
+
       return [
         dato.docente,
         dato.curso,
@@ -338,7 +388,7 @@ export async function generarPDFResumenDocente(
         dato.ae03.toFixed(2),
         dato.ae04.toFixed(2),
         dato.nota.toFixed(2),
-        promedioDocente.toFixed(2),
+        promedioCell,
         dato.encuestados.toString(),
         dato.noEncuestados.toString()
       ];

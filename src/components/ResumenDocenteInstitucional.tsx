@@ -214,34 +214,70 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
                 </tr>
               </thead>
               <tbody>
-                {datosOrdenados.map((dato, index) => {
-                  const promedioDocente = promediosPorDocente.get(dato.docente) || dato.nota;
-                  // Calcular la calificación correcta basada en la nota del curso
-                  const calificacionCorrecta = calcularCalificacion(dato.nota);
-                  return (
-                    <tr key={dato.id || index}>
-                      <td>{index + 1}</td>
-                      <td>{dato.docente}</td>
-                      <td>{dato.curso}</td>
-                      <td>{dato.seccion}</td>
-                      <td>
-                        <span className={`badge badge-${calificacionCorrecta.toLowerCase()}`}>
-                          {calificacionCorrecta}
-                        </span>
-                      </td>
-                      <td className="text-right">{dato.ae01.toFixed(2)}</td>
-                      <td className="text-right">{dato.ae02.toFixed(2)}</td>
-                      <td className="text-right">{dato.ae03.toFixed(2)}</td>
-                      <td className="text-right">{dato.ae04.toFixed(2)}</td>
-                      <td className="text-right"><strong>{dato.nota.toFixed(2)}</strong></td>
-                      <td className="text-right">
-                        <strong>{promedioDocente.toFixed(2)}</strong>
-                      </td>
-                      <td className="text-center">{dato.encuestados}</td>
-                      <td className="text-center">{dato.noEncuestados}</td>
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  // Pre-calcular rowSpans para todas las filas
+                  // IMPORTANTE: Esta lógica asume que los datos están ordenados alfabéticamente por docente,
+                  // de manera que todos los cursos del mismo docente aparecen consecutivamente
+                  const rowSpanMap = new Map<number, number>();
+                  for (let i = 0; i < datosOrdenados.length; i++) {
+                    const esPrimeraFila = i === 0 || datosOrdenados[i].docente !== datosOrdenados[i - 1].docente;
+                    if (esPrimeraFila) {
+                      let contador = 1;
+                      for (let j = i + 1; j < datosOrdenados.length; j++) {
+                        if (datosOrdenados[j].docente === datosOrdenados[i].docente) {
+                          contador++;
+                        } else {
+                          break;
+                        }
+                      }
+                      if (contador > 1) {
+                        rowSpanMap.set(i, contador);
+                      }
+                    }
+                  }
+
+                  return datosOrdenados.map((dato, index) => {
+                    const promedioDocente = promediosPorDocente.get(dato.docente) || dato.nota;
+                    const calificacionCorrecta = calcularCalificacion(dato.nota);
+                    const esPrimeraFilaDelDocente = index === 0 || datosOrdenados[index - 1].docente !== dato.docente;
+                    const rowSpanPromedio = rowSpanMap.get(index);
+                    
+                    // Verificar si esta fila está dentro de un grupo combinado (pero no es la primera)
+                    let estaDentroDeGrupoCombinado = false;
+                    for (const [inicio, rowSpan] of rowSpanMap.entries()) {
+                      if (inicio < index && index < inicio + rowSpan) {
+                        estaDentroDeGrupoCombinado = true;
+                        break;
+                      }
+                    }
+
+                    return (
+                      <tr key={dato.id || index}>
+                        <td>{index + 1}</td>
+                        <td>{dato.docente}</td>
+                        <td>{dato.curso}</td>
+                        <td>{dato.seccion}</td>
+                        <td>
+                          <span className={`badge badge-${calificacionCorrecta.toLowerCase()}`}>
+                            {calificacionCorrecta}
+                          </span>
+                        </td>
+                        <td className="text-right">{dato.ae01.toFixed(2)}</td>
+                        <td className="text-right">{dato.ae02.toFixed(2)}</td>
+                        <td className="text-right">{dato.ae03.toFixed(2)}</td>
+                        <td className="text-right">{dato.ae04.toFixed(2)}</td>
+                        <td className="text-right"><strong>{dato.nota.toFixed(2)}</strong></td>
+                        {!estaDentroDeGrupoCombinado && (
+                          <td className="text-right" rowSpan={rowSpanPromedio || 1}>
+                            <strong>{promedioDocente.toFixed(2)}</strong>
+                          </td>
+                        )}
+                        <td className="text-center">{dato.encuestados}</td>
+                        <td className="text-center">{dato.noEncuestados}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
