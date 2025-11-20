@@ -334,6 +334,38 @@ export default function InstitutionalReports({ datos, onGraficoReady }: Institut
     }
   };
 
+  // Calcular promedios institucionales usando el método "humano" (con redondeo intermedio)
+  // Este cálculo toma los promedios por facultad ya redondeados a 2 decimales
+  const promedioAE01Manual = datosPorFacultad.length > 0
+    ? parseFloat((datosPorFacultad.reduce((sum, f) => 
+        sum + parseFloat(f.promedioAE01.toFixed(2)), 0) / datosPorFacultad.length).toFixed(2))
+    : 0;
+  const promedioAE02Manual = datosPorFacultad.length > 0
+    ? parseFloat((datosPorFacultad.reduce((sum, f) => 
+        sum + parseFloat(f.promedioAE02.toFixed(2)), 0) / datosPorFacultad.length).toFixed(2))
+    : 0;
+  const promedioAE03Manual = datosPorFacultad.length > 0
+    ? parseFloat((datosPorFacultad.reduce((sum, f) => 
+        sum + parseFloat(f.promedioAE03.toFixed(2)), 0) / datosPorFacultad.length).toFixed(2))
+    : 0;
+  const promedioAE04Manual = datosPorFacultad.length > 0
+    ? parseFloat((datosPorFacultad.reduce((sum, f) => 
+        sum + parseFloat(f.promedioAE04.toFixed(2)), 0) / datosPorFacultad.length).toFixed(2))
+    : 0;
+  
+  // Calcular promedio general institucional usando el método "humano"
+  const promediosGeneralesPorFacultadRedondeados = datosPorFacultad.map(f => {
+    const ae01 = parseFloat(f.promedioAE01.toFixed(2));
+    const ae02 = parseFloat(f.promedioAE02.toFixed(2));
+    const ae03 = parseFloat(f.promedioAE03.toFixed(2));
+    const ae04 = parseFloat(f.promedioAE04.toFixed(2));
+    return parseFloat(((ae01 + ae02 + ae03 + ae04) / 4).toFixed(2));
+  });
+  const notaPromedioGeneralManual = promediosGeneralesPorFacultadRedondeados.length > 0
+    ? parseFloat((promediosGeneralesPorFacultadRedondeados.reduce((sum, pg) => sum + pg, 0) / 
+                  promediosGeneralesPorFacultadRedondeados.length).toFixed(2))
+    : 0;
+
   return (
     <div className="institutional-reports">
       <h2>Reportes Institucionales - Participación Estudiantil</h2>
@@ -496,9 +528,12 @@ export default function InstitutionalReports({ datos, onGraficoReady }: Institut
           </div>
         </div>
 
-        {/* Tabla de promedios por facultad */}
+        {/* Tabla de promedios por facultad - Cálculo del Sistema (precisión total) */}
         <div className="summary-table-container">
-          <h3>Promedios por Aspectos Académicos por Facultad</h3>
+          <h3>Promedios por Aspectos Académicos por Facultad - Cálculo del Sistema</h3>
+          <p className="table-description">
+            Promedio institucional calculado directamente de todos los datos sin redondeo intermedio (máxima precisión).
+          </p>
           <table className="summary-table">
             <thead>
               <tr>
@@ -526,12 +561,105 @@ export default function InstitutionalReports({ datos, onGraficoReady }: Institut
                 );
               })}
               <tr className="total-row">
-                <td><strong>PROMEDIO INSTITUCIONAL</strong></td>
+                <td><strong>PROMEDIO INSTITUCIONAL (Sistema)</strong></td>
                 <td><strong>{promedioAE01.toFixed(2)}</strong></td>
                 <td><strong>{promedioAE02.toFixed(2)}</strong></td>
                 <td><strong>{promedioAE03.toFixed(2)}</strong></td>
                 <td><strong>{promedioAE04.toFixed(2)}</strong></td>
                 <td><strong>{notaPromedioGeneral.toFixed(2)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Tabla de promedios por facultad - Cálculo Humano (redondeo intermedio) */}
+        <div className="summary-table-container">
+          <h3>Promedios por Aspectos Académicos por Facultad - Cálculo Manual</h3>
+          <p className="table-description">
+            Promedio institucional calculado a partir de los promedios por facultad redondeados a 2 decimales 
+            (igual al cálculo manual realizado por los usuarios).
+          </p>
+          <table className="summary-table">
+            <thead>
+              <tr>
+                <th>Facultad</th>
+                <th>AE-01: Sílabo</th>
+                <th>AE-02: Enseñanza</th>
+                <th>AE-03: Evaluación</th>
+                <th>AE-04: Actitudinal</th>
+                <th>Promedio General</th>
+              </tr>
+            </thead>
+            <tbody>
+              {datosPorFacultad.map((facultad) => {
+                // Redondear a 2 decimales antes de calcular el promedio general
+                const promedioAE01Redondeado = parseFloat(facultad.promedioAE01.toFixed(2));
+                const promedioAE02Redondeado = parseFloat(facultad.promedioAE02.toFixed(2));
+                const promedioAE03Redondeado = parseFloat(facultad.promedioAE03.toFixed(2));
+                const promedioAE04Redondeado = parseFloat(facultad.promedioAE04.toFixed(2));
+                const promedioGeneral = parseFloat(
+                  ((promedioAE01Redondeado + promedioAE02Redondeado + 
+                    promedioAE03Redondeado + promedioAE04Redondeado) / 4).toFixed(2)
+                );
+                return (
+                  <tr key={facultad.facultad}>
+                    <td><strong>{facultad.facultad}</strong></td>
+                    <td>{promedioAE01Redondeado.toFixed(2)}</td>
+                    <td>{promedioAE02Redondeado.toFixed(2)}</td>
+                    <td>{promedioAE03Redondeado.toFixed(2)}</td>
+                    <td>{promedioAE04Redondeado.toFixed(2)}</td>
+                    <td><strong>{promedioGeneral.toFixed(2)}</strong></td>
+                  </tr>
+                );
+              })}
+              <tr className="total-row">
+                <td><strong>PROMEDIO INSTITUCIONAL (Manual)</strong></td>
+                <td><strong>{promedioAE01Manual.toFixed(2)}</strong></td>
+                <td><strong>{promedioAE02Manual.toFixed(2)}</strong></td>
+                <td><strong>{promedioAE03Manual.toFixed(2)}</strong></td>
+                <td><strong>{promedioAE04Manual.toFixed(2)}</strong></td>
+                <td><strong>{notaPromedioGeneralManual.toFixed(2)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Tabla resumen comparativa de Aspectos Académicos */}
+        <div className="summary-table-container">
+          <h3>Aspecto Académico - Comparación de Cálculos</h3>
+          <table className="summary-table">
+            <thead>
+              <tr>
+                <th>Aspecto Académico</th>
+                <th>Promedio (Sistema)</th>
+                <th>Promedio (Cálculo Manual)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>AE-01: Calidad de presentación y contenido sílabico</td>
+                <td className="text-right"><strong>{promedioAE01.toFixed(2)}</strong></td>
+                <td className="text-right"><strong>{promedioAE01Manual.toFixed(2)}</strong></td>
+              </tr>
+              <tr>
+                <td>AE-02: Ejecución del proceso enseñanza-aprendizaje</td>
+                <td className="text-right"><strong>{promedioAE02.toFixed(2)}</strong></td>
+                <td className="text-right"><strong>{promedioAE02Manual.toFixed(2)}</strong></td>
+              </tr>
+              <tr>
+                <td>AE-03: Aplicación de la evaluación</td>
+                <td className="text-right"><strong>{promedioAE03.toFixed(2)}</strong></td>
+                <td className="text-right"><strong>{promedioAE03Manual.toFixed(2)}</strong></td>
+              </tr>
+              <tr>
+                <td>AE-04: Formación actitudinal e interpersonales</td>
+                <td className="text-right"><strong>{promedioAE04.toFixed(2)}</strong></td>
+                <td className="text-right"><strong>{promedioAE04Manual.toFixed(2)}</strong></td>
+              </tr>
+              <tr className="total-row">
+                <td><strong>PROMEDIO GENERAL</strong></td>
+                <td className="text-right"><strong>{notaPromedioGeneral.toFixed(2)}</strong></td>
+                <td className="text-right"><strong>{notaPromedioGeneralManual.toFixed(2)}</strong></td>
               </tr>
             </tbody>
           </table>

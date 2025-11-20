@@ -479,6 +479,17 @@
   font-size: 1.3rem;
 }
 
+.summary-table-container .table-description {
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #f0f0f0;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+}
+
 .summary-table {
   width: 100%;
   border-collapse: collapse;
@@ -516,6 +527,10 @@
 .summary-table .total-row td {
   border-top: 2px solid #667eea;
   padding-top: 1rem;
+}
+
+.summary-table .text-right {
+  text-align: right;
 }
 
 /* Academic Evaluation Section */
