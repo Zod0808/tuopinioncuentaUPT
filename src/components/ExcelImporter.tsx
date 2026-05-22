@@ -1,13 +1,21 @@
 import { useState, useRef } from 'react';
-import { FileSpreadsheet, CheckCircle, AlertCircle, X } from 'lucide-react';
-// @ts-ignore - read-excel-file no tiene tipos oficiales pero funciona correctamente
+import { FileSpreadsheet, CheckCircle, AlertCircle, X, Calendar, Upload } from 'lucide-react';
+// @ts-ignore
 import readXlsxFile from 'read-excel-file';
 import { EvaluacionData } from '../types';
-import { isFirebaseConfigured } from '../services/firebaseService';
-import { isJSONBinConfigured } from '../services/jsonbinService';
+
+const TODOS_LOS_CICLOS = [
+  '2018-I','2018-II','2019-I','2019-II',
+  '2020-I','2020-II','2021-I','2021-II',
+  '2022-I','2022-II','2023-I','2023-II',
+  '2024-I','2024-II','2025-I','2025-II',
+  '2026-I','2026-II',
+];
 
 interface ExcelImporterProps {
-  onDataImport: (data: EvaluacionData[]) => void;
+  onDataImport: (data: EvaluacionData[], ciclo: string) => void;
+  cicloActual: string;
+  ciclosDisponibles: string[];
 }
 
 interface ImportResult {
@@ -17,367 +25,249 @@ interface ImportResult {
   errors: string[];
 }
 
-export default function ExcelImporter({ onDataImport }: ExcelImporterProps) {
+interface PendingImport {
+  data: EvaluacionData[];
+  filename: string;
+  errors: string[];
+}
+
+export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponibles }: ExcelImporterProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [cicloSeleccionado, setCicloSeleccionado] = useState(cicloActual);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ciclos disponibles en el selector: predefinidos + los que ya tiene el usuario
+  const ciclosEnSelector = Array.from(new Set([...TODOS_LOS_CICLOS, ...ciclosDisponibles])).sort((a, b) => {
+    const [ya, sa] = a.split('-'); const [yb, sb] = b.split('-');
+    return ya !== yb ? parseInt(ya) - parseInt(yb) : sa.localeCompare(sb);
+  });
 
   const handleFile = async (file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      setImportResult({
-        success: false,
-        message: 'Por favor, selecciona un archivo Excel (.xlsx o .xls)',
-        imported: 0,
-        errors: ['Formato de archivo no válido']
-      });
+      setImportResult({ success: false, message: 'Selecciona un archivo Excel (.xlsx o .xls)', imported: 0, errors: ['Formato inválido'] });
       return;
     }
 
     setIsProcessing(true);
     setImportResult(null);
+    setPendingImport(null);
+    setCicloSeleccionado(cicloActual);
 
     try {
-      // Leer el archivo Excel
       const rows = await readXlsxFile(file);
+      if (rows.length < 2) throw new Error('El archivo está vacío o no tiene datos.');
 
-      if (rows.length < 2) {
-        throw new Error('El archivo Excel está vacío o no tiene datos. Debe tener al menos una fila de encabezados y una fila de datos.');
-      }
+      const headers = (rows[0] as any[]).map((h: any) => String(h || '').trim().toUpperCase());
 
-      // Primera fila (índice 0) contiene los encabezados/indicadores de columna - NO se procesa como dato
-      const headers = (rows[0] as any[]).map((h: any) => 
-        String(h || '').trim().toUpperCase()
-      );
-
-      // Mapeo de columnas esperadas (orden según el Excel)
       const columnMap: Record<string, string> = {
-        'FACULTAD': 'facultad',
-        'CARRERA PROFESIONAL': 'carreraProfesional',
-        'DOCENTE': 'docente',
-        'CURSO': 'curso',
-        'SECCIÓN': 'seccion',
-        'SECCION': 'seccion', // Variante sin tilde
-        'CALIFICACIÓN': 'calificacion',
-        'CALIFICACION': 'calificacion', // Variante sin tilde
-        'AE-01': 'ae01',
-        'AE-02': 'ae02',
-        'AE-03': 'ae03',
-        'AE-04': 'ae04',
-        'NOTA': 'nota',
-        'ENCUESTADOS': 'encuestados',
-        'NO ENCUESTADOS': 'noEncuestados',
-        'VALIDEZ': 'validez'
+        'FACULTAD': 'facultad', 'CARRERA PROFESIONAL': 'carreraProfesional',
+        'DOCENTE': 'docente', 'CURSO': 'curso', 'SECCIÓN': 'seccion', 'SECCION': 'seccion',
+        'CALIFICACIÓN': 'calificacion', 'CALIFICACION': 'calificacion',
+        'AE-01': 'ae01', 'AE-02': 'ae02', 'AE-03': 'ae03', 'AE-04': 'ae04',
+        'NOTA': 'nota', 'ENCUESTADOS': 'encuestados', 'NO ENCUESTADOS': 'noEncuestados', 'VALIDEZ': 'validez'
       };
 
-      // Encontrar índices de columnas con búsqueda más precisa
       const columnIndices: Record<string, number> = {};
-      
       Object.keys(columnMap).forEach(key => {
-        // Buscar coincidencia exacta primero
-        let index = headers.findIndex(h => {
-          const headerUpper = String(h || '').trim().toUpperCase();
-          return headerUpper === key;
-        });
-        
-        // Si no hay coincidencia exacta, buscar parcial
+        let index = headers.findIndex(h => String(h || '').trim().toUpperCase() === key);
         if (index === -1) {
           index = headers.findIndex(h => {
-            const headerUpper = String(h || '').trim().toUpperCase();
-            // Para columnas específicas, ser más estricto
-            if (key === 'NO ENCUESTADOS') {
-              return headerUpper.includes('NO') && headerUpper.includes('ENCUESTADOS');
-            }
-            if (key === 'ENCUESTADOS') {
-              return headerUpper === 'ENCUESTADOS' || (headerUpper.includes('ENCUESTADOS') && !headerUpper.includes('NO'));
-            }
-            return headerUpper.includes(key) || key.includes(headerUpper);
+            const hu = String(h || '').trim().toUpperCase();
+            if (key === 'NO ENCUESTADOS') return hu.includes('NO') && hu.includes('ENCUESTADOS');
+            if (key === 'ENCUESTADOS') return hu === 'ENCUESTADOS' || (hu.includes('ENCUESTADOS') && !hu.includes('NO'));
+            return hu.includes(key) || key.includes(hu);
           });
         }
-        
-        if (index !== -1) {
-          columnIndices[columnMap[key]] = index;
-        }
+        if (index !== -1) columnIndices[columnMap[key]] = index;
       });
 
-      // Debug: mostrar mapeo de columnas encontradas
-      console.log('Headers encontrados:', headers);
-      console.log('Índices de columnas mapeadas:', columnIndices);
-      
-      // Verificar específicamente las columnas problemáticas
-      if (columnIndices.encuestados !== undefined) {
-        console.log('Columna ENCUESTADOS encontrada en índice:', columnIndices.encuestados, 'Header:', headers[columnIndices.encuestados]);
-      } else {
-        console.warn('⚠️ Columna ENCUESTADOS NO encontrada');
-      }
-      
-      if (columnIndices.noEncuestados !== undefined) {
-        console.log('Columna NO ENCUESTADOS encontrada en índice:', columnIndices.noEncuestados, 'Header:', headers[columnIndices.noEncuestados]);
-      } else {
-        console.warn('⚠️ Columna NO ENCUESTADOS NO encontrada');
-      }
-
-      // Validar que todas las columnas requeridas estén presentes
-      const requiredColumns = ['facultad', 'docente', 'curso', 'seccion', 'nota', 
-                               'ae01', 'ae02', 'ae03', 'ae04', 'encuestados', 'noEncuestados'];
+      const requiredColumns = ['facultad', 'docente', 'curso', 'seccion', 'nota', 'ae01', 'ae02', 'ae03', 'ae04', 'encuestados', 'noEncuestados'];
       const missingColumns = requiredColumns.filter(col => columnIndices[col] === undefined);
-      
-      if (missingColumns.length > 0) {
-        throw new Error(`Faltan columnas requeridas: ${missingColumns.join(', ')}`);
-      }
+      if (missingColumns.length > 0) throw new Error(`Faltan columnas: ${missingColumns.join(', ')}`);
 
-      // Procesar datos - comenzar desde la segunda fila (índice 1)
-      // La primera fila (índice 0) son los encabezados y NO se procesa
       const importedData: EvaluacionData[] = [];
       const errors: string[] = [];
 
+      const parseNumber = (v: any): number => {
+        if (v === null || v === undefined || v === '') return 0;
+        if (typeof v === 'number') return v;
+        const n = parseFloat(String(v).trim().replace(/,/g, '.'));
+        return isNaN(n) ? 0 : n;
+      };
+      const parseInteger = (v: any): number => {
+        if (v === null || v === undefined || v === '') return 0;
+        if (typeof v === 'number') return Math.round(v);
+        const n = parseInt(String(v).trim().replace(/,/g, ''), 10);
+        return isNaN(n) ? 0 : n;
+      };
+
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i] as any[];
-        // Saltar filas vacías
-        if (!row || row.length === 0 || row.every(cell => cell === null || cell === undefined || cell === '')) {
-          continue;
-        }
-
+        if (!row || row.every((c: any) => c === null || c === undefined || c === '')) continue;
         try {
           const facultad = String(row[columnIndices.facultad] || '').trim();
-          const carreraProfesional = String(row[columnIndices.carreraProfesional] || '').trim();
           const docente = String(row[columnIndices.docente] || '').trim();
           const curso = String(row[columnIndices.curso] || '').trim();
           const seccion = String(row[columnIndices.seccion] || '').trim();
-          
-          // Validar campos requeridos
-          if (!facultad || !docente || !curso || !seccion) {
-            errors.push(`Fila ${i + 1}: Faltan campos requeridos`);
-            continue;
-          }
+          if (!facultad || !docente || !curso || !seccion) { errors.push(`Fila ${i + 1}: faltan campos requeridos`); continue; }
 
-          // Función helper para convertir números (maneja comas, espacios, etc.)
-          const parseNumber = (value: any): number => {
-            if (value === null || value === undefined || value === '') return 0;
-            // Si ya es un número, retornarlo
-            if (typeof value === 'number') return value;
-            // Convertir a string y limpiar
-            const str = String(value).trim().replace(/,/g, '.');
-            const num = parseFloat(str);
-            return isNaN(num) ? 0 : num;
-          };
-
-          const parseInteger = (value: any): number => {
-            if (value === null || value === undefined || value === '') return 0;
-            // Si ya es un número, retornarlo
-            if (typeof value === 'number') return Math.round(value);
-            // Convertir a string y limpiar
-            const str = String(value).trim().replace(/,/g, '');
-            const num = parseInt(str, 10);
-            return isNaN(num) ? 0 : num;
-          };
-
-          // Convertir valores numéricos
-          const nota = parseNumber(row[columnIndices.nota]);
           const ae01 = parseNumber(row[columnIndices.ae01]);
           const ae02 = parseNumber(row[columnIndices.ae02]);
           const ae03 = parseNumber(row[columnIndices.ae03]);
           const ae04 = parseNumber(row[columnIndices.ae04]);
-          
-          // Para encuestados y no encuestados, usar parseInteger
-          const encuestadosValue = row[columnIndices.encuestados];
-          const noEncuestadosValue = row[columnIndices.noEncuestados];
-          
-          const encuestados = parseInteger(encuestadosValue);
-          const noEncuestados = parseInteger(noEncuestadosValue);
-
-          // Debug para la primera fila
-          if (i === 1) {
-            console.log('Primera fila de datos:');
-            console.log('  Row completa:', row);
-            console.log('  Índice encuestados:', columnIndices.encuestados, 'Valor:', encuestadosValue, 'Parseado:', encuestados);
-            console.log('  Índice noEncuestados:', columnIndices.noEncuestados, 'Valor:', noEncuestadosValue, 'Parseado:', noEncuestados);
-          }
-
-          // Calificación
+          const nota = parseNumber(row[columnIndices.nota]) || (ae01 + ae02 + ae03 + ae04) / 4;
           const calificacionRaw = String(row[columnIndices.calificacion] || '').trim().toUpperCase();
-          const calificacion = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'REGULAR', 'DEFICIENTE'].includes(calificacionRaw)
-            ? calificacionRaw as EvaluacionData['calificacion']
-            : 'BUENO';
+          const calificacion = (['DESTACADO','BUENO','ACEPTABLE','REGULAR','DEFICIENTE'] as const).includes(calificacionRaw as any)
+            ? calificacionRaw as EvaluacionData['calificacion'] : 'BUENO';
+          const validezRaw = String(row[columnIndices.validez] || '').trim().toUpperCase();
+          const validez = validezRaw.includes('VÁLIDO') || validezRaw.includes('VALIDO') ? 'Válido' as const : 'Inválido' as const;
 
-          // Validez
-          const validezRaw = String(row[columnIndices.validez] || '').trim();
-          const validez = validezRaw.toUpperCase().includes('VÁLIDO') || validezRaw.toUpperCase().includes('VALIDO')
-            ? 'Válido' as const
-            : 'Inválido' as const;
-
-          // Calcular nota si no está presente o es 0
-          const notaCalculada = nota > 0 ? nota : (ae01 + ae02 + ae03 + ae04) / 4;
-
-          const dataItem: EvaluacionData = {
+          importedData.push({
             id: `${Date.now()}-${i}`,
             facultad,
-            carreraProfesional: carreraProfesional || 'No especificada',
-            docente,
-            curso,
-            seccion,
-            calificacion,
-            ae01,
-            ae02,
-            ae03,
-            ae04,
-            nota: notaCalculada,
-            encuestados,
-            noEncuestados,
-            validez
-          };
-
-          importedData.push(dataItem);
-        } catch (error) {
-          errors.push(`Fila ${i + 1}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+            carreraProfesional: String(row[columnIndices.carreraProfesional] || '').trim() || 'No especificada',
+            docente, curso, seccion, calificacion, ae01, ae02, ae03, ae04, nota,
+            encuestados: parseInteger(row[columnIndices.encuestados]),
+            noEncuestados: parseInteger(row[columnIndices.noEncuestados]),
+            validez,
+          });
+        } catch (err) {
+          errors.push(`Fila ${i + 1}: ${err instanceof Error ? err.message : 'error desconocido'}`);
         }
       }
 
-      if (importedData.length === 0) {
-        throw new Error('No se pudieron importar datos válidos del archivo');
-      }
+      if (importedData.length === 0) throw new Error('No se pudieron importar datos válidos del archivo');
 
-      // Importar datos
-      onDataImport(importedData);
+      // Mostrar confirmación en lugar de importar directamente
+      setPendingImport({ data: importedData, filename: file.name, errors: errors.slice(0, 10) });
 
-      // Forzar guardado inmediato en localStorage
-      try {
-        const datosExistentes = localStorage.getItem('evaluacionDatos');
-        let datosCompletos: EvaluacionData[] = [];
-        if (datosExistentes) {
-          datosCompletos = JSON.parse(datosExistentes);
-        }
-        datosCompletos = [...datosCompletos, ...importedData];
-        localStorage.setItem('evaluacionDatos', JSON.stringify(datosCompletos));
-        console.log(`Datos importados y guardados: ${importedData.length} nuevos registros, total: ${datosCompletos.length}`);
-      } catch (error) {
-        console.error('Error al guardar datos importados:', error);
-      }
-
-      const cloudStatus = isJSONBinConfigured() || isFirebaseConfigured()
-        ? ' Los datos se están sincronizando con la nube.' 
-        : ' Nota: Para compartir datos entre computadoras, configura JSONBin o Firebase (ver README.md)';
-
-      setImportResult({
-        success: true,
-        message: `Se importaron ${importedData.length} registros exitosamente.${cloudStatus}`,
-        imported: importedData.length,
-        errors: errors.slice(0, 10) // Mostrar solo los primeros 10 errores
-      });
     } catch (error) {
-      setImportResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Error al procesar el archivo',
-        imported: 0,
-        errors: [error instanceof Error ? error.message : 'Error desconocido']
-      });
+      setImportResult({ success: false, message: error instanceof Error ? error.message : 'Error al procesar el archivo', imported: 0, errors: [] });
     } finally {
       setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const handleConfirmImport = () => {
+    if (!pendingImport) return;
+    onDataImport(pendingImport.data, cicloSeleccionado);
+    setImportResult({
+      success: true,
+      message: `Se importaron ${pendingImport.data.length} registros al ciclo ${cicloSeleccionado}.`,
+      imported: pendingImport.data.length,
+      errors: pendingImport.errors,
+    });
+    setPendingImport(null);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleCancelImport = () => {
+    setPendingImport(null);
   };
 
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    e.preventDefault(); setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFile(file);
-    }
+    if (file) handleFile(file);
   };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      handleFile(file);
-    }
-  };
-
-  const handleClick = () => {
-    fileInputRef.current?.click();
+    if (file) handleFile(file);
   };
 
   return (
     <div className="excel-importer">
       <h2>Importar Datos desde Excel</h2>
-      
-      <div
-        className={`drop-zone ${isDragging ? 'dragging' : ''} ${isProcessing ? 'processing' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleClick}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleFileSelect}
-          style={{ display: 'none' }}
-        />
-        
-        {isProcessing ? (
-          <div className="drop-zone-content">
-            <div className="spinner"></div>
-            <p>Procesando archivo...</p>
-          </div>
-        ) : (
-          <div className="drop-zone-content">
-            <FileSpreadsheet size={48} />
-            <p>
-              <strong>Arrastra un archivo Excel aquí</strong>
-              <br />
-              o haz clic para seleccionar
-            </p>
-            <p className="hint">
-              Formatos soportados: .xlsx, .xls
-            </p>
-          </div>
-        )}
-      </div>
 
+      {/* Zona de arrastre — ocultar si hay una importación pendiente */}
+      {!pendingImport && (
+        <div
+          className={`drop-zone ${isDragging ? 'dragging' : ''} ${isProcessing ? 'processing' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileSelect} style={{ display: 'none' }} />
+          {isProcessing ? (
+            <div className="drop-zone-content"><div className="spinner" /><p>Procesando archivo...</p></div>
+          ) : (
+            <div className="drop-zone-content">
+              <FileSpreadsheet size={48} />
+              <p><strong>Arrastra un archivo Excel aquí</strong><br />o haz clic para seleccionar</p>
+              <p className="hint">Formatos soportados: .xlsx, .xls</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirmación de ciclo */}
+      {pendingImport && (
+        <div className="import-confirm-box">
+          <div className="import-confirm-header">
+            <FileSpreadsheet size={22} color="#667eea" />
+            <h3>Confirmar importación</h3>
+          </div>
+
+          <div className="import-confirm-stats">
+            <span className="confirm-stat"><strong>{pendingImport.data.length}</strong> registros encontrados</span>
+            <span className="confirm-stat-file">📄 {pendingImport.filename}</span>
+          </div>
+
+          <div className="import-confirm-ciclo">
+            <label htmlFor="ciclo-import-select">
+              <Calendar size={16} />
+              ¿A qué ciclo pertenecen estos datos?
+            </label>
+            <select
+              id="ciclo-import-select"
+              value={cicloSeleccionado}
+              onChange={e => setCicloSeleccionado(e.target.value)}
+              className="ciclo-import-select"
+            >
+              {ciclosEnSelector.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {pendingImport.errors.length > 0 && (
+            <div className="import-confirm-warnings">
+              <strong>⚠️ {pendingImport.errors.length} filas con problemas (se ignorarán):</strong>
+              <ul>{pendingImport.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+            </div>
+          )}
+
+          <div className="import-confirm-actions">
+            <button className="btn-cancel" onClick={handleCancelImport}>
+              <X size={16} /> Cancelar
+            </button>
+            <button className="btn-primary" onClick={handleConfirmImport}>
+              <Upload size={16} /> Importar al ciclo {cicloSeleccionado}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Resultado */}
       {importResult && (
         <div className={`import-result ${importResult.success ? 'success' : 'error'}`}>
           <div className="result-header">
-            {importResult.success ? (
-              <CheckCircle size={24} />
-            ) : (
-              <AlertCircle size={24} />
-            )}
+            {importResult.success ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
             <h3>{importResult.success ? 'Importación Exitosa' : 'Error en la Importación'}</h3>
-            <button
-              className="btn-close-small"
-              onClick={() => setImportResult(null)}
-            >
-              <X size={18} />
-            </button>
+            <button className="btn-close-small" onClick={() => setImportResult(null)}><X size={18} /></button>
           </div>
           <p>{importResult.message}</p>
-          {importResult.success && (
-            <p className="import-count">
-              <strong>{importResult.imported}</strong> registros importados
-            </p>
-          )}
+          {importResult.success && <p className="import-count"><strong>{importResult.imported}</strong> registros importados</p>}
           {importResult.errors.length > 0 && (
             <div className="errors-list">
               <strong>Errores encontrados ({importResult.errors.length}):</strong>
-              <ul>
-                {importResult.errors.map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-              {importResult.errors.length >= 10 && (
-                <p className="more-errors">... y más errores (revisa la consola para más detalles)</p>
-              )}
+              <ul>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
             </div>
           )}
         </div>
@@ -385,29 +275,20 @@ export default function ExcelImporter({ onDataImport }: ExcelImporterProps) {
 
       <div className="import-instructions">
         <h3>Instrucciones:</h3>
-        <p>El archivo Excel debe contener las siguientes columnas en este orden:</p>
+        <p>El archivo Excel debe contener las siguientes columnas:</p>
         <ol>
-          <li><strong>Facultad</strong> - Nombre de la facultad</li>
-          <li><strong>Carrera Profesional</strong> - Nombre de la carrera</li>
-          <li><strong>Docente</strong> - Nombre del docente</li>
-          <li><strong>Curso</strong> - Nombre del curso</li>
-          <li><strong>Sección</strong> - Sección del curso</li>
-          <li><strong>Calificación</strong> - DESTACADO, BUENO, ACEPTABLE, REGULAR, DEFICIENTE</li>
-          <li><strong>AE-01</strong> - Calidad de presentación y contenido sílabico (0-20)</li>
-          <li><strong>AE-02</strong> - Ejecución del proceso enseñanza-aprendizaje (0-20)</li>
-          <li><strong>AE-03</strong> - Aplicación de la evaluación (0-20)</li>
-          <li><strong>AE-04</strong> - Formación actitudinal e interpersonales (0-20)</li>
-          <li><strong>Nota</strong> - Nota promedio (numérico)</li>
-          <li><strong>ENCUESTADOS</strong> - Número de estudiantes encuestados</li>
-          <li><strong>NO ENCUESTADOS</strong> - Número de estudiantes no encuestados</li>
-          <li><strong>VALIDEZ</strong> - Válido o Inválido</li>
+          <li><strong>Facultad</strong></li>
+          <li><strong>Carrera Profesional</strong></li>
+          <li><strong>Docente</strong></li>
+          <li><strong>Curso</strong></li>
+          <li><strong>Sección</strong></li>
+          <li><strong>Calificación</strong> — DESTACADO, BUENO, ACEPTABLE, REGULAR, DEFICIENTE</li>
+          <li><strong>AE-01 al AE-04</strong> — aspectos evaluados (0-20)</li>
+          <li><strong>Nota</strong> — promedio (se calcula automáticamente si está vacío)</li>
+          <li><strong>Encuestados / No Encuestados</strong></li>
+          <li><strong>Validez</strong> — Válido o Inválido</li>
         </ol>
-        <p className="note">
-          <strong>Nota:</strong> La primera fila debe contener los encabezados de las columnas.
-          Si la columna "Nota" está vacía, se calculará automáticamente como el promedio de los 4 aspectos académicos.
-        </p>
       </div>
     </div>
   );
 }
-

@@ -94,3 +94,24 @@ export async function getCiclosDisponibles(): Promise<string[]> {
   if (error || !data) return [];
   return data.map((row: { ciclo: string }) => row.ciclo);
 }
+
+export async function loadAllCyclesData(): Promise<Record<string, EvaluacionData[]>> {
+  if (!supabase) return {};
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return {};
+
+  const { data, error } = await supabase
+    .from('evaluaciones_data')
+    .select('ciclo, datos')
+    .eq('user_id', user.id);
+
+  if (error || !data) return {};
+
+  const result: Record<string, EvaluacionData[]> = {};
+  for (const row of data as { ciclo: string; datos: EvaluacionData[] }[]) {
+    if (row.datos && row.datos.length > 0) {
+      result[row.ciclo] = row.datos;
+    }
+  }
+  return result;
+}

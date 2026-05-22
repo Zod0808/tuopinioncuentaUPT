@@ -2504,6 +2504,313 @@
   color: #667eea;
 }
 
+/* ─── Ciclo badge en reportes ────────────────────────────────────────────── */
+.ciclo-badge-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(102, 126, 234, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.ciclo-badge-count {
+  margin-left: auto;
+  background: #667eea;
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ─── Import confirm box ─────────────────────────────────────────────────── */
+.import-confirm-box {
+  background: #f0f4ff;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.import-confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.import-confirm-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.import-confirm-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.confirm-stat {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.confirm-stat strong {
+  color: #667eea;
+  font-size: 1.3rem;
+}
+
+.confirm-stat-file {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.import-confirm-ciclo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.import-confirm-ciclo label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.ciclo-import-select {
+  padding: 0.5rem 0.9rem;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  min-width: 140px;
+  transition: all 0.2s;
+}
+
+.ciclo-import-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.import-confirm-warnings {
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  color: #555;
+}
+
+.import-confirm-warnings ul {
+  margin: 0.5rem 0 0 1.2rem;
+  padding: 0;
+}
+
+.import-confirm-warnings li {
+  margin: 0.25rem 0;
+}
+
+.import-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ─── Comparativa ciclos ─────────────────────────────────────────────────── */
+.comparativa-ciclos {
+  width: 100%;
+}
+
+.comparativa-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.comparativa-header h2 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+  font-size: 1.6rem;
+}
+
+.comparativa-header p {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.comparativa-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.comp-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.comp-card-value {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.1;
+}
+
+.comp-card-label {
+  display: block;
+  font-size: 0.82rem;
+  color: #888;
+  margin-top: 0.2rem;
+}
+
+.comparativa-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.comp-chart-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.comp-chart-wide {
+  grid-column: 1 / -1;
+}
+
+.comparativa-table-section {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.comparativa-table-section h3 {
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.comparativa-table-wrapper {
+  overflow-x: auto;
+}
+
+.comparativa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.comparativa-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.comparativa-table th {
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.comparativa-table td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.comparativa-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.comp-row-actual {
+  background: rgba(102, 126, 234, 0.07) !important;
+}
+
+.comp-row-actual td {
+  border-bottom-color: #c5cdf8 !important;
+}
+
+.comp-badge-actual {
+  display: inline-block;
+  background: #667eea;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 8px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.comparativa-table .text-right { text-align: right; }
+.comparativa-table .text-blue  { color: #2196f3; font-weight: 600; }
+.comparativa-table .text-green { color: #4caf50; font-weight: 600; }
+.comparativa-table .text-orange{ color: #ff9800; font-weight: 600; }
+.comparativa-table .text-redsoft{ color: #ff5722; font-weight: 600; }
+.comparativa-table .text-red   { color: #f44336; font-weight: 600; }
+
+.comparativa-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: #999;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .comparativa-charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .comp-chart-wide {
+    grid-column: 1;
+  }
+}
+
 /* ─── Responsive auth / nav ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .navigation {

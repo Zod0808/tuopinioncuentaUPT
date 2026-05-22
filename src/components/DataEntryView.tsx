@@ -11,8 +11,10 @@ import ReportGenerator from './ReportGenerator';
 interface DataEntryViewProps {
   datos: EvaluacionData[];
   graficosElements: HTMLElement[];
+  cicloActual: string;
+  ciclosDisponibles: string[];
   onDataAdd: (data: EvaluacionData) => void;
-  onDataImport: (data: EvaluacionData[]) => void;
+  onDataImport: (data: EvaluacionData[], ciclo: string) => void;
   onDataDelete: (id: string) => void;
   onDataDeleteAll?: () => void;
   onGraficoReady: (element: HTMLElement, index: number) => void;
@@ -21,18 +23,24 @@ interface DataEntryViewProps {
 export default function DataEntryView({
   datos,
   graficosElements,
+  cicloActual,
+  ciclosDisponibles,
   onDataAdd,
   onDataImport,
   onDataDelete,
   onDataDeleteAll,
-  onGraficoReady
+  onGraficoReady,
 }: DataEntryViewProps) {
   return (
     <div className="data-entry-view">
-      <ExcelImporter onDataImport={onDataImport} />
-      <DataExporter datos={datos} onDataImport={onDataImport} />
+      <ExcelImporter
+        onDataImport={onDataImport}
+        cicloActual={cicloActual}
+        ciclosDisponibles={ciclosDisponibles}
+      />
+      <DataExporter datos={datos} onDataImport={(data) => onDataImport(data, cicloActual)} />
       <DataInput onDataAdd={onDataAdd} datosExistentes={datos} />
-      
+
       {datos.length > 0 && (
         <>
           <DataTable datos={datos} onDelete={onDataDelete} onDeleteAll={onDataDeleteAll} />
@@ -45,4 +53,3 @@ export default function DataEntryView({
     </div>
   );
 }
-

@@ -152,8 +152,20 @@ function App() {
     setDatos(prev => [...prev, newData]);
   };
 
-  const handleDataImport = (newData: EvaluacionData[]) => {
-    setDatos(prev => [...prev, ...newData]);
+  const handleDataImport = async (newData: EvaluacionData[], ciclo: string) => {
+    if (ciclo !== cicloActual) {
+      // Guardar ciclo actual y cambiar al ciclo destino antes de importar
+      if (datos.length > 0 && currentUser) {
+        await saveEvaluacionData(cicloActual, datos);
+      }
+      const existingData = currentUser ? (await loadEvaluacionData(ciclo) || []) : [];
+      const merged = [...existingData, ...newData];
+      setCicloActual(ciclo);
+      setDatos(merged);
+      localStorage.setItem(LS_KEY(ciclo), JSON.stringify(merged));
+    } else {
+      setDatos(prev => [...prev, ...newData]);
+    }
   };
 
   const handleDataDelete = (id: string) => {
@@ -236,20 +248,22 @@ function App() {
               onDataImport={handleDataImport}
               onDataDelete={handleDataDelete}
               onDataDeleteAll={handleDataDeleteAll}
+              cicloActual={cicloActual}
+              ciclosDisponibles={ciclosDisponibles}
               onGraficoReady={handleGraficoReady}
             />
           ) : (
-            <ReportsView datos={datos} onGraficoReady={handleGraficoReady} />
+            <ReportsView datos={datos} cicloActual={cicloActual} onGraficoReady={handleGraficoReady} />
           )}
         </div>
       </main>
 
       <footer className="app-footer">
         <p>
-          &copy; 2025 Sistema de Evaluación Académica - Tu Opinión Cuenta
+          &copy; 2026 Sistema de Evaluación Académica - Tu Opinión Cuenta
           {currentUser && (
             <span className="footer-ciclo"> · Ciclo {cicloActual}</span>
-          )}
+          )} By Cesar Chavez.
         </p>
       </footer>
 
