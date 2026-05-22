@@ -5,7 +5,7 @@ export interface EvaluacionData {
   docente: string;
   curso: string;
   seccion: string;
-  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'REGULAR' | 'DEFICIENTE';
+  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
   ae01: number;
   ae02: number;
   ae03: number;
@@ -13,7 +13,7 @@ export interface EvaluacionData {
   nota: number;
   encuestados: number;
   noEncuestados: number;
-  validez: 'Válido' | 'Inválido';
+  validez: 'Válido' | 'No válido';
 }
 
 export interface GraficoData {

@@ -10,9 +10,9 @@ import { loadAllCyclesData, isSupabaseConfigured } from '../services/supabaseSer
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
 
-const CALIFICACIONES = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'REGULAR', 'DEFICIENTE'] as const;
+const CALIFICACIONES = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const;
 const COLORES_CALIFICACION: Record<string, string> = {
-  DESTACADO: '#2196f3', BUENO: '#4caf50', ACEPTABLE: '#ff9800', REGULAR: '#ff5722', DEFICIENTE: '#f44336',
+  DESTACADO: '#4472C4', BUENO: '#ED7D31', ACEPTABLE: '#A5A5A5', INSATISFACTORIO: '#FFC000',
 };
 
 function sortCiclos(ciclos: string[]): string[] {
@@ -250,8 +250,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
                 <th>Destacado</th>
                 <th>Bueno</th>
                 <th>Aceptable</th>
-                <th>Regular</th>
-                <th>Deficiente</th>
+                <th>Insatisfactorio</th>
               </tr>
             </thead>
             <tbody>
@@ -269,8 +268,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
                   <td className="text-right text-blue">{m.califs.DESTACADO || 0}</td>
                   <td className="text-right text-green">{m.califs.BUENO || 0}</td>
                   <td className="text-right text-orange">{m.califs.ACEPTABLE || 0}</td>
-                  <td className="text-right text-redsoft">{m.califs.REGULAR || 0}</td>
-                  <td className="text-right text-red">{m.califs.DEFICIENTE || 0}</td>
+                  <td className="text-right text-orange">{m.califs.INSATISFACTORIO || 0}</td>
                 </tr>
               ))}
             </tbody>

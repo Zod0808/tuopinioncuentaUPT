@@ -120,10 +120,12 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
           const ae04 = parseNumber(row[columnIndices.ae04]);
           const nota = parseNumber(row[columnIndices.nota]) || (ae01 + ae02 + ae03 + ae04) / 4;
           const calificacionRaw = String(row[columnIndices.calificacion] || '').trim().toUpperCase();
-          const calificacion = (['DESTACADO','BUENO','ACEPTABLE','REGULAR','DEFICIENTE'] as const).includes(calificacionRaw as any)
+          const calificacion = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(calificacionRaw as any)
             ? calificacionRaw as EvaluacionData['calificacion'] : 'BUENO';
-          const validezRaw = String(row[columnIndices.validez] || '').trim().toUpperCase();
-          const validez = validezRaw.includes('VÁLIDO') || validezRaw.includes('VALIDO') ? 'Válido' as const : 'Inválido' as const;
+          const validezRaw = String(row[columnIndices.validez] || '').trim();
+          const validezUpper = validezRaw.toUpperCase();
+          const validez = (validezUpper === 'VÁLIDO' || validezUpper === 'VALIDO')
+            ? 'Válido' as const : 'No válido' as const;
 
           importedData.push({
             id: `${Date.now()}-${i}`,
@@ -282,11 +284,11 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
           <li><strong>Docente</strong></li>
           <li><strong>Curso</strong></li>
           <li><strong>Sección</strong></li>
-          <li><strong>Calificación</strong> — DESTACADO, BUENO, ACEPTABLE, REGULAR, DEFICIENTE</li>
+          <li><strong>Calificación</strong> — DESTACADO, BUENO, ACEPTABLE, INSATISFACTORIO</li>
           <li><strong>AE-01 al AE-04</strong> — aspectos evaluados (0-20)</li>
           <li><strong>Nota</strong> — promedio (se calcula automáticamente si está vacío)</li>
           <li><strong>Encuestados / No Encuestados</strong></li>
-          <li><strong>Validez</strong> — Válido o Inválido</li>
+          <li><strong>Validez</strong> — Válido o No válido</li>
         </ol>
       </div>
     </div>

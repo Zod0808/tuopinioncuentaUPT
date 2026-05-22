@@ -1,4 +1,5 @@
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry } from '../services/reportCalculations';
 import DataInput from './DataInput';
 import ExcelImporter from './ExcelImporter';
 import DataExporter from './DataExporter';
@@ -7,17 +8,20 @@ import Charts from './Charts';
 import InstitutionalReports from './InstitutionalReports';
 import FacultyReports from './FacultyReports';
 import ReportGenerator from './ReportGenerator';
+import MatriculadosImporter from './MatriculadosImporter';
 
 interface DataEntryViewProps {
   datos: EvaluacionData[];
   graficosElements: HTMLElement[];
   cicloActual: string;
   ciclosDisponibles: string[];
+  matriculados: MatriculadosEntry[];
   onDataAdd: (data: EvaluacionData) => void;
   onDataImport: (data: EvaluacionData[], ciclo: string) => void;
   onDataDelete: (id: string) => void;
   onDataDeleteAll?: () => void;
   onGraficoReady: (element: HTMLElement, index: number) => void;
+  onMatriculadosChange: (entries: MatriculadosEntry[]) => void;
 }
 
 export default function DataEntryView({
@@ -25,14 +29,21 @@ export default function DataEntryView({
   graficosElements,
   cicloActual,
   ciclosDisponibles,
+  matriculados,
   onDataAdd,
   onDataImport,
   onDataDelete,
   onDataDeleteAll,
   onGraficoReady,
+  onMatriculadosChange,
 }: DataEntryViewProps) {
   return (
     <div className="data-entry-view">
+      <MatriculadosImporter
+        cicloActual={cicloActual}
+        matriculados={matriculados}
+        onMatriculadosChange={onMatriculadosChange}
+      />
       <ExcelImporter
         onDataImport={onDataImport}
         cicloActual={cicloActual}

@@ -4,7 +4,10 @@ import { EvaluacionData } from './types';
 import Navigation from './components/Navigation';
 import DataEntryView from './components/DataEntryView';
 import ReportsView from './components/ReportsView';
+import InformeFinalView from './components/InformeFinalView';
 import AuthModal from './components/AuthModal';
+import { MatriculadosEntry } from './services/reportCalculations';
+import { loadMatriculados } from './services/matriculadosService';
 import {
   isSupabaseConfigured,
   onAuthStateChange,
@@ -20,9 +23,10 @@ const CICLO_DEFAULT = '2025-II';
 const LS_KEY = (ciclo: string) => `evaluacionDatos_${ciclo}`;
 
 function App() {
-  const [vistaActual, setVistaActual] = useState<'datos' | 'reportes'>('datos');
+  const [vistaActual, setVistaActual] = useState<'datos' | 'reportes' | 'informe'>('datos');
   const [datos, setDatos] = useState<EvaluacionData[]>([]);
   const [graficosElements, setGraficosElements] = useState<HTMLElement[]>([]);
+  const [matriculados, setMatriculados] = useState<MatriculadosEntry[]>([]);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [cicloActual, setCicloActual] = useState(CICLO_DEFAULT);
@@ -62,19 +66,22 @@ function App() {
   async function loadUserData(_user: User, ciclo: string) {
     setLoadingData(true);
     try {
-      // 1. Intentar cargar desde Supabase
       if (isSupabaseConfigured()) {
         const ciclos = await getCiclosDisponibles();
         setCiclosDisponibles(ciclos);
 
-        const datosCiclo = await loadEvaluacionData(ciclo);
+        const [datosCiclo, matr] = await Promise.all([
+          loadEvaluacionData(ciclo),
+          loadMatriculados(ciclo),
+        ]);
+        setMatriculados(matr);
+
         if (datosCiclo !== null) {
           setDatos(datosCiclo);
           localStorage.setItem(LS_KEY(ciclo), JSON.stringify(datosCiclo));
           return;
         }
       }
-      // 2. Fallback a localStorage
       const local = localStorage.getItem(LS_KEY(ciclo));
       if (local) {
         const parsed = JSON.parse(local);
@@ -91,11 +98,11 @@ function App() {
 
   // ── Cambio de ciclo ─────────────────────────────────────────────────────
   const handleCicloChange = async (nuevoCiclo: string) => {
-    // Guardar datos del ciclo actual antes de cambiar
     if (datos.length > 0 && currentUser) {
       await saveEvaluacionData(cicloActual, datos);
     }
     setCicloActual(nuevoCiclo);
+    setMatriculados([]);
     if (currentUser) {
       await loadUserData(currentUser, nuevoCiclo);
     } else {
@@ -251,7 +258,11 @@ function App() {
               cicloActual={cicloActual}
               ciclosDisponibles={ciclosDisponibles}
               onGraficoReady={handleGraficoReady}
+              matriculados={matriculados}
+              onMatriculadosChange={setMatriculados}
             />
+          ) : vistaActual === 'informe' ? (
+            <InformeFinalView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
           ) : (
             <ReportsView datos={datos} cicloActual={cicloActual} onGraficoReady={handleGraficoReady} />
           )}
@@ -263,7 +274,7 @@ function App() {
           &copy; 2026 Sistema de Evaluación Académica - Tu Opinión Cuenta
           {currentUser && (
             <span className="footer-ciclo"> · Ciclo {cicloActual}</span>
-          )} By Cesar Chavez.
+          )} - By Cesar Chavez.
         </p>
       </footer>
 

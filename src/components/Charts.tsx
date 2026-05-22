@@ -78,7 +78,7 @@ export default function Charts({ datos, onGraficoReady }: ChartsProps) {
   };
 
   // Gráfico 2: Distribución de calificaciones
-  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'REGULAR', 'DEFICIENTE'];
+  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
   const distribucionCalificaciones = calificaciones.map(cal => 
     datos.filter(d => d.calificacion === cal).length
   );

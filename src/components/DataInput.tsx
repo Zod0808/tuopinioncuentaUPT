@@ -210,8 +210,7 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
                 <option value="DESTACADO">DESTACADO</option>
                 <option value="BUENO">BUENO</option>
                 <option value="ACEPTABLE">ACEPTABLE</option>
-                <option value="REGULAR">REGULAR</option>
-                <option value="DEFICIENTE">DEFICIENTE</option>
+                <option value="INSATISFACTORIO">INSATISFACTORIO</option>
               </select>
             </div>
             <div className="form-group">

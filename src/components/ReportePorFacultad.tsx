@@ -180,7 +180,7 @@ export default function ReportePorFacultad({ datos, onGraficoReady }: ReportePor
   };
 
   // Gráfico 4: Distribución de calificaciones
-  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'REGULAR', 'DEFICIENTE'];
+  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
   const distribucionCalificaciones = calificaciones.map(cal => ({
     calificacion: cal,
     cantidad: datosFacultad.filter(d => d.calificacion === cal).length
@@ -191,11 +191,10 @@ export default function ReportePorFacultad({ datos, onGraficoReady }: ReportePor
     datasets: [{
       data: distribucionCalificaciones.map(c => c.cantidad),
       backgroundColor: [
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(255, 159, 64, 0.8)',
-        'rgba(255, 99, 132, 0.8)'
+        '#4472C4',
+        '#ED7D31',
+        '#A5A5A5',
+        '#FFC000',
       ],
       borderWidth: 2
     }]

@@ -36,3 +36,28 @@ create policy "eliminar_propios_datos"
 -- 4. Índice para consultas rápidas por usuario y ciclo
 create index if not exists idx_evaluaciones_user_ciclo
   on evaluaciones_data(user_id, ciclo);
+
+-- ============================================================
+-- TABLA 2: Total de matriculados por carrera y ciclo
+-- ============================================================
+create table if not exists matriculados_por_ciclo (
+  id                 uuid        default gen_random_uuid() primary key,
+  user_id            uuid        references auth.users(id) on delete cascade not null,
+  ciclo              text        not null,
+  facultad           text        not null,
+  carrera            text        not null,
+  total_matriculados integer     not null default 0,
+  created_at         timestamptz default now(),
+  updated_at         timestamptz default now(),
+  unique(user_id, ciclo, facultad, carrera)
+);
+
+alter table matriculados_por_ciclo enable row level security;
+
+create policy "ver_matriculados"       on matriculados_por_ciclo for select using (auth.uid() = user_id);
+create policy "insertar_matriculados"  on matriculados_por_ciclo for insert with check (auth.uid() = user_id);
+create policy "actualizar_matriculados" on matriculados_por_ciclo for update using (auth.uid() = user_id);
+create policy "eliminar_matriculados"  on matriculados_por_ciclo for delete using (auth.uid() = user_id);
+
+create index if not exists idx_matriculados_user_ciclo
+  on matriculados_por_ciclo(user_id, ciclo);

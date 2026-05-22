@@ -1,4 +1,4 @@
-import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus } from 'lucide-react';
+import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 
 const CICLOS_PREDEFINIDOS = [
@@ -8,8 +8,8 @@ const CICLOS_PREDEFINIDOS = [
 ];
 
 interface NavigationProps {
-  vistaActual: 'datos' | 'reportes';
-  onCambiarVista: (vista: 'datos' | 'reportes') => void;
+  vistaActual: 'datos' | 'reportes' | 'informe';
+  onCambiarVista: (vista: 'datos' | 'reportes' | 'informe') => void;
   currentUser: { email?: string | null } | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -28,6 +28,7 @@ export default function Navigation({
   ciclosDisponibles,
   onCicloChange,
 }: NavigationProps) {
+
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNuevoCiclo, setShowNuevoCiclo] = useState(false);
   const [nuevoCiclo, setNuevoCiclo] = useState('');
@@ -59,6 +60,13 @@ export default function Navigation({
         >
           <FileText size={20} />
           Ver Reportes
+        </button>
+        <button
+          className={`nav-button ${vistaActual === 'informe' ? 'active' : ''}`}
+          onClick={() => onCambiarVista('informe')}
+        >
+          <BookOpen size={20} />
+          Informe Final
         </button>
       </div>
 
