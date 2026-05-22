@@ -1,162 +1,153 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { User } from '@supabase/supabase-js';
 import { EvaluacionData } from './types';
 import Navigation from './components/Navigation';
 import DataEntryView from './components/DataEntryView';
 import ReportsView from './components/ReportsView';
-import { saveDataToFirestore, loadDataFromFirestore, subscribeToFirestore, isFirebaseConfigured } from './services/firebaseService';
-import { saveDataToJSONBin, loadDataFromJSONBin, isJSONBinConfigured } from './services/jsonbinService';
+import AuthModal from './components/AuthModal';
+import {
+  isSupabaseConfigured,
+  onAuthStateChange,
+  getCurrentUser,
+  signOut,
+  saveEvaluacionData,
+  loadEvaluacionData,
+  getCiclosDisponibles,
+} from './services/supabaseService';
 import './App.css';
+
+const CICLO_DEFAULT = '2025-II';
+const LS_KEY = (ciclo: string) => `evaluacionDatos_${ciclo}`;
 
 function App() {
   const [vistaActual, setVistaActual] = useState<'datos' | 'reportes'>('datos');
   const [datos, setDatos] = useState<EvaluacionData[]>([]);
   const [graficosElements, setGraficosElements] = useState<HTMLElement[]>([]);
 
-  // Cargar datos al iniciar (primero desde servicios en la nube, luego localStorage como backup)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [cicloActual, setCicloActual] = useState(CICLO_DEFAULT);
+  const [ciclosDisponibles, setCiclosDisponibles] = useState<string[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // ── Auth state ──────────────────────────────────────────────────────────
   useEffect(() => {
-    const loadData = async () => {
-      let datosCargados: EvaluacionData[] | null = null;
+    // Verificar sesión existente al montar
+    getCurrentUser().then(user => {
+      setCurrentUser(user);
+      if (user) loadUserData(user, cicloActual);
+    });
 
-      // Intentar cargar desde JSONBin primero (más simple)
-      if (isJSONBinConfigured()) {
-        try {
-          datosCargados = await loadDataFromJSONBin();
-          if (datosCargados && datosCargados.length > 0) {
-            setDatos(datosCargados);
-            localStorage.setItem('evaluacionDatos', JSON.stringify(datosCargados));
-            console.log(`Datos cargados desde JSONBin: ${datosCargados.length} registros`);
-            return;
-          }
-        } catch (error) {
-          console.error('Error al cargar desde JSONBin:', error);
-        }
+    if (!isSupabaseConfigured()) return;
+
+    const unsubscribe = onAuthStateChange(async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        const ciclos = await getCiclosDisponibles();
+        setCiclosDisponibles(ciclos);
+        // Si el ciclo actual ya tiene datos en la nube, cargarlo; si no, mantener estado
+        await loadUserData(user, cicloActual);
+      } else {
+        // Al cerrar sesión: limpiar datos y volver a localStorage
+        setCiclosDisponibles([]);
+        const local = localStorage.getItem(LS_KEY(cicloActual));
+        setDatos(local ? JSON.parse(local) : []);
       }
+    });
 
-      // Intentar cargar desde Firestore si JSONBin no está disponible
-      if (isFirebaseConfigured()) {
-        try {
-          datosCargados = await loadDataFromFirestore();
-          if (datosCargados && datosCargados.length > 0) {
-            setDatos(datosCargados);
-            localStorage.setItem('evaluacionDatos', JSON.stringify(datosCargados));
-            console.log(`Datos cargados desde Firestore: ${datosCargados.length} registros`);
-            return;
-          }
-        } catch (error) {
-          console.error('Error al cargar desde Firestore:', error);
-        }
-      }
-
-      // Si no hay datos en Firestore, intentar desde localStorage
-      try {
-        const datosGuardados = localStorage.getItem('evaluacionDatos');
-        if (datosGuardados) {
-          const datosParseados = JSON.parse(datosGuardados);
-          if (Array.isArray(datosParseados) && datosParseados.length > 0) {
-            setDatos(datosParseados);
-            console.log(`Datos cargados desde localStorage: ${datosParseados.length} registros`);
-            
-            // Sincronizar con servicios en la nube si están configurados
-            if (isJSONBinConfigured()) {
-              saveDataToJSONBin(datosParseados).catch(err => {
-                console.error('Error al sincronizar con JSONBin:', err);
-              });
-            } else if (isFirebaseConfigured()) {
-              saveDataToFirestore(datosParseados).catch(err => {
-                console.error('Error al sincronizar con Firestore:', err);
-              });
-            }
-            return;
-          } else {
-            console.warn('Los datos en localStorage no son válidos o están vacíos');
-            localStorage.removeItem('evaluacionDatos');
-          }
-        } else {
-          console.log('No hay datos guardados');
-        }
-      } catch (error) {
-        console.error('Error al cargar datos desde localStorage:', error);
-        localStorage.removeItem('evaluacionDatos');
-      }
-    };
-
-    loadData();
-
-    // Suscribirse a cambios en tiempo real si Firebase está configurado
-    // (JSONBin no soporta tiempo real, solo Firebase)
-    if (isFirebaseConfigured()) {
-      const unsubscribe = subscribeToFirestore((nuevosDatos) => {
-        setDatos(nuevosDatos);
-        localStorage.setItem('evaluacionDatos', JSON.stringify(nuevosDatos));
-        console.log('Datos actualizados desde Firestore en tiempo real');
-      });
-
-      return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      };
-    }
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Ref para evitar guardados múltiples simultáneos
-  const savingRef = useRef(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  async function loadUserData(_user: User, ciclo: string) {
+    setLoadingData(true);
+    try {
+      // 1. Intentar cargar desde Supabase
+      if (isSupabaseConfigured()) {
+        const ciclos = await getCiclosDisponibles();
+        setCiclosDisponibles(ciclos);
 
-  // Guardar datos cuando cambien (con debouncing para evitar loops infinitos)
+        const datosCiclo = await loadEvaluacionData(ciclo);
+        if (datosCiclo !== null) {
+          setDatos(datosCiclo);
+          localStorage.setItem(LS_KEY(ciclo), JSON.stringify(datosCiclo));
+          return;
+        }
+      }
+      // 2. Fallback a localStorage
+      const local = localStorage.getItem(LS_KEY(ciclo));
+      if (local) {
+        const parsed = JSON.parse(local);
+        setDatos(Array.isArray(parsed) ? parsed : []);
+      } else {
+        setDatos([]);
+      }
+    } catch (err) {
+      console.error('Error cargando datos:', err);
+    } finally {
+      setLoadingData(false);
+    }
+  }
+
+  // ── Cambio de ciclo ─────────────────────────────────────────────────────
+  const handleCicloChange = async (nuevoCiclo: string) => {
+    // Guardar datos del ciclo actual antes de cambiar
+    if (datos.length > 0 && currentUser) {
+      await saveEvaluacionData(cicloActual, datos);
+    }
+    setCicloActual(nuevoCiclo);
+    if (currentUser) {
+      await loadUserData(currentUser, nuevoCiclo);
+    } else {
+      const local = localStorage.getItem(LS_KEY(nuevoCiclo));
+      setDatos(local ? JSON.parse(local) : []);
+    }
+  };
+
+  // ── Persistencia de datos ───────────────────────────────────────────────
+  const savingRef = useRef(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    // Guardar en localStorage siempre (como backup) - sin debouncing
+    // localStorage siempre como backup
     try {
       if (datos.length > 0) {
-        localStorage.setItem('evaluacionDatos', JSON.stringify(datos));
-      } else {
-        localStorage.removeItem('evaluacionDatos');
+        localStorage.setItem(LS_KEY(cicloActual), JSON.stringify(datos));
       }
-    } catch (error) {
-      console.error('Error al guardar datos en localStorage:', error);
-      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        alert('El almacenamiento local está lleno. Por favor, elimine algunos datos antiguos.');
-      }
+    } catch (err) {
+      console.error('Error guardando en localStorage:', err);
     }
 
-    // Limpiar timeout anterior
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    // Guardar en servicios en la nube con debouncing (esperar 2 segundos después del último cambio)
     saveTimeoutRef.current = setTimeout(() => {
-      if (savingRef.current) {
-        return; // Ya hay un guardado en progreso
-      }
-
+      if (savingRef.current) return;
       savingRef.current = true;
 
-      const saveToCloud = async () => {
+      const save = async () => {
         try {
-          if (isJSONBinConfigured() && datos.length > 0) {
-            await saveDataToJSONBin(datos);
-          } else if (isFirebaseConfigured() && datos.length > 0) {
-            await saveDataToFirestore(datos);
+          if (isSupabaseConfigured() && currentUser && datos.length > 0) {
+            await saveEvaluacionData(cicloActual, datos);
+            // Actualizar lista de ciclos disponibles
+            const ciclos = await getCiclosDisponibles();
+            setCiclosDisponibles(ciclos);
           }
-        } catch (error) {
-          console.error('Error al guardar en la nube:', error);
+        } catch (err) {
+          console.error('Error al guardar en Supabase:', err);
         } finally {
           savingRef.current = false;
         }
       };
 
-      saveToCloud();
-    }, 2000); // Esperar 2 segundos después del último cambio
+      save();
+    }, 2000);
 
-    // Cleanup
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [datos]);
+  }, [datos, cicloActual, currentUser]);
 
+  // ── Handlers de datos ───────────────────────────────────────────────────
   const handleDataAdd = (newData: EvaluacionData) => {
     setDatos(prev => [...prev, newData]);
   };
@@ -170,47 +161,74 @@ function App() {
   };
 
   const handleDataDeleteAll = () => {
-    if (confirm('¿Está seguro de eliminar TODOS los datos? Esta acción no se puede deshacer.')) {
+    if (confirm('¿Está seguro de eliminar TODOS los datos de este ciclo? Esta acción no se puede deshacer.')) {
       setDatos([]);
-      localStorage.removeItem('evaluacionDatos');
-      // También eliminar de servicios en la nube si están configurados
-      if (isJSONBinConfigured()) {
-        saveDataToJSONBin([]).catch(error => {
-          console.error('Error al eliminar datos de JSONBin:', error);
-        });
-      } else if (isFirebaseConfigured()) {
-        saveDataToFirestore([]).catch(error => {
-          console.error('Error al eliminar datos de Firestore:', error);
-        });
+      localStorage.removeItem(LS_KEY(cicloActual));
+      if (isSupabaseConfigured() && currentUser) {
+        saveEvaluacionData(cicloActual, []).catch(console.error);
       }
     }
   };
 
-  // Usar useCallback para evitar recrear la función en cada render
   const handleGraficoReady = useCallback((element: HTMLElement, index: number) => {
     setGraficosElements(prev => {
-      // Solo actualizar si el elemento realmente cambió
-      if (prev[index] === element) {
-        return prev;
-      }
+      if (prev[index] === element) return prev;
       const nuevos = [...prev];
       nuevos[index] = element;
       return nuevos;
     });
   }, []);
 
+  const handleLogout = async () => {
+    await signOut();
+    setCurrentUser(null);
+    setCiclosDisponibles([]);
+    setDatos([]);
+  };
+
+  const handleAuthSuccess = async () => {
+    const user = await getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      await loadUserData(user, cicloActual);
+    }
+  };
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Tu Opinión Cuenta</h1>
-        <p>Sistema de Evaluación de la Calidad Educativa - Ciclo 2025-II</p>
+        <div className="app-header-content">
+          <div>
+            <h1>Tu Opinión Cuenta</h1>
+            <p>Sistema de Evaluación de la Calidad Educativa</p>
+          </div>
+          {!currentUser && !isSupabaseConfigured() && (
+            <div className="supabase-warning">
+              ⚠️ Configura Supabase para guardar datos en la nube
+            </div>
+          )}
+        </div>
       </header>
 
-      <Navigation vistaActual={vistaActual} onCambiarVista={setVistaActual} />
+      <Navigation
+        vistaActual={vistaActual}
+        onCambiarVista={setVistaActual}
+        currentUser={currentUser}
+        onLogin={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        cicloActual={cicloActual}
+        ciclosDisponibles={ciclosDisponibles}
+        onCicloChange={handleCicloChange}
+      />
 
       <main className="app-main">
         <div className="container">
-          {vistaActual === 'datos' ? (
+          {loadingData ? (
+            <div className="loading-container">
+              <div className="spinner" />
+              <p>Cargando datos del ciclo {cicloActual}...</p>
+            </div>
+          ) : vistaActual === 'datos' ? (
             <DataEntryView
               datos={datos}
               graficosElements={graficosElements}
@@ -227,11 +245,22 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>&copy; 2025 Sistema de Evaluación Académica - Tu Opinión Cuenta</p>
+        <p>
+          &copy; 2025 Sistema de Evaluación Académica - Tu Opinión Cuenta
+          {currentUser && (
+            <span className="footer-ciclo"> · Ciclo {cicloActual}</span>
+          )}
+        </p>
       </footer>
+
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      )}
     </div>
   );
 }
 
 export default App;
-
