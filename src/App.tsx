@@ -5,6 +5,7 @@ import Navigation from './components/Navigation';
 import DataEntryView from './components/DataEntryView';
 import ReportsView from './components/ReportsView';
 import InformeFinalView from './components/InformeFinalView';
+import RecomendacionesIAView from './components/RecomendacionesIAView';
 import AuthModal from './components/AuthModal';
 import { MatriculadosEntry } from './services/reportCalculations';
 import { loadMatriculados } from './services/matriculadosService';
@@ -23,7 +24,7 @@ const CICLO_DEFAULT = '2025-II';
 const LS_KEY = (ciclo: string) => `evaluacionDatos_${ciclo}`;
 
 function App() {
-  const [vistaActual, setVistaActual] = useState<'datos' | 'reportes' | 'informe'>('datos');
+  const [vistaActual, setVistaActual] = useState<'datos' | 'reportes' | 'informe' | 'recomendaciones'>('datos');
   const [datos, setDatos] = useState<EvaluacionData[]>([]);
   const [graficosElements, setGraficosElements] = useState<HTMLElement[]>([]);
   const [matriculados, setMatriculados] = useState<MatriculadosEntry[]>([]);
@@ -263,6 +264,8 @@ function App() {
             />
           ) : vistaActual === 'informe' ? (
             <InformeFinalView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
+          ) : vistaActual === 'recomendaciones' ? (
+            <RecomendacionesIAView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
           ) : (
             <ReportsView datos={datos} cicloActual={cicloActual} onGraficoReady={handleGraficoReady} />
           )}
