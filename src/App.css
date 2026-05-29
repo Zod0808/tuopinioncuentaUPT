@@ -3310,3 +3310,258 @@
   font-size: 0.92rem;
   text-align: justify;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MÓDULO IA — Recomendaciones de Mejora Continua
+   ══════════════════════════════════════════════════════════════ */
+
+.ia-view {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* Control panel */
+.ia-control-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.ia-titulo { font-size: 1.35rem; font-weight: 700; color: #1a365d; margin: 0 0 0.25rem; }
+.ia-subtitulo { font-size: 0.88rem; color: #555; margin: 0; }
+.ia-control-actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+.ia-toggle-ia {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; color: #4a5568; cursor: pointer;
+}
+.ia-toggle-ia input { cursor: pointer; }
+.ia-btn-generar { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1.2rem; }
+.ia-spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff; border-radius: 50%;
+  animation: ia-spin 0.7s linear infinite; display: inline-block;
+}
+@keyframes ia-spin { to { transform: rotate(360deg); } }
+
+/* Placeholder / empty */
+.ia-empty, .ia-placeholder {
+  text-align: center; padding: 3rem 2rem; color: #718096;
+}
+.ia-empty-icon, .ia-placeholder-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.ia-placeholder p { max-width: 520px; margin: 0 auto 0.6rem; line-height: 1.6; }
+.ia-placeholder-ia { font-size: 0.85rem; color: #2b6cb0; }
+.ia-empty-result { text-align: center; color: #a0aec0; padding: 2rem; }
+
+/* Stats row */
+.ia-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.ia-stat-card {
+  border-radius: 8px; padding: 0.9rem 1rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+  border: 2px solid transparent;
+}
+.ia-stat-red    { background: #fff5f5; border-color: #fed7d7; }
+.ia-stat-orange { background: #fffaf0; border-color: #fbd38d; }
+.ia-stat-blue   { background: #ebf8ff; border-color: #bee3f8; }
+.ia-stat-green  { background: #f0fff4; border-color: #9ae6b4; }
+.ia-stat-num  { font-size: 1.6rem; font-weight: 800; color: #2d3748; }
+.ia-stat-label{ font-size: 0.78rem; color: #718096; text-align: center; }
+
+/* IA badge */
+.ia-badge-ia {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: #fff; border-radius: 20px; font-size: 0.82rem;
+  padding: 0.3rem 1rem; display: inline-block; margin-bottom: 1rem;
+}
+
+/* Tabs */
+.ia-tabs {
+  display: flex; gap: 0.25rem; border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.25rem; overflow-x: auto;
+}
+.ia-tab {
+  padding: 0.55rem 1rem; font-size: 0.88rem; font-weight: 600;
+  border: none; background: none; cursor: pointer;
+  color: #718096; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; white-space: nowrap;
+  display: flex; align-items: center; gap: 0.4rem;
+  transition: color 0.15s;
+}
+.ia-tab:hover { color: #2E5C8A; }
+.ia-tab-active { color: #2E5C8A; border-bottom-color: #2E5C8A; }
+.ia-tab-count {
+  background: #e2e8f0; color: #4a5568; border-radius: 10px;
+  font-size: 0.75rem; padding: 0.1rem 0.45rem; font-weight: 700;
+}
+
+/* Sección contenido */
+.ia-seccion { display: flex; flex-direction: column; gap: 0.75rem; }
+.ia-seccion-titulo { font-size: 1.05rem; font-weight: 700; color: #1a365d; margin: 0 0 0.25rem; }
+.ia-seccion-desc { font-size: 0.86rem; color: #718096; margin: 0 0 0.5rem; }
+
+/* Resumen ejecutivo */
+.ia-resumen-ejecutivo {
+  background: #f7fafc; border-left: 4px solid #2E5C8A;
+  border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin-bottom: 0.5rem;
+}
+.ia-resumen-texto { font-size: 0.92rem; line-height: 1.7; color: #2d3748; margin: 0; white-space: pre-line; }
+
+/* Cards */
+.ia-card {
+  border: 1px solid #e2e8f0; border-radius: 8px;
+  overflow: hidden; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.ia-card-insatisfactorio { border-left: 4px solid #c53030; }
+.ia-card-aceptable       { border-left: 4px solid #c05621; }
+
+.ia-card-header {
+  width: 100%; background: none; border: none; cursor: pointer;
+  padding: 0.85rem 1rem; display: flex; align-items: center;
+  justify-content: space-between; gap: 0.75rem; text-align: left;
+}
+.ia-card-header:hover { background: #f7fafc; }
+.ia-card-header-left  { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.ia-card-header-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.ia-card-badge {
+  color: #fff; font-size: 0.72rem; font-weight: 700;
+  padding: 0.2rem 0.5rem; border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+}
+.ia-card-titulo { display: block; font-size: 0.92rem; font-weight: 600; color: #2d3748; }
+.ia-card-sub    { display: block; font-size: 0.78rem; color: #718096; margin-top: 0.1rem; }
+
+.ia-card-body { padding: 0.75rem 1rem 1rem; border-top: 1px solid #e2e8f0; }
+.ia-diagnostico { font-size: 0.87rem; color: #4a5568; line-height: 1.6; margin: 0 0 0.85rem; }
+
+/* Score badge */
+.ia-score-badge {
+  color: #fff; font-size: 0.8rem; font-weight: 700;
+  padding: 0.2rem 0.55rem; border-radius: 4px; white-space: nowrap;
+}
+.ia-score-peor { outline: 2px solid #c53030; outline-offset: 1px; }
+
+/* AE bars */
+.ia-ae-bars { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.85rem; }
+.ia-ae-bar-item { display: flex; align-items: center; gap: 0.5rem; }
+.ia-ae-bar-label { font-size: 0.78rem; color: #718096; width: 62px; flex-shrink: 0; }
+.ia-ae-bar-track { flex: 1; background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden; }
+.ia-ae-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.4s; }
+
+/* Áreas de mejora */
+.ia-areas-mejora { margin-bottom: 0.85rem; }
+.ia-section-label { font-size: 0.82rem; font-weight: 700; color: #4a5568; margin: 0 0 0.4rem; }
+.ia-area-tag {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.82rem; padding: 0.3rem 0.6rem; border-radius: 4px; margin-bottom: 0.3rem;
+}
+.ia-area-critica  { background: #fff5f5; color: #742a2a; }
+.ia-area-moderada { background: #fffaf0; color: #744210; }
+.ia-area-leve     { background: #ebf8ff; color: #2a4365; }
+.ia-area-score { margin-left: auto; font-weight: 700; }
+
+/* Acciones */
+.ia-acciones { margin-bottom: 0.85rem; }
+.ia-acciones-lista {
+  margin: 0.3rem 0 0 1.1rem; padding: 0;
+  font-size: 0.86rem; color: #4a5568; line-height: 1.7;
+}
+.ia-acciones-lista li { margin-bottom: 0.25rem; }
+
+/* Meta row */
+.ia-meta-row {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  background: #f0fff4; border-radius: 6px; padding: 0.5rem 0.75rem;
+  font-size: 0.85rem; color: #276749;
+}
+.ia-meta-row-sm { background: #ebf8ff; color: #2a4365; }
+.ia-meta-label { font-weight: 600; }
+.ia-meta-valor { font-size: 1rem; font-weight: 800; }
+.ia-plazo { margin-left: auto; font-size: 0.78rem; color: #718096; }
+.ia-flecha, .ia-indice-flecha { color: #a0aec0; }
+.ia-indice-meta { color: #276749; }
+
+/* Mini stats en header de card */
+.ia-mini-stat { font-size: 0.78rem; color: #718096; white-space: nowrap; }
+.ia-mini-red    { color: #c53030; font-weight: 600; }
+.ia-mini-orange { color: #c05621; font-weight: 600; }
+.ia-chevron { font-size: 0.7rem; color: #a0aec0; }
+
+/* Carreras críticas tags */
+.ia-criticas { margin-bottom: 0.85rem; }
+.ia-criticas-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.3rem; }
+.ia-critica-tag {
+  background: #fff5f5; color: #742a2a; border: 1px solid #fed7d7;
+  border-radius: 4px; padding: 0.2rem 0.6rem; font-size: 0.8rem;
+}
+
+/* Plan tabla */
+.ia-plan-tabla { margin-top: 0.85rem; }
+.ia-tabla { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.ia-tabla th { background: #2E5C8A; color: #fff; padding: 0.4rem 0.6rem; text-align: left; }
+.ia-tabla td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #e2e8f0; color: #4a5568; }
+.ia-tabla tr:last-child td { border-bottom: none; }
+.ia-tabla tr:nth-child(even) td { background: #f7fafc; }
+
+/* Índices de mejora */
+.ia-indices-lista { display: flex; flex-direction: column; gap: 0.6rem; }
+.ia-indice-card {
+  border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;
+}
+.ia-indice-header {
+  width: 100%; background: none; border: none; cursor: pointer;
+  padding: 0.75rem 1rem; display: flex; align-items: center;
+  justify-content: space-between; gap: 0.75rem; text-align: left;
+}
+.ia-indice-header:hover { background: #f7fafc; }
+.ia-indice-header-left { flex: 1; min-width: 0; }
+.ia-indice-nombre { display: block; font-size: 0.88rem; font-weight: 700; color: #2d3748; margin-bottom: 0.3rem; }
+.ia-indice-progress-row { display: flex; align-items: center; gap: 0.6rem; }
+.ia-indice-progress {
+  flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; min-width: 60px;
+}
+.ia-indice-progress-fill { height: 100%; background: #2E5C8A; border-radius: 4px; transition: width 0.4s; }
+.ia-indice-valores { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #4a5568; white-space: nowrap; }
+
+.ia-indice-body { padding: 0.6rem 1rem 0.85rem; border-top: 1px solid #e2e8f0; }
+.ia-indice-desc { font-size: 0.84rem; color: #718096; margin: 0 0 0.5rem; }
+.ia-indice-estrategia { font-size: 0.84rem; color: #4a5568; margin: 0 0 0.5rem; }
+
+/* Planes estratégicos */
+.ia-planes-lista {
+  margin: 0.3rem 0 0 1.2rem; padding: 0;
+  font-size: 0.87rem; color: #4a5568; line-height: 1.75;
+}
+.ia-planes-lista li { margin-bottom: 0.4rem; }
+
+/* Filtros docentes */
+.ia-docentes-filtros {
+  display: flex; gap: 0.75rem; align-items: center;
+  flex-wrap: wrap; margin-bottom: 0.85rem;
+}
+.ia-busqueda {
+  flex: 1; min-width: 200px; padding: 0.45rem 0.75rem;
+  border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.87rem;
+}
+.ia-busqueda:focus { outline: none; border-color: #2E5C8A; }
+.ia-filtro-buttons { display: flex; gap: 0.35rem; }
+.ia-filtro-btn {
+  padding: 0.35rem 0.75rem; font-size: 0.8rem; border-radius: 5px;
+  border: 1px solid #e2e8f0; background: #fff; cursor: pointer;
+  color: #4a5568; transition: all 0.15s;
+}
+.ia-filtro-btn:hover { border-color: #2E5C8A; color: #2E5C8A; }
+.ia-filtro-active { background: #2E5C8A; color: #fff; border-color: #2E5C8A; }
+
+/* Footer */
+.ia-generado-en {
+  text-align: center; font-size: 0.78rem; color: #a0aec0;
+  margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;
+}
+

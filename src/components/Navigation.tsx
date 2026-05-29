@@ -1,4 +1,4 @@
-import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus, BookOpen } from 'lucide-react';
+import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus, BookOpen, Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 
 const CICLOS_PREDEFINIDOS = [
@@ -8,8 +8,8 @@ const CICLOS_PREDEFINIDOS = [
 ];
 
 interface NavigationProps {
-  vistaActual: 'datos' | 'reportes' | 'informe';
-  onCambiarVista: (vista: 'datos' | 'reportes' | 'informe') => void;
+  vistaActual: 'datos' | 'reportes' | 'informe' | 'recomendaciones';
+  onCambiarVista: (vista: 'datos' | 'reportes' | 'informe' | 'recomendaciones') => void;
   currentUser: { email?: string | null } | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -67,6 +67,13 @@ export default function Navigation({
         >
           <BookOpen size={20} />
           Informe Final
+        </button>
+        <button
+          className={`nav-button ${vistaActual === 'recomendaciones' ? 'active' : ''}`}
+          onClick={() => onCambiarVista('recomendaciones')}
+        >
+          <Lightbulb size={20} />
+          Recomendaciones IA
         </button>
       </div>
 
