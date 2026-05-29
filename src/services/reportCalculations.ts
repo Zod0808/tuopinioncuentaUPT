@@ -43,6 +43,7 @@ export interface DatosFacultad {
 export interface ResumenInstitucional {
   totalMatriculados: number;
   totalEncuestados: number;
+  totalNoEncuestados: number;
   porcentajeEncuestados: number;
   promedioAE01: number;
   promedioAE02: number;
@@ -50,6 +51,8 @@ export interface ResumenInstitucional {
   promedioAE04: number;
   promedioGeneral: number;
   indicadorPlanEstrategico: number;
+  porcBueno: number;
+  porcDestacado: number;
   facultades: Map<string, DatosFacultad>;
 }
 
@@ -162,8 +165,13 @@ export function calcularResumen(
     return c === 'BUENO' || c === 'DESTACADO';
   }).length;
 
+  const activeFac = allFac.filter(f => f.totalEncuestados > 0 || f.totalMatriculados > 0);
+  const pBuenoInst = activeFac.length > 0 ? activeFac.reduce((s, f) => s + f.porcBueno, 0) / activeFac.length : 0;
+  const pDestacadoInst = activeFac.length > 0 ? activeFac.reduce((s, f) => s + f.porcDestacado, 0) / activeFac.length : 0;
+
   return {
     totalMatriculados: totalMatr, totalEncuestados: totalEnc,
+    totalNoEncuestados: totalMatr - totalEnc,
     porcentajeEncuestados: totalMatr > 0 ? (totalEnc / totalMatr) * 100 : 0,
     promedioAE01: avg(allFac.map(f => f.promedioAE01)),
     promedioAE02: avg(allFac.map(f => f.promedioAE02)),
@@ -171,6 +179,8 @@ export function calcularResumen(
     promedioAE04: avg(allFac.map(f => f.promedioAE04)),
     promedioGeneral: avg(allFac.map(f => f.promedioGeneral)),
     indicadorPlanEstrategico: allRegsGlobal.length ? (buenoDestGlobal / allRegsGlobal.length) * 100 : 0,
+    porcBueno: pBuenoInst,
+    porcDestacado: pDestacadoInst,
     facultades: facultadesMap,
   };
 }
@@ -208,4 +218,43 @@ export function interpretarParticipacion(totalEnc: number, totalMatr: number, no
   return `Del total de ${totalMatr.toLocaleString()} estudiantes matriculados en ${nombre}, ` +
     `${totalEnc.toLocaleString()} han aplicado la encuesta de evaluación docente, ` +
     `lo que representa un ${porc}% de participación estudiantil.`;
+}
+
+export function interpretarInstitucionAE(resumen: ResumenInstitucional): string {
+  const aes = [
+    { codigo: 'AE-01', nombre: ASPECTOS_EVALUADOS['AE-01'], valor: resumen.promedioAE01 },
+    { codigo: 'AE-02', nombre: ASPECTOS_EVALUADOS['AE-02'], valor: resumen.promedioAE02 },
+    { codigo: 'AE-03', nombre: ASPECTOS_EVALUADOS['AE-03'], valor: resumen.promedioAE03 },
+    { codigo: 'AE-04', nombre: ASPECTOS_EVALUADOS['AE-04'], valor: resumen.promedioAE04 },
+  ];
+  const mejor = aes.reduce((a, b) => a.valor >= b.valor ? a : b);
+  const peor  = aes.reduce((a, b) => a.valor <= b.valor ? a : b);
+  return `El aspecto mejor calificado en todas las facultades es ${mejor.codigo}: "${mejor.nombre}" con una nota de ${mejor.valor.toFixed(2)}. ` +
+    `En cambio, el aspecto con menor calificación es ${peor.codigo}: "${peor.nombre}" con una nota de ${peor.valor.toFixed(2)}.`;
+}
+
+export function generarConclusion1(resumen: ResumenInstitucional, ciclo: string): string {
+  const porc = resumen.porcentajeEncuestados.toFixed(2);
+  if (resumen.porcentajeEncuestados >= 80) {
+    return `Del total de ${resumen.totalMatriculados.toLocaleString()} estudiantes matriculados en el semestre académico ${ciclo}, ` +
+      `el ${porc}% participó en la aplicación de la encuesta académica, lo que refleja un nivel de participación ` +
+      `alto y representativo de la comunidad estudiantil, evidenciando un compromiso significativo con la mejora continua de la calidad educativa.`;
+  }
+  return `Del total de ${resumen.totalMatriculados.toLocaleString()} estudiantes matriculados en el semestre académico ${ciclo}, ` +
+    `el ${porc}% participó en la aplicación de la encuesta académica. Se recomienda implementar estrategias ` +
+    `para incrementar la participación estudiantil en futuros ciclos, buscando alcanzar el umbral del 80%.`;
+}
+
+export function generarRecomendacion1(resumen: ResumenInstitucional): string {
+  const aes = [
+    { codigo: 'AE-01', nombre: ASPECTOS_EVALUADOS['AE-01'], valor: resumen.promedioAE01 },
+    { codigo: 'AE-02', nombre: ASPECTOS_EVALUADOS['AE-02'], valor: resumen.promedioAE02 },
+    { codigo: 'AE-03', nombre: ASPECTOS_EVALUADOS['AE-03'], valor: resumen.promedioAE03 },
+    { codigo: 'AE-04', nombre: ASPECTOS_EVALUADOS['AE-04'], valor: resumen.promedioAE04 },
+  ];
+  const peor = aes.reduce((a, b) => a.valor <= b.valor ? a : b);
+  return `Dado que el indicador con menor porcentaje fue "${peor.nombre}" (${peor.codigo} = ${peor.valor.toFixed(2)}), ` +
+    `se recomienda, en el marco del proceso de mejora continua de la calidad académica, implementar estrategias ` +
+    `orientadas al fortalecimiento de las competencias correspondientes a este criterio mediante el ` +
+    `Plan Anual de Capacitación Docente.`;
 }

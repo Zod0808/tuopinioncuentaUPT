@@ -1,4 +1,5 @@
 import { EvaluacionData } from '../types';
+import { calcularCalificacion } from '../config/universityStructure';
 import { Building2, PieChart, BarChart3 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -48,19 +49,6 @@ export default function ReporteCalificacionInstitucional({ datos }: ReporteCalif
       </div>
     );
   }
-
-  // Función para calcular calificación basada en nota
-  const calcularCalificacion = (nota: number): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' => {
-    if (nota > 17 && nota <= 20) {
-      return 'DESTACADO';
-    } else if (nota > 15 && nota <= 17) {
-      return 'BUENO';
-    } else if (nota > 11 && nota <= 15) {
-      return 'ACEPTABLE';
-    } else {
-      return 'INSATISFACTORIO';
-    }
-  };
 
   // Agrupar todos los datos por docente (sin importar facultad o carrera)
   const docentesMap = new Map<string, EvaluacionData[]>();
