@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { EvaluacionData } from '../types';
-import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion } from '../services/reportCalculations';
-import { generarInformeFinalDocx } from '../services/docxReportService';
+import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
+import { generarInformeFinalDocx, generarInformeFacultadDocx } from '../services/docxReportService';
 import { FACULTADES, ORDEN_FACULTADES, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
@@ -18,6 +18,41 @@ interface InformeFinalViewProps {
 
 const CALIFICACIONES: Calificacion[] = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
 const COLORES = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000'];
+
+function PieParticipacion({ enc, total }: { enc: number; total: number }) {
+  const noEnc = Math.max(0, total - enc);
+  const data = {
+    labels: ['Encuestados', 'No Encuestados'],
+    datasets: [{
+      data: [enc, noEnc],
+      backgroundColor: ['#1a365d', '#c5a059'],
+      borderColor: ['#1a365d', '#c5a059'],
+      borderWidth: 1,
+    }],
+  };
+  const opts = {
+    plugins: {
+      legend: { position: 'bottom' as const, labels: { font: { size: 11 } } },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => {
+            const v = ctx.parsed;
+            const pct = total > 0 ? ((v / total) * 100).toFixed(2) : '0.00';
+            return `${ctx.label}: ${v.toLocaleString()} (${pct}%)`;
+          },
+        },
+      },
+    },
+    responsive: true,
+    maintainAspectRatio: true,
+  };
+  if (total === 0) return null;
+  return (
+    <div className="informe-pie-participacion">
+      <Pie data={data} options={opts} />
+    </div>
+  );
+}
 
 function PieCarrera({ carrera }: { carrera: DatosCarrera }) {
   const data = {
@@ -37,6 +72,7 @@ function PieCarrera({ carrera }: { carrera: DatosCarrera }) {
 
 export default function InformeFinalView({ datos, matriculados, cicloActual }: InformeFinalViewProps) {
   const [generando, setGenerando] = useState(false);
+  const [generandoFacultad, setGenerandoFacultad] = useState<string | null>(null);
   const [seccionAbierta, setSeccionAbierta] = useState<string | null>('3.1');
 
   if (datos.length === 0) {
@@ -55,6 +91,17 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
       await generarInformeFinalDocx(cicloActual, resumen);
     } finally {
       setGenerando(false);
+    }
+  };
+
+  const handleDescargarFacultad = async (cod: string) => {
+    const f = resumen.facultades.get(cod);
+    if (!f) return;
+    setGenerandoFacultad(cod);
+    try {
+      await generarInformeFacultadDocx(cicloActual, cod, f);
+    } finally {
+      setGenerandoFacultad(null);
     }
   };
 
@@ -122,6 +169,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 </tr>
               </tfoot>
             </table>
+            <div className="informe-participacion-chart-row">
+              <PieParticipacion enc={resumen.totalEncuestados} total={resumen.totalMatriculados} />
+            </div>
             <p className="informe-interpretacion">
               {interpretarParticipacion(resumen.totalEncuestados, resumen.totalMatriculados, 'la Universidad Privada de Tacna')}
             </p>
@@ -173,6 +223,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                       </tr>
                     </tfoot>
                   </table>
+                  <div className="informe-participacion-chart-row">
+                    <PieParticipacion enc={f.totalEncuestados} total={f.totalMatriculados} />
+                  </div>
                   <p className="informe-interpretacion">
                     {interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, FACULTADES[cod]?.nombre ?? cod)}
                   </p>
@@ -236,6 +289,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 </div>
               ))}
             </div>
+            <p className="informe-interpretacion informe-interpretacion-highlight">
+              {interpretarInstitucionAE(resumen)}
+            </p>
           </div>
         )}
       </div>
@@ -389,9 +445,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
               </tbody>
               <tfoot>
                 <tr className="total-row">
-                  <td><strong>INSTITUCIONAL</strong></td>
-                  <td className="text-right">—</td>
-                  <td className="text-right">—</td>
+                  <td><strong>PROMEDIO INSTITUCIONAL</strong></td>
+                  <td className="text-right"><strong>{resumen.porcBueno.toFixed(2)}%</strong></td>
+                  <td className="text-right"><strong>{resumen.porcDestacado.toFixed(2)}%</strong></td>
                   <td className={`text-right ${resumen.indicadorPlanEstrategico >= 70 ? 'text-ok' : 'text-warning'}`}>
                     <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>
                   </td>
@@ -409,15 +465,95 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
         )}
       </div>
 
-      {/* ── Botón de descarga al pie ── */}
+      {/* ── 5. Conclusiones y Recomendaciones ── */}
+      <div className="informe-seccion">
+        <button className="informe-seccion-titulo" onClick={() => toggle('5')}>
+          <span>5. Conclusiones y Recomendaciones</span>
+          <span>{seccionAbierta === '5' ? '▲' : '▼'}</span>
+        </button>
+        {seccionAbierta === '5' && (
+          <div className="informe-seccion-body">
+            <div className="informe-conclusiones">
+              <h4>Conclusiones</h4>
+              <div className="informe-conclusion-item">
+                <span className="informe-conclusion-num">1.</span>
+                <p>{generarConclusion1(resumen, cicloActual)}</p>
+              </div>
+              <div className="informe-conclusion-item">
+                <span className="informe-conclusion-num">2.</span>
+                <p>
+                  El promedio general institucional del desempeño docente para el ciclo {cicloActual} es de{' '}
+                  <strong>{resumen.promedioGeneral.toFixed(2)}</strong>, lo que corresponde a la categoría{' '}
+                  <strong>{resumen.promedioGeneral > 17 ? 'DESTACADO' : resumen.promedioGeneral > 14 ? 'BUENO' : resumen.promedioGeneral > 11 ? 'ACEPTABLE' : 'INSATISFACTORIO'}</strong>{' '}
+                  según la escala de calificación institucional.
+                </p>
+              </div>
+              <div className="informe-conclusion-item">
+                <span className="informe-conclusion-num">3.</span>
+                <p>
+                  El indicador del Plan Estratégico Institucional (secciones calificadas como BUENO o DESTACADO) alcanzó el{' '}
+                  <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>
+                  {resumen.indicadorPlanEstrategico >= 70
+                    ? ', superando la meta institucional del 70%.'
+                    : ', sin alcanzar aún la meta institucional del 70%, lo que requiere atención prioritaria.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="informe-conclusiones informe-recomendaciones">
+              <h4>Recomendaciones</h4>
+              <div className="informe-conclusion-item">
+                <span className="informe-conclusion-num">1.</span>
+                <p>{generarRecomendacion1(resumen)}</p>
+              </div>
+              {resumen.indicadorPlanEstrategico < 70 && (
+                <div className="informe-conclusion-item">
+                  <span className="informe-conclusion-num">2.</span>
+                  <p>
+                    Se recomienda realizar un seguimiento focalizado en las carreras y secciones con calificación{' '}
+                    ACEPTABLE o INSATISFACTORIO, priorizando planes de mejora individualizados que contribuyan al{' '}
+                    incremento del indicador estratégico institucional.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Botones de descarga al pie ── */}
       <div className="informe-footer-actions">
         <button
           className="btn-primary btn-descarga-lg"
           onClick={handleDescargarDocx}
-          disabled={generando}
+          disabled={generando || generandoFacultad !== null}
         >
-          {generando ? 'Generando documento...' : '⬇ Descargar Informe Completo (.docx)'}
+          {generando ? 'Generando documento...' : '⬇ Descargar Informe Institucional Completo (.docx)'}
         </button>
+
+        <div className="informe-facultad-descargas">
+          <p className="informe-facultad-descargas-titulo">Informes individuales por facultad:</p>
+          <div className="informe-facultad-descargas-grid">
+            {ORDEN_FACULTADES.map(cod => {
+              const f = resumen.facultades.get(cod);
+              if (!f) return null;
+              const ocupado = generando || generandoFacultad !== null;
+              const esteGenerando = generandoFacultad === cod;
+              return (
+                <button
+                  key={cod}
+                  type="button"
+                  className="btn-secondary btn-descarga-facultad"
+                  onClick={() => handleDescargarFacultad(cod)}
+                  disabled={ocupado}
+                  title={FACULTADES[cod]?.nombre ?? cod}
+                >
+                  {esteGenerando ? 'Generando...' : `⬇ ${cod}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

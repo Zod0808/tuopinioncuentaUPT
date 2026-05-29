@@ -3173,15 +3173,60 @@
   font-weight: 600;
 }
 
-.informe-footer-actions {
-  display: flex;
-  justify-content: center;
-  padding: 1.5rem 0;
-}
 
 .btn-descarga-lg {
   padding: 0.8rem 2rem;
   font-size: 1rem;
+}
+
+.informe-footer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.5rem 0 2rem;
+}
+
+.informe-facultad-descargas {
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+}
+
+.informe-facultad-descargas-titulo {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+.informe-facultad-descargas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-descarga-facultad {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  border: 1.5px solid #2E5C8A;
+  background: #fff;
+  color: #2E5C8A;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  min-width: 80px;
+}
+
+.btn-descarga-facultad:hover:not(:disabled) {
+  background: #2E5C8A;
+  color: #fff;
+}
+
+.btn-descarga-facultad:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .informe-empty {
@@ -3191,4 +3236,77 @@
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
+}
+
+/* ── Pie de participación (3.1 / 3.2) ─────────────────── */
+.informe-participacion-chart-row {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0 0.5rem;
+}
+
+.informe-pie-participacion {
+  width: 220px;
+  height: 220px;
+}
+
+/* ── Interpretación destacada (3.3.1) ─────────────────── */
+.informe-interpretacion-highlight {
+  background: #eaf3fb;
+  border-left: 4px solid #2b6cb0;
+  padding: 0.7rem 1rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
+/* ── Sección 5: Conclusiones y Recomendaciones ─────────── */
+.informe-conclusiones {
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.informe-conclusiones h4 {
+  color: #2b6cb0;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid #bee3f8;
+  padding-bottom: 0.4rem;
+}
+
+.informe-recomendaciones {
+  background: #f0fff4;
+}
+
+.informe-recomendaciones h4 {
+  color: #276749;
+  border-bottom-color: #c6f6d5;
+}
+
+.informe-conclusion-item {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  align-items: flex-start;
+}
+
+.informe-conclusion-num {
+  font-weight: 700;
+  color: #2b6cb0;
+  min-width: 1.5rem;
+  margin-top: 0.05rem;
+}
+
+.informe-recomendaciones .informe-conclusion-num {
+  color: #276749;
+}
+
+.informe-conclusion-item p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.92rem;
+  text-align: justify;
 }
