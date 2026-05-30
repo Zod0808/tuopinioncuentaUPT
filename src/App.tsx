@@ -8,7 +8,7 @@ import InformeFinalView from './components/InformeFinalView';
 import RecomendacionesIAView from './components/RecomendacionesIAView';
 import AuthModal from './components/AuthModal';
 import { MatriculadosEntry } from './services/reportCalculations';
-import { loadMatriculados } from './services/matriculadosService';
+import { loadMatriculados, deleteMatriculados } from './services/matriculadosService';
 import {
   isSupabaseConfigured,
   onAuthStateChange,
@@ -17,6 +17,7 @@ import {
   saveEvaluacionData,
   loadEvaluacionData,
   getCiclosDisponibles,
+  deleteEvaluacionData,
 } from './services/supabaseService';
 import './App.css';
 
@@ -199,6 +200,32 @@ function App() {
     });
   }, []);
 
+  // ── Gestión CRUD de ciclos ───────────────────────────────────────────────
+  const handleDeleteCicloCache = (ciclo: string) => {
+    localStorage.removeItem(LS_KEY(ciclo));
+    if (ciclo === cicloActual) setDatos([]);
+  };
+
+  const handleDeleteCicloDb = async (ciclo: string) => {
+    if (!isSupabaseConfigured() || !currentUser) return;
+    await Promise.all([
+      deleteEvaluacionData(ciclo),
+      deleteMatriculados(ciclo),
+    ]);
+    const ciclos = await getCiclosDisponibles();
+    setCiclosDisponibles(ciclos);
+    if (ciclo === cicloActual) {
+      setDatos([]);
+      setMatriculados([]);
+    }
+  };
+
+  const handleRefreshCiclos = async () => {
+    if (!isSupabaseConfigured() || !currentUser) return;
+    const ciclos = await getCiclosDisponibles();
+    setCiclosDisponibles(ciclos);
+  };
+
   const handleLogout = async () => {
     await signOut();
     setCurrentUser(null);
@@ -252,6 +279,7 @@ function App() {
             <DataEntryView
               datos={datos}
               graficosElements={graficosElements}
+              currentUser={currentUser}
               onDataAdd={handleDataAdd}
               onDataImport={handleDataImport}
               onDataDelete={handleDataDelete}
@@ -261,6 +289,10 @@ function App() {
               onGraficoReady={handleGraficoReady}
               matriculados={matriculados}
               onMatriculadosChange={setMatriculados}
+              onCicloChange={handleCicloChange}
+              onDeleteCicloCache={handleDeleteCicloCache}
+              onDeleteCicloDb={handleDeleteCicloDb}
+              onRefreshCiclos={handleRefreshCiclos}
             />
           ) : vistaActual === 'informe' ? (
             <InformeFinalView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />

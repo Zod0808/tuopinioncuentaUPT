@@ -3565,3 +3565,404 @@
   margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   DATA ENTRY VIEW — tabs rediseñados
+   ═══════════════════════════════════════════════════════════ */
+
+.data-entry-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Banner ciclo activo */
+.dev-ciclo-banner {
+  background: #1a365d;
+  color: #fff;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+}
+.dev-ciclo-label { opacity: 0.75; }
+.dev-ciclo-valor { font-weight: 700; font-size: 1rem; }
+.dev-ciclo-records {
+  margin-left: auto;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 0.15rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* Tabs strip */
+.dev-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.dev-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.8rem 1.25rem;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.dev-tab-btn:hover { color: #1a365d; background: #e8eef5; }
+.dev-tab-btn.active {
+  color: #1a365d;
+  font-weight: 700;
+  border-bottom-color: #1a365d;
+  background: #fff;
+}
+.dev-tab-badge {
+  background: #1a365d;
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
+/* Contenido del tab */
+.dev-tab-content {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 1.5rem;
+  min-height: 300px;
+}
+
+/* Tab importar */
+.dev-tab-importar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Agregar manualmente — collapsible */
+.dev-manual-toggle {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dev-manual-toggle > summary {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+  background: #f8fafc;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+.dev-manual-toggle > summary::before {
+  content: '▶';
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+.dev-manual-toggle[open] > summary::before { transform: rotate(90deg); }
+.dev-manual-body { padding: 1rem; }
+
+/* Tab registros */
+.dev-tab-registros { display: flex; flex-direction: column; gap: 1rem; }
+
+.dev-tab-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.dev-empty-icon { color: #cbd5e1; }
+.dev-tab-empty p { margin: 0; font-size: 1rem; color: #64748b; }
+.dev-empty-hint { font-size: 0.88rem !important; color: #94a3b8 !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   MATRICULADOS — rediseño siempre editable
+   ═══════════════════════════════════════════════════════════ */
+
+.matriculados-importer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.matriculados-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.matriculados-title-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.matriculados-title-group svg { color: #1a365d; margin-top: 2px; flex-shrink: 0; }
+.matriculados-title-group h3 { margin: 0 0 0.25rem; font-size: 1.1rem; color: #1a365d; }
+
+.matriculados-meta { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.matriculados-ciclo-tag {
+  font-size: 0.8rem; color: #64748b;
+  background: #f1f5f9; border-radius: 4px; padding: 0.15rem 0.5rem;
+}
+.matriculados-total-tag {
+  font-size: 0.8rem; font-weight: 700; color: #276749;
+  background: #f0fff4; border-radius: 4px; padding: 0.15rem 0.5rem;
+  border: 1px solid #c6f6d5;
+}
+
+.matriculados-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.matriculados-msg {
+  font-size: 0.85rem;
+  color: #276749;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-weight: 600;
+}
+
+/* Grid de facultades */
+.matriculados-grid-nuevo {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+
+.matriculados-fac-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.matriculados-fac-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  background: #1a365d;
+  color: #fff;
+}
+.matriculados-fac-card-header h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.matriculados-fac-subtotal {
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: rgba(255,255,255,0.18);
+  border-radius: 6px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.matriculados-carreras-lista { padding: 0.5rem; }
+
+.matriculados-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 5px;
+  transition: background 0.1s;
+}
+.matriculados-row:hover { background: #f8fafc; }
+
+.matriculados-row-label {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #4a5568;
+  line-height: 1.3;
+  cursor: default;
+}
+
+.matriculados-row-input {
+  width: 90px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: right;
+  color: #1a365d;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.matriculados-row-input:focus {
+  outline: none;
+  border-color: #1a365d;
+  background: #f0f7ff;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GESTIÓN DE CICLOS — panel CRUD
+   ═══════════════════════════════════════════════════════════ */
+
+.gestion-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gestion-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.gestion-panel-header h3 { margin: 0 0 0.2rem; color: #1a365d; }
+.gestion-panel-sub { margin: 0; font-size: 0.85rem; color: #64748b; }
+
+.gestion-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-size: 0.88rem;
+  color: #92400e;
+}
+
+/* Leyenda */
+.gestion-leyenda {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Badges genéricos */
+.gestion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gestion-badge-cache  { background: #fff7ed; color: #c05621; border: 1px solid #fed7aa; }
+.gestion-badge-db     { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.gestion-badge-activo { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+
+.gestion-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #94a3b8;
+}
+.gestion-empty-hint { font-size: 0.85rem; margin-top: 0.3rem; }
+
+/* Lista de ciclos */
+.gestion-ciclos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.gestion-ciclo-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-wrap: wrap;
+}
+.gestion-ciclo-card:hover { border-color: #94a3b8; }
+.gestion-ciclo-card.activo {
+  border-color: #1a365d;
+  background: #f0f7ff;
+  box-shadow: 0 0 0 2px rgba(26,54,93,0.1);
+}
+
+.gestion-ciclo-izq { display: flex; flex-direction: column; gap: 0.35rem; }
+.gestion-ciclo-nombre { font-size: 1.05rem; font-weight: 700; color: #1a365d; }
+.gestion-ciclo-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.gestion-ciclo-acciones {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.gestion-confirm-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.gestion-confirm-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c53030;
+}
+.gestion-confirm-btns {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Botones extra tamaños */
+.btn-xs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn-xs:hover { opacity: 0.88; }
+.btn-xs:active { transform: scale(0.97); }
+.btn-xs:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-warn   { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.btn-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+/* Animación spinner */
+.spinning { animation: ia-spin 0.7s linear infinite; }
+

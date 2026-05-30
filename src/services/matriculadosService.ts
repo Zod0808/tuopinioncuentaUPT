@@ -41,3 +41,18 @@ export async function loadMatriculados(ciclo: string): Promise<MatriculadosEntry
     totalMatriculados: r.total_matriculados,
   }));
 }
+
+export async function deleteMatriculados(ciclo: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('matriculados_por_ciclo')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('ciclo', ciclo);
+
+  if (error) { console.error('Error eliminando matriculados:', error); return false; }
+  return true;
+}
