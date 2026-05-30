@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Save, RefreshCw, Users } from 'lucide-react';
 import { FACULTADES, ORDEN_FACULTADES } from '../config/universityStructure';
 import { MatriculadosEntry } from '../services/reportCalculations';
 import { saveMatriculados, loadMatriculados } from '../services/matriculadosService';
@@ -9,94 +10,127 @@ interface MatriculadosImporterProps {
   onMatriculadosChange: (entries: MatriculadosEntry[]) => void;
 }
 
-export default function MatriculadosImporter({ cicloActual, matriculados, onMatriculadosChange }: MatriculadosImporterProps) {
-  const [editando, setEditando] = useState(false);
+export default function MatriculadosImporter({
+  cicloActual, matriculados, onMatriculadosChange,
+}: MatriculadosImporterProps) {
   const [valores, setValores] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
 
-  // Construir mapa inicial desde matriculados prop
   useEffect(() => {
     const map: Record<string, number> = {};
     for (const fac of ORDEN_FACULTADES) {
-      const { carreras } = FACULTADES[fac];
-      for (const carrera of carreras) {
+      for (const carrera of FACULTADES[fac].carreras) {
         const entry = matriculados.find(m => m.facultad === fac && m.carrera === carrera);
         map[`${fac}||${carrera}`] = entry?.totalMatriculados ?? 0;
       }
     }
     setValores(map);
-  }, [matriculados]);
+  }, [matriculados, cicloActual]);
+
+  const flash = (msg: string) => {
+    setMensaje(msg);
+    setTimeout(() => setMensaje(''), 3500);
+  };
 
   const handleGuardar = async () => {
     setGuardando(true);
-    const entries: MatriculadosEntry[] = [];
-    for (const [key, total] of Object.entries(valores)) {
-      const [facultad, carrera] = key.split('||');
-      if (total > 0) entries.push({ facultad, carrera, totalMatriculados: total });
-    }
+    const entries: MatriculadosEntry[] = Object.entries(valores)
+      .filter(([, v]) => v > 0)
+      .map(([key, v]) => {
+        const [facultad, carrera] = key.split('||');
+        return { facultad, carrera, totalMatriculados: v };
+      });
     const ok = await saveMatriculados(cicloActual, entries);
     onMatriculadosChange(entries);
     setGuardando(false);
-    setMensaje(ok ? '✓ Guardado correctamente' : '⚠ Guardado solo localmente');
-    setEditando(false);
-    setTimeout(() => setMensaje(''), 3000);
+    flash(ok ? '✓ Guardado en la base de datos' : '✓ Guardado en caché local');
   };
 
   const handleCargar = async () => {
+    setCargando(true);
     const data = await loadMatriculados(cicloActual);
     if (data.length > 0) {
       onMatriculadosChange(data);
-      setMensaje('✓ Datos cargados desde la nube');
-      setTimeout(() => setMensaje(''), 3000);
+      flash('✓ Datos cargados desde la base de datos');
+    } else {
+      flash('Sin datos en la BD para este ciclo');
     }
+    setCargando(false);
   };
 
-  const totalMatr = Object.values(valores).reduce((a, b) => a + b, 0);
+  const totalGeneral = Object.values(valores).reduce((a, b) => a + b, 0);
 
   return (
     <div className="matriculados-importer">
       <div className="matriculados-header">
-        <div>
-          <h3>Total de Matriculados por Carrera</h3>
-          <span className="matriculados-ciclo">Ciclo: {cicloActual}</span>
-          {totalMatr > 0 && (
-            <span className="matriculados-total"> · Total: {totalMatr.toLocaleString()} estudiantes</span>
-          )}
+        <div className="matriculados-title-group">
+          <Users size={22} />
+          <div>
+            <h3>Matriculados por Carrera</h3>
+            <div className="matriculados-meta">
+              <span className="matriculados-ciclo-tag">Ciclo: {cicloActual}</span>
+              {totalGeneral > 0 && (
+                <span className="matriculados-total-tag">
+                  Total: {totalGeneral.toLocaleString()} estudiantes
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="matriculados-actions">
           {mensaje && <span className="matriculados-msg">{mensaje}</span>}
-          <button className="btn-secondary btn-sm" onClick={handleCargar}>
-            Cargar de la nube
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleCargar}
+            disabled={cargando}
+            title="Cargar desde la base de datos"
+          >
+            <RefreshCw size={14} />
+            {cargando ? 'Cargando...' : 'Cargar BD'}
           </button>
-          <button className="btn-primary btn-sm" onClick={() => setEditando(v => !v)}>
-            {editando ? 'Cancelar' : 'Editar matriculados'}
+          <button
+            className="btn-primary btn-sm"
+            onClick={handleGuardar}
+            disabled={guardando}
+          >
+            <Save size={14} />
+            {guardando ? 'Guardando...' : 'Guardar'}
           </button>
-          {editando && (
-            <button className="btn-success btn-sm" onClick={handleGuardar} disabled={guardando}>
-              {guardando ? 'Guardando...' : 'Guardar'}
-            </button>
-          )}
         </div>
       </div>
 
-      {editando && (
-        <div className="matriculados-grid">
-          {ORDEN_FACULTADES.map(fac => (
-            <div key={fac} className="matriculados-facultad">
-              <h4 className="matriculados-fac-nombre">{FACULTADES[fac].nombre}</h4>
-              <div className="matriculados-carreras">
+      <div className="matriculados-grid-nuevo">
+        {ORDEN_FACULTADES.map(fac => {
+          const totalFac = FACULTADES[fac].carreras.reduce(
+            (sum, c) => sum + (valores[`${fac}||${c}`] ?? 0), 0
+          );
+          return (
+            <div key={fac} className="matriculados-fac-card">
+              <div className="matriculados-fac-card-header">
+                <h4>{FACULTADES[fac].nombre}</h4>
+                <span className="matriculados-fac-subtotal">
+                  {totalFac > 0 ? totalFac.toLocaleString() : '—'}
+                </span>
+              </div>
+              <div className="matriculados-carreras-lista">
                 {FACULTADES[fac].carreras.map(carrera => {
                   const key = `${fac}||${carrera}`;
                   return (
-                    <div key={key} className="matriculados-carrera-row">
-                      <label className="matriculados-carrera-label">{carrera}</label>
+                    <div key={key} className="matriculados-row">
+                      <label className="matriculados-row-label">{carrera}</label>
                       <input
                         type="number"
                         min={0}
                         value={valores[key] ?? 0}
-                        onChange={e => setValores(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
-                        className="matriculados-input"
+                        onChange={e =>
+                          setValores(prev => ({
+                            ...prev,
+                            [key]: parseInt(e.target.value) || 0,
+                          }))
+                        }
+                        className="matriculados-row-input"
                         placeholder="0"
                       />
                     </div>
@@ -104,44 +138,9 @@ export default function MatriculadosImporter({ cicloActual, matriculados, onMatr
                 })}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {!editando && matriculados.length > 0 && (
-        <div className="matriculados-resumen">
-          <table className="matriculados-table">
-            <thead>
-              <tr>
-                <th>Facultad</th>
-                <th>Carrera</th>
-                <th>Matriculados</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ORDEN_FACULTADES.flatMap(fac =>
-                FACULTADES[fac].carreras.map(carrera => {
-                  const entry = matriculados.find(m => m.facultad === fac && m.carrera === carrera);
-                  if (!entry || entry.totalMatriculados === 0) return null;
-                  return (
-                    <tr key={`${fac}-${carrera}`}>
-                      <td>{FACULTADES[fac].nombre}</td>
-                      <td>{carrera}</td>
-                      <td className="text-right">{entry.totalMatriculados.toLocaleString()}</td>
-                    </tr>
-                  );
-                }).filter(Boolean)
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {!editando && matriculados.length === 0 && (
-        <p className="matriculados-empty">
-          No hay datos de matriculados para el ciclo {cicloActual}. Haz clic en "Editar matriculados" para ingresar los totales.
-        </p>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -115,3 +115,18 @@ export async function loadAllCyclesData(): Promise<Record<string, EvaluacionData
   }
   return result;
 }
+
+export async function deleteEvaluacionData(ciclo: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('evaluaciones_data')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('ciclo', ciclo);
+
+  if (error) { console.error('Error eliminando evaluaciones:', error); return false; }
+  return true;
+}
