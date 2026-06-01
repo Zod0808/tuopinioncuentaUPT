@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Calendar, Download, Trash2, Eye, BarChart3, TrendingUp } from 'lucide-react';
 import { ReporteData, EvaluacionData } from '../types';
+import { MatriculadosEntry } from '../services/reportCalculations';
 import ReportsTabs from './ReportsTabs';
 import ComparativaCiclos from './ComparativaCiclos';
 
@@ -14,9 +15,10 @@ interface ReportsViewProps {
   cicloActual: string;
   onGraficoReady?: (element: HTMLElement, index: number) => void;
   esPublico?: boolean;
+  matriculados?: MatriculadosEntry[];
 }
 
-export default function ReportsView({ datos, cicloActual, onGraficoReady, esPublico = false }: ReportsViewProps) {
+export default function ReportsView({ datos, cicloActual, onGraficoReady, esPublico = false, matriculados = [] }: ReportsViewProps) {
   const [reportes, setReportes] = useState<ReporteGuardado[]>([]);
   const [reporteSeleccionado, setReporteSeleccionado] = useState<ReporteGuardado | null>(null);
   const [vistaReportes, setVistaReportes] = useState<'interactivos' | 'comparativa' | 'generados'>('interactivos');
@@ -106,7 +108,7 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady, esPubl
               }
             </div>
           ) : (
-            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} esPublico={esPublico} />
+            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} esPublico={esPublico} matriculados={matriculados} />
           )}
         </div>
       )}
