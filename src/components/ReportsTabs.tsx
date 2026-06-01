@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry } from '../services/reportCalculations';
 import { Building2, GraduationCap, BookOpen, Users, Award } from 'lucide-react';
 import ReporteGeneralUniversidad from './ReporteGeneralUniversidad';
 import ReportePorFacultad from './ReportePorFacultad';
@@ -15,6 +16,7 @@ interface ReportsTabsProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
   esPublico?: boolean;
+  matriculados?: MatriculadosEntry[];
 }
 
 type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional';
@@ -27,7 +29,7 @@ interface Tab {
 
 const TABS_PUBLICAS: TabType[] = ['general', 'facultad'];
 
-export default function ReportsTabs({ datos, onGraficoReady, esPublico = false }: ReportsTabsProps) {
+export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, matriculados = [] }: ReportsTabsProps) {
   const [tabActiva, setTabActiva] = useState<TabType>('general');
 
   const tabs: Tab[] = [
@@ -98,8 +100,8 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false }
       <div className="tabs-content">
         {(() => {
           switch (tabActivaFinal) {
-            case 'general': return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} />;
-            case 'facultad': return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} />;
+            case 'general': return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
+            case 'facultad': return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
             case 'carrera': return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} />;
             case 'docente-carrera': return <ResumenDocentePorCarrera datos={datos} />;
             case 'docente-facultad': return <ResumenDocentePorFacultad datos={datos} />;

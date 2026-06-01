@@ -348,6 +348,7 @@ function App() {
               cicloActual={cicloActual}
               onGraficoReady={handleGraficoReady}
               esPublico={!currentUser}
+              matriculados={matriculados}
             />
           )}
         </div>

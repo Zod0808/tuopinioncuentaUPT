@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry } from '../services/reportCalculations';
 import { Users, TrendingUp, Award } from 'lucide-react';
 
 ChartJS.register(
@@ -26,9 +27,10 @@ ChartJS.register(
 interface ReporteGeneralUniversidadProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
+  matriculados?: MatriculadosEntry[];
 }
 
-export default function ReporteGeneralUniversidad({ datos, onGraficoReady }: ReporteGeneralUniversidadProps) {
+export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matriculados = [] }: ReporteGeneralUniversidadProps) {
   const grafico1Ref = useRef<HTMLDivElement>(null);
   const grafico2Ref = useRef<HTMLDivElement>(null);
   const grafico3Ref = useRef<HTMLDivElement>(null);
@@ -55,12 +57,24 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady }: Rep
     );
   }
 
-  // Calcular totales generales
-  const totalEncuestados = datos.reduce((sum, d) => sum + d.encuestados, 0);
-  const totalNoEncuestados = datos.reduce((sum, d) => sum + d.noEncuestados, 0);
-  const totalEstudiantes = totalEncuestados + totalNoEncuestados;
-  const porcentajeEncuestados = totalEstudiantes > 0 
-    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2) 
+  // Totales oficiales desde MatriculadosImporter (por facultad)
+  const matByFac = new Map<string, { mat: number; enc: number }>();
+  for (const m of matriculados) {
+    const prev = matByFac.get(m.facultad) ?? { mat: 0, enc: 0 };
+    matByFac.set(m.facultad, {
+      mat: prev.mat + m.totalMatriculados,
+      enc: prev.enc + (m.totalEncuestados ?? 0),
+    });
+  }
+  const totalMatOficial = [...matByFac.values()].reduce((s, v) => s + v.mat, 0);
+  const totalEncOficial = [...matByFac.values()].reduce((s, v) => s + v.enc, 0);
+  const usarOficial = totalMatOficial > 0;
+
+  const totalEncuestados = usarOficial ? totalEncOficial : datos.reduce((sum, d) => sum + d.encuestados, 0);
+  const totalEstudiantes = usarOficial ? totalMatOficial : totalEncuestados + datos.reduce((sum, d) => sum + d.noEncuestados, 0);
+  const totalNoEncuestados = Math.max(0, totalEstudiantes - totalEncuestados);
+  const porcentajeEncuestados = totalEstudiantes > 0
+    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2)
     : '0.00';
 
   // Calcular promedios institucionales
@@ -84,9 +98,13 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady }: Rep
   const facultades = ['FADE', 'FAEDCOH', 'FAING', 'FACEM', 'FAU', 'FACSA']; // Orden correcto según el usuario
   const datosPorFacultad = facultades.map(facultad => {
     const datosFacultad = datos.filter(d => d.facultad === facultad);
-    const encuestados = datosFacultad.reduce((sum, d) => sum + d.encuestados, 0);
-    const noEncuestados = datosFacultad.reduce((sum, d) => sum + d.noEncuestados, 0);
-    const total = encuestados + noEncuestados;
+    const matFac = matByFac.get(facultad);
+    const encFromRec = datosFacultad.reduce((sum, d) => sum + d.encuestados, 0);
+    const noEncFromRec = datosFacultad.reduce((sum, d) => sum + d.noEncuestados, 0);
+    const encuestados = usarOficial && matFac ? matFac.enc : encFromRec;
+    const totalMatr = usarOficial && matFac ? matFac.mat : encFromRec + noEncFromRec;
+    const noEncuestados = Math.max(0, totalMatr - encuestados);
+    const total = totalMatr;
     const porcentajeEnc = total > 0 ? ((encuestados / total) * 100).toFixed(2) : '0.00';
     
     // Calcular promedios por aspectos académicos por facultad

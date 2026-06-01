@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry } from '../services/reportCalculations';
 import { Users, TrendingUp, Award, GraduationCap } from 'lucide-react';
 
 ChartJS.register(
@@ -26,9 +27,10 @@ ChartJS.register(
 interface ReportePorFacultadProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
+  matriculados?: MatriculadosEntry[];
 }
 
-export default function ReportePorFacultad({ datos, onGraficoReady }: ReportePorFacultadProps) {
+export default function ReportePorFacultad({ datos, onGraficoReady, matriculados = [] }: ReportePorFacultadProps) {
   const [facultadSeleccionada, setFacultadSeleccionada] = useState<string>('');
   const grafico1Ref = useRef<HTMLDivElement>(null);
   const grafico2Ref = useRef<HTMLDivElement>(null);
@@ -100,12 +102,17 @@ export default function ReportePorFacultad({ datos, onGraficoReady }: ReportePor
     );
   }
 
-  // Calcular estadísticas de la facultad
-  const totalEncuestados = datosFacultad.reduce((sum, d) => sum + d.encuestados, 0);
-  const totalNoEncuestados = datosFacultad.reduce((sum, d) => sum + d.noEncuestados, 0);
-  const totalEstudiantes = totalEncuestados + totalNoEncuestados;
-  const porcentajeEncuestados = totalEstudiantes > 0 
-    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2) 
+  // Totales oficiales para la facultad seleccionada (desde MatriculadosImporter)
+  const matFac = matriculados.filter(m => m.facultad === facultadSeleccionada);
+  const totalMatOficial = matFac.reduce((s, m) => s + m.totalMatriculados, 0);
+  const totalEncOficial = matFac.reduce((s, m) => s + (m.totalEncuestados ?? 0), 0);
+  const usarOficial = totalMatOficial > 0;
+
+  const totalEncuestados = usarOficial ? totalEncOficial : datosFacultad.reduce((sum, d) => sum + d.encuestados, 0);
+  const totalEstudiantes = usarOficial ? totalMatOficial : totalEncuestados + datosFacultad.reduce((sum, d) => sum + d.noEncuestados, 0);
+  const totalNoEncuestados = Math.max(0, totalEstudiantes - totalEncuestados);
+  const porcentajeEncuestados = totalEstudiantes > 0
+    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2)
     : '0.00';
 
   const promedioAE01 = datosFacultad.length > 0 
