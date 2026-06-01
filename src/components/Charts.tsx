@@ -71,8 +71,8 @@ export default function Charts({ datos, onGraficoReady }: ChartsProps) {
     datasets: [{
       label: 'Nota Promedio',
       data: notasPorCurso,
-      backgroundColor: 'rgba(102, 126, 234, 0.8)',
-      borderColor: 'rgba(102, 126, 234, 1)',
+      backgroundColor: 'rgba(0, 48, 135, 0.8)',
+      borderColor: 'rgba(0, 48, 135, 1)',
       borderWidth: 2
     }]
   };
@@ -143,7 +143,7 @@ export default function Charts({ datos, onGraficoReady }: ChartsProps) {
     datasets: [{
       data: [totalEncuestados, totalNoEncuestados],
       backgroundColor: [
-        'rgba(102, 126, 234, 0.8)',
+        'rgba(0, 48, 135, 0.8)',
         'rgba(255, 99, 132, 0.8)'
       ],
       borderWidth: 2
