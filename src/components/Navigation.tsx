@@ -1,4 +1,4 @@
-import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus, BookOpen, Lightbulb } from 'lucide-react';
+import { Database, FileText, LogIn, LogOut, User, ChevronDown, Plus, BookOpen, Lightbulb, Globe, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 const CICLOS_PREDEFINIDOS = [
@@ -15,7 +15,10 @@ interface NavigationProps {
   onLogout: () => void;
   cicloActual: string;
   ciclosDisponibles: string[];
+  ciclosPublicos: string[];
   onCicloChange: (ciclo: string) => void;
+  onPublicar?: () => void;
+  publishMsg?: string;
 }
 
 export default function Navigation({
@@ -26,7 +29,10 @@ export default function Navigation({
   onLogout,
   cicloActual,
   ciclosDisponibles,
+  ciclosPublicos,
   onCicloChange,
+  onPublicar,
+  publishMsg,
 }: NavigationProps) {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -47,38 +53,47 @@ export default function Navigation({
   return (
     <nav className="navigation">
       <div className="nav-left">
-        <button
-          className={`nav-button ${vistaActual === 'datos' ? 'active' : ''}`}
-          onClick={() => onCambiarVista('datos')}
-        >
-          <Database size={20} />
-          Ingreso de Datos
-        </button>
-        <button
-          className={`nav-button ${vistaActual === 'reportes' ? 'active' : ''}`}
-          onClick={() => onCambiarVista('reportes')}
-        >
-          <FileText size={20} />
-          Ver Reportes
-        </button>
-        <button
-          className={`nav-button ${vistaActual === 'informe' ? 'active' : ''}`}
-          onClick={() => onCambiarVista('informe')}
-        >
-          <BookOpen size={20} />
-          Informe Final
-        </button>
-        <button
-          className={`nav-button ${vistaActual === 'recomendaciones' ? 'active' : ''}`}
-          onClick={() => onCambiarVista('recomendaciones')}
-        >
-          <Lightbulb size={20} />
-          Recomendaciones IA
-        </button>
+        {currentUser ? (
+          <>
+            <button
+              className={`nav-button ${vistaActual === 'datos' ? 'active' : ''}`}
+              onClick={() => onCambiarVista('datos')}
+            >
+              <Database size={20} />
+              Ingreso de Datos
+            </button>
+            <button
+              className={`nav-button ${vistaActual === 'reportes' ? 'active' : ''}`}
+              onClick={() => onCambiarVista('reportes')}
+            >
+              <FileText size={20} />
+              Ver Reportes
+            </button>
+            <button
+              className={`nav-button ${vistaActual === 'informe' ? 'active' : ''}`}
+              onClick={() => onCambiarVista('informe')}
+            >
+              <BookOpen size={20} />
+              Informe Final
+            </button>
+            <button
+              className={`nav-button ${vistaActual === 'recomendaciones' ? 'active' : ''}`}
+              onClick={() => onCambiarVista('recomendaciones')}
+            >
+              <Lightbulb size={20} />
+              Recomendaciones IA
+            </button>
+          </>
+        ) : (
+          <div className="nav-public-badge">
+            <Globe size={16} />
+            Vista Pública
+          </div>
+        )}
       </div>
 
       <div className="nav-center">
-        {currentUser && (
+        {currentUser ? (
           <div className="ciclo-selector-nav">
             <span className="ciclo-label">Ciclo:</span>
             <select
@@ -116,7 +131,20 @@ export default function Navigation({
               </form>
             )}
           </div>
-        )}
+        ) : ciclosPublicos.length > 0 ? (
+          <div className="ciclo-selector-nav">
+            <span className="ciclo-label">Ciclo:</span>
+            <select
+              value={cicloActual}
+              onChange={e => onCicloChange(e.target.value)}
+              className="ciclo-select"
+            >
+              {ciclosPublicos.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </div>
 
       <div className="nav-right">
@@ -139,6 +167,15 @@ export default function Navigation({
                     <span>{currentUser.email}</span>
                   </div>
                   <hr className="user-menu-divider" />
+                  {onPublicar && (
+                    <button
+                      className="user-menu-item user-menu-publish"
+                      onClick={() => { setShowUserMenu(false); onPublicar(); }}
+                    >
+                      <Upload size={16} />
+                      Publicar ciclo actual
+                    </button>
+                  )}
                   <button
                     className="user-menu-item user-menu-logout"
                     onClick={() => { setShowUserMenu(false); onLogout(); }}
@@ -149,11 +186,14 @@ export default function Navigation({
                 </div>
               </>
             )}
+            {publishMsg && (
+              <span className="publish-msg">{publishMsg}</span>
+            )}
           </div>
         ) : (
           <button className="btn-login-nav" onClick={onLogin}>
             <LogIn size={18} />
-            Iniciar Sesión
+            Acceso Administrativo
           </button>
         )}
       </div>

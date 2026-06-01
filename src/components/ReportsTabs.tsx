@@ -14,6 +14,7 @@ import ReporteCalificacionInstitucional from './ReporteCalificacionInstitucional
 interface ReportsTabsProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
+  esPublico?: boolean;
 }
 
 type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional';
@@ -24,7 +25,9 @@ interface Tab {
   icon: React.ReactNode;
 }
 
-export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps) {
+const TABS_PUBLICAS: TabType[] = ['general', 'facultad'];
+
+export default function ReportsTabs({ datos, onGraficoReady, esPublico = false }: ReportsTabsProps) {
   const [tabActiva, setTabActiva] = useState<TabType>('general');
 
   const tabs: Tab[] = [
@@ -75,38 +78,16 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
     }
   ];
 
-  const renderTabContent = () => {
-    switch (tabActiva) {
-      case 'general':
-        return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} />;
-      case 'facultad':
-        return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} />;
-      case 'carrera':
-        return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} />;
-      case 'docente-carrera':
-        return <ResumenDocentePorCarrera datos={datos} />;
-      case 'docente-facultad':
-        return <ResumenDocentePorFacultad datos={datos} />;
-      case 'docente-institucional':
-        return <ResumenDocenteInstitucional datos={datos} />;
-      case 'calificacion-carrera':
-        return <ReporteCalificacionPorCarrera datos={datos} />;
-      case 'calificacion-facultad':
-        return <ReporteCalificacionPorFacultad datos={datos} />;
-      case 'calificacion-institucional':
-        return <ReporteCalificacionInstitucional datos={datos} />;
-      default:
-        return null;
-    }
-  };
+  const tabsVisibles = esPublico ? tabs.filter(t => TABS_PUBLICAS.includes(t.id)) : tabs;
+  const tabActivaFinal = esPublico && !TABS_PUBLICAS.includes(tabActiva) ? 'general' : tabActiva;
 
   return (
     <div className="reports-tabs">
       <div className="tabs-header">
-        {tabs.map((tab) => (
+        {tabsVisibles.map((tab) => (
           <button
             key={tab.id}
-            className={`tab-button ${tabActiva === tab.id ? 'active' : ''}`}
+            className={`tab-button ${tabActivaFinal === tab.id ? 'active' : ''}`}
             onClick={() => setTabActiva(tab.id)}
           >
             {tab.icon}
@@ -115,7 +96,20 @@ export default function ReportsTabs({ datos, onGraficoReady }: ReportsTabsProps)
         ))}
       </div>
       <div className="tabs-content">
-        {renderTabContent()}
+        {(() => {
+          switch (tabActivaFinal) {
+            case 'general': return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} />;
+            case 'facultad': return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} />;
+            case 'carrera': return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} />;
+            case 'docente-carrera': return <ResumenDocentePorCarrera datos={datos} />;
+            case 'docente-facultad': return <ResumenDocentePorFacultad datos={datos} />;
+            case 'docente-institucional': return <ResumenDocenteInstitucional datos={datos} />;
+            case 'calificacion-carrera': return <ReporteCalificacionPorCarrera datos={datos} />;
+            case 'calificacion-facultad': return <ReporteCalificacionPorFacultad datos={datos} />;
+            case 'calificacion-institucional': return <ReporteCalificacionInstitucional datos={datos} />;
+            default: return null;
+          }
+        })()}
       </div>
     </div>
   );

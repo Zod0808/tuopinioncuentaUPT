@@ -13,9 +13,10 @@ interface ReportsViewProps {
   datos: EvaluacionData[];
   cicloActual: string;
   onGraficoReady?: (element: HTMLElement, index: number) => void;
+  esPublico?: boolean;
 }
 
-export default function ReportsView({ datos, cicloActual, onGraficoReady }: ReportsViewProps) {
+export default function ReportsView({ datos, cicloActual, onGraficoReady, esPublico = false }: ReportsViewProps) {
   const [reportes, setReportes] = useState<ReporteGuardado[]>([]);
   const [reporteSeleccionado, setReporteSeleccionado] = useState<ReporteGuardado | null>(null);
   const [vistaReportes, setVistaReportes] = useState<'interactivos' | 'comparativa' | 'generados'>('interactivos');
@@ -66,20 +67,24 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady }: Repo
             <BarChart3 size={20} />
             <span>Reportes del Ciclo</span>
           </button>
-          <button
-            className={`view-switch-button ${vistaReportes === 'comparativa' ? 'active' : ''}`}
-            onClick={() => setVistaReportes('comparativa')}
-          >
-            <TrendingUp size={20} />
-            <span>Comparativa entre Ciclos</span>
-          </button>
-          <button
-            className={`view-switch-button ${vistaReportes === 'generados' ? 'active' : ''}`}
-            onClick={() => setVistaReportes('generados')}
-          >
-            <FileText size={20} />
-            <span>Reportes Generados</span>
-          </button>
+          {!esPublico && (
+            <button
+              className={`view-switch-button ${vistaReportes === 'comparativa' ? 'active' : ''}`}
+              onClick={() => setVistaReportes('comparativa')}
+            >
+              <TrendingUp size={20} />
+              <span>Comparativa entre Ciclos</span>
+            </button>
+          )}
+          {!esPublico && (
+            <button
+              className={`view-switch-button ${vistaReportes === 'generados' ? 'active' : ''}`}
+              onClick={() => setVistaReportes('generados')}
+            >
+              <FileText size={20} />
+              <span>Reportes Generados</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -95,10 +100,13 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady }: Repo
             <div className="no-data-container">
               <BarChart3 size={64} />
               <p className="no-data">No hay datos para el ciclo {cicloActual}.</p>
-              <p className="hint">Importa un Excel desde "Ingreso de Datos" y selecciona el ciclo correcto.</p>
+              {esPublico
+                ? <p className="hint">Los resultados de este ciclo aún no han sido publicados.</p>
+                : <p className="hint">Importa un Excel desde "Ingreso de Datos" y selecciona el ciclo correcto.</p>
+              }
             </div>
           ) : (
-            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} />
+            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} esPublico={esPublico} />
           )}
         </div>
       )}

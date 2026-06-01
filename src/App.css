@@ -3829,6 +3829,85 @@
   border-color: #1a365d;
   background: #f0f7ff;
 }
+.matriculados-row-input-enc {
+  border-color: #c3dafe;
+  color: #2b6cb0;
+}
+.matriculados-row-input-enc:focus {
+  border-color: #2b6cb0;
+  background: #ebf4ff;
+}
+
+.matriculados-col-headers {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0.4rem 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 0.2rem;
+}
+.matriculados-col-headers span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #718096;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.matriculados-col-headers span:first-child { flex: 1; }
+.matriculados-col-headers span:not(:first-child) { width: 75px; flex-shrink: 0; }
+
+.matriculados-row-input { width: 75px; }
+
+.matriculados-fac-subtotals { display: flex; gap: 0.4rem; align-items: center; }
+.matriculados-fac-subtotal-enc {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2b6cb0;
+  background: #ebf4ff;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+}
+
+.matriculados-enc-tag {
+  font-size: 0.75rem;
+  color: #2b6cb0;
+  background: #ebf4ff;
+  border-radius: 10px;
+  padding: 0.1rem 0.55rem;
+  font-weight: 600;
+}
+
+/* ── Vista pública ─────────────────────────────────── */
+.nav-public-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #2b6cb0;
+  background: #ebf4ff;
+  border: 1px solid #bee3f8;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.user-menu-publish {
+  color: #2b6cb0;
+}
+.user-menu-publish:hover {
+  background: #ebf4ff;
+  color: #1a365d;
+}
+
+.publish-msg {
+  font-size: 0.78rem;
+  color: #276749;
+  font-weight: 600;
+  margin-left: 0.6rem;
+  white-space: nowrap;
+}
 
 /* ═══════════════════════════════════════════════════════════
    GESTIÓN DE CICLOS — panel CRUD
