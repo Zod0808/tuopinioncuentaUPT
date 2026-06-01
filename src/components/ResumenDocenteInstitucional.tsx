@@ -1,6 +1,7 @@
 import { EvaluacionData } from '../types';
 import { Building2, Users, BookOpen, Download } from 'lucide-react';
 import { generarPDFResumenDocente } from '../services/pdfService';
+import { esValidoParaReporte, getExclusionReason } from '../services/reportCalculations';
 
 interface ResumenDocenteInstitucionalProps {
   datos: EvaluacionData[];
@@ -36,9 +37,9 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
     }
   };
 
-  // Agrupar todos los datos por docente (sin importar facultad o carrera)
+  // Agrupar por docente usando solo registros válidos para los promedios
   const docentesMap = new Map<string, EvaluacionData[]>();
-  datos.forEach(dato => {
+  datos.filter(esValidoParaReporte).forEach(dato => {
     const docente = dato.docente;
     if (!docentesMap.has(docente)) {
       docentesMap.set(docente, []);
@@ -71,6 +72,25 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
 
   // Ordenar alfabéticamente por docente
   docentesResumen.sort((a, b) => a.docente.localeCompare(b.docente));
+
+  // Docentes cuyos cursos todos fueron excluidos
+  const todosDocentes = [...new Set(datos.map(d => d.docente))];
+  const docentesExcluidos = todosDocentes
+    .filter(doc => !docentesMap.has(doc))
+    .map(doc => {
+      const cursos = datos.filter(d => d.docente === doc);
+      const razones = new Set(cursos.map(c => getExclusionReason(c)));
+      let motivo: string;
+      if (razones.has('sin_datos') && !razones.has('no_valido')) {
+        motivo = 'Sin estudiantes registrados (0 encuestados y 0 no encuestados)';
+      } else if (!razones.has('sin_datos') && razones.has('no_valido')) {
+        motivo = 'Evaluación no válida: mayoría no respondió con calificación INSATISFACTORIO';
+      } else {
+        motivo = 'Combinación: cursos sin datos y/o evaluaciones no válidas';
+      }
+      return { docente: doc, cantidadCursos: cursos.length, motivo };
+    })
+    .sort((a, b) => a.docente.localeCompare(b.docente));
 
   // Calcular totales institucionales
   const totalDocentes = docentesResumen.length;
@@ -211,6 +231,7 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
                   <th>Promedio</th>
                   <th>Encuestados</th>
                   <th>No Encuestados</th>
+                  <th>Validez</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,6 +294,14 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
                         )}
                         <td className="text-center">{dato.encuestados}</td>
                         <td className="text-center">{dato.noEncuestados}</td>
+                        <td>
+                          {(() => {
+                            const reason = getExclusionReason(dato);
+                            const badgeClass = reason === null ? 'badge-success' : 'badge-warning';
+                            const badgeText = reason === null ? 'Válido' : reason === 'sin_datos' ? 'Sin datos' : 'No válido';
+                            return <span className={`badge ${badgeClass}`}>{badgeText}</span>;
+                          })()}
+                        </td>
                       </tr>
                     );
                   });
@@ -281,6 +310,39 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
             </table>
           </div>
         </div>
+
+        {/* Tabla 3: Docentes excluidos del reporte */}
+        {docentesExcluidos.length > 0 && (
+          <div className="table-section excluded-section">
+            <h4>Docentes sin promedio calculable</h4>
+            <p className="exclusion-notice">
+              Los siguientes docentes no cuentan con registros válidos para el cálculo de promedio
+              y han sido excluidos del reporte estadístico:
+            </p>
+            <div className="faculty-table-container">
+              <table className="faculty-table">
+                <thead>
+                  <tr>
+                    <th>N°</th>
+                    <th>Docente</th>
+                    <th>Cursos Registrados</th>
+                    <th>Motivo de Exclusión</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {docentesExcluidos.map((exc, idx) => (
+                    <tr key={exc.docente} className="row-excluded">
+                      <td>{idx + 1}</td>
+                      <td>{exc.docente}</td>
+                      <td className="text-center">{exc.cantidadCursos}</td>
+                      <td><span className="badge badge-warning">{exc.motivo}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

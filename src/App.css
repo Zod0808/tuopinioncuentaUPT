@@ -778,6 +778,24 @@
   color: white;
 }
 
+.excluded-section {
+  border-left: 3px solid #ff9800;
+  padding-left: 12px;
+  margin-top: 16px;
+}
+
+.exclusion-notice {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+.row-excluded td {
+  opacity: 0.75;
+  background: #fff8f0;
+}
+
 /* Charts Styles */
 .charts-container {
   background: white;

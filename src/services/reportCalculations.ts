@@ -63,6 +63,16 @@ function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
+export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'no_valido' | null {
+  if (r.encuestados === 0 && r.noEncuestados === 0) return 'sin_datos';
+  if (r.noEncuestados > r.encuestados && r.calificacion === 'INSATISFACTORIO') return 'no_valido';
+  return null;
+}
+
+export function esValidoParaReporte(r: EvaluacionData): boolean {
+  return getExclusionReason(r) === null;
+}
+
 export function calcularResumen(
   registros: EvaluacionData[],
   matriculados: MatriculadosEntry[]
@@ -97,22 +107,22 @@ export function calcularResumen(
       const totalNoEnc = useOficial
         ? Math.max(0, totalMatr - totalEnc)
         : regs.reduce((s, r) => s + r.noEncuestados, 0);
-      const ae01 = avg(regs.map(r => r.ae01));
-      const ae02 = avg(regs.map(r => r.ae02));
-      const ae03 = avg(regs.map(r => r.ae03));
-      const ae04 = avg(regs.map(r => r.ae04));
+      const regsValidos = regs.filter(esValidoParaReporte);
+      const ae01 = avg(regsValidos.map(r => r.ae01));
+      const ae02 = avg(regsValidos.map(r => r.ae02));
+      const ae03 = avg(regsValidos.map(r => r.ae03));
+      const ae04 = avg(regsValidos.map(r => r.ae04));
       const general = avg([ae01, ae02, ae03, ae04]);
 
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
       for (const cal of CALIFICACIONES) {
-        // Usar calificacion del registro; si no coincide, recalcular por nota
-        const cnt = regs.filter(r => {
+        const cnt = regsValidos.filter(r => {
           const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
             ? r.calificacion as Calificacion
             : calcularCalificacion(r.nota);
           return c === cal;
         }).length;
-        distrib[cal] = { cantidad: cnt, porcentaje: regs.length ? (cnt / regs.length) * 100 : 0 };
+        distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
 
       carrerasResult.set(carrera, {
@@ -120,7 +130,7 @@ export function calcularResumen(
         totalNoEncuestados: totalNoEnc,
         porcentajeEncuestados: totalMatr > 0 ? (totalEnc / totalMatr) * 100 : 0,
         promedioAE01: ae01, promedioAE02: ae02, promedioAE03: ae03, promedioAE04: ae04,
-        promedioGeneral: general, seccionesCalificadas: regs.length, distribucion: distrib, registros: regs,
+        promedioGeneral: general, seccionesCalificadas: regsValidos.length, distribucion: distrib, registros: regs,
       });
 
       facTotalMatr += totalMatr;
@@ -131,23 +141,23 @@ export function calcularResumen(
     const facAE01p = avg(facAE01), facAE02p = avg(facAE02), facAE03p = avg(facAE03), facAE04p = avg(facAE04);
     const facGeneral = avg([facAE01p, facAE02p, facAE03p, facAE04p]);
 
-    // Indicador plan estratégico = % BUENO + DESTACADO entre todas las secciones de la facultad
-    const allRegs = [...carreraMap.values()].flat();
-    const buenoDestacado = allRegs.filter(r => {
+    // Indicador plan estratégico = % BUENO + DESTACADO entre secciones válidas de la facultad
+    const allRegsValidos = [...carreraMap.values()].flat().filter(esValidoParaReporte);
+    const buenoDestacado = allRegsValidos.filter(r => {
       const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
         ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
       return c === 'BUENO' || c === 'DESTACADO';
     }).length;
-    const pBueno = allRegs.length ? allRegs.filter(r => {
+    const pBueno = allRegsValidos.length ? allRegsValidos.filter(r => {
       const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
         ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
       return c === 'BUENO';
-    }).length / allRegs.length * 100 : 0;
-    const pDestacado = allRegs.length ? allRegs.filter(r => {
+    }).length / allRegsValidos.length * 100 : 0;
+    const pDestacado = allRegsValidos.length ? allRegsValidos.filter(r => {
       const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
         ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
       return c === 'DESTACADO';
-    }).length / allRegs.length * 100 : 0;
+    }).length / allRegsValidos.length * 100 : 0;
 
     facultadesMap.set(facultad, {
       facultad, totalMatriculados: facTotalMatr, totalEncuestados: facTotalEnc,
@@ -155,7 +165,7 @@ export function calcularResumen(
       promedioAE01: facAE01p, promedioAE02: facAE02p, promedioAE03: facAE03p, promedioAE04: facAE04p,
       promedioGeneral: facGeneral,
       porcBueno: pBueno, porcDestacado: pDestacado,
-      indicadorPlanEstrategico: allRegs.length ? (buenoDestacado / allRegs.length) * 100 : 0,
+      indicadorPlanEstrategico: allRegsValidos.length ? (buenoDestacado / allRegsValidos.length) * 100 : 0,
       carreras: carrerasResult,
     });
   }
@@ -164,7 +174,7 @@ export function calcularResumen(
   const allFac = [...facultadesMap.values()];
   const totalMatr = allFac.reduce((s, f) => s + f.totalMatriculados, 0);
   const totalEnc = allFac.reduce((s, f) => s + f.totalEncuestados, 0);
-  const allRegsGlobal = registros;
+  const allRegsGlobal = registros.filter(esValidoParaReporte);
   const buenoDestGlobal = allRegsGlobal.filter(r => {
     const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
       ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
