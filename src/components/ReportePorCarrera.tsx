@@ -11,7 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
-import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
+import { MatriculadosEntry, normalizeStr, coreCarreraStr } from '../services/reportCalculations';
 import { Users, TrendingUp, Award, BookOpen } from 'lucide-react';
 
 ChartJS.register(
@@ -104,8 +104,10 @@ export default function ReportePorCarrera({ datos, onGraficoReady, matriculados 
   }
 
   // Calcular estadísticas de la carrera usando datos oficiales cuando estén disponibles
+  const normSel = normalizeStr(carreraSeleccionada);
+  const coreSel = coreCarreraStr(carreraSeleccionada);
   const matCarrera = matriculados.find(m =>
-    normalizeStr(m.carrera) === normalizeStr(carreraSeleccionada)
+    normalizeStr(m.carrera) === normSel || coreCarreraStr(m.carrera) === coreSel
   );
   const totalMatOficial = matCarrera?.totalMatriculados ?? 0;
   const totalEncOficial = matCarrera?.totalEncuestados ?? 0;
