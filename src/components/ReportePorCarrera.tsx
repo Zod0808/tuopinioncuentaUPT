@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
 import { Users, TrendingUp, Award, BookOpen } from 'lucide-react';
 
 ChartJS.register(
@@ -26,9 +27,10 @@ ChartJS.register(
 interface ReportePorCarreraProps {
   datos: EvaluacionData[];
   onGraficoReady?: (element: HTMLElement, index: number) => void;
+  matriculados?: MatriculadosEntry[];
 }
 
-export default function ReportePorCarrera({ datos, onGraficoReady }: ReportePorCarreraProps) {
+export default function ReportePorCarrera({ datos, onGraficoReady, matriculados = [] }: ReportePorCarreraProps) {
   const [carreraSeleccionada, setCarreraSeleccionada] = useState<string>('');
   const grafico1Ref = useRef<HTMLDivElement>(null);
   const grafico2Ref = useRef<HTMLDivElement>(null);
@@ -101,12 +103,18 @@ export default function ReportePorCarrera({ datos, onGraficoReady }: ReportePorC
     );
   }
 
-  // Calcular estadísticas de la carrera
-  const totalEncuestados = datosCarrera.reduce((sum, d) => sum + d.encuestados, 0);
-  const totalNoEncuestados = datosCarrera.reduce((sum, d) => sum + d.noEncuestados, 0);
-  const totalEstudiantes = totalEncuestados + totalNoEncuestados;
-  const porcentajeEncuestados = totalEstudiantes > 0 
-    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2) 
+  // Calcular estadísticas de la carrera usando datos oficiales cuando estén disponibles
+  const matCarrera = matriculados.find(m =>
+    normalizeStr(m.carrera) === normalizeStr(carreraSeleccionada)
+  );
+  const totalMatOficial = matCarrera?.totalMatriculados ?? 0;
+  const totalEncOficial = matCarrera?.totalEncuestados ?? 0;
+  const usarOficial = totalMatOficial > 0;
+
+  const totalEncuestados = usarOficial ? totalEncOficial : datosCarrera.reduce((sum, d) => sum + d.encuestados, 0);
+  const totalEstudiantes = usarOficial ? totalMatOficial : totalEncuestados + datosCarrera.reduce((sum, d) => sum + d.noEncuestados, 0);
+  const porcentajeEncuestados = totalEstudiantes > 0
+    ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2)
     : '0.00';
 
   const promedioAE01 = datosCarrera.length > 0 

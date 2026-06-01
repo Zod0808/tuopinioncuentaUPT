@@ -11,7 +11,8 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
-import { MatriculadosEntry } from '../services/reportCalculations';
+import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
+import { FACULTADES } from '../config/universityStructure';
 import { Users, TrendingUp, Award } from 'lucide-react';
 
 ChartJS.register(
@@ -58,13 +59,17 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
   }
 
   // Totales oficiales desde MatriculadosImporter (por facultad)
+  // Las claves se normalizan y se añaden tanto para el código ('FAEDCOH') como el nombre completo
   const matByFac = new Map<string, { mat: number; enc: number }>();
+  const addMatFac = (key: string, mat: number, enc: number) => {
+    const nk = normalizeStr(key);
+    const prev = matByFac.get(nk) ?? { mat: 0, enc: 0 };
+    matByFac.set(nk, { mat: prev.mat + mat, enc: prev.enc + enc });
+  };
   for (const m of matriculados) {
-    const prev = matByFac.get(m.facultad) ?? { mat: 0, enc: 0 };
-    matByFac.set(m.facultad, {
-      mat: prev.mat + m.totalMatriculados,
-      enc: prev.enc + (m.totalEncuestados ?? 0),
-    });
+    addMatFac(m.facultad, m.totalMatriculados, m.totalEncuestados ?? 0);
+    const nombre = FACULTADES[m.facultad]?.nombre;
+    if (nombre) addMatFac(nombre, m.totalMatriculados, m.totalEncuestados ?? 0);
   }
   const totalMatOficial = [...matByFac.values()].reduce((s, v) => s + v.mat, 0);
   const totalEncOficial = [...matByFac.values()].reduce((s, v) => s + v.enc, 0);
@@ -98,7 +103,7 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
   const facultades = ['FADE', 'FAEDCOH', 'FAING', 'FACEM', 'FAU', 'FACSA']; // Orden correcto según el usuario
   const datosPorFacultad = facultades.map(facultad => {
     const datosFacultad = datos.filter(d => d.facultad === facultad);
-    const matFac = matByFac.get(facultad);
+    const matFac = matByFac.get(normalizeStr(facultad));
     const encFromRec = datosFacultad.reduce((sum, d) => sum + d.encuestados, 0);
     const noEncFromRec = datosFacultad.reduce((sum, d) => sum + d.noEncuestados, 0);
     const encuestados = usarOficial && matFac ? matFac.enc : encFromRec;

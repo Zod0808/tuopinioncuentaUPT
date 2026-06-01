@@ -11,7 +11,8 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
-import { MatriculadosEntry } from '../services/reportCalculations';
+import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
+import { FACULTADES } from '../config/universityStructure';
 import { Users, TrendingUp, Award, GraduationCap } from 'lucide-react';
 
 ChartJS.register(
@@ -103,7 +104,13 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   }
 
   // Totales oficiales para la facultad seleccionada (desde MatriculadosImporter)
-  const matFac = matriculados.filter(m => m.facultad === facultadSeleccionada);
+  // Compara normalizando para tolerar código/nombre completo y diferencias de tildes
+  const normSel = normalizeStr(facultadSeleccionada);
+  const matFac = matriculados.filter(m => {
+    if (normalizeStr(m.facultad) === normSel) return true;
+    const nombre = FACULTADES[m.facultad]?.nombre;
+    return nombre ? normalizeStr(nombre) === normSel : false;
+  });
   const totalMatOficial = matFac.reduce((s, m) => s + m.totalMatriculados, 0);
   const totalEncOficial = matFac.reduce((s, m) => s + (m.totalEncuestados ?? 0), 0);
   const usarOficial = totalMatOficial > 0;
