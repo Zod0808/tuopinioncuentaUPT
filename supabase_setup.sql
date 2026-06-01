@@ -1,63 +1,78 @@
 -- ============================================================
 -- EJECUTAR ESTE SQL EN: Supabase > SQL Editor > New Query
+-- Es idempotente: se puede ejecutar varias veces sin error.
 -- ============================================================
 
--- 1. Crear tabla de datos de evaluación por ciclo y usuario
-create table if not exists evaluaciones_data (
-  id          uuid        default gen_random_uuid() primary key,
-  user_id     uuid        references auth.users(id) on delete cascade not null,
-  ciclo       text        not null,
-  datos       jsonb       default '[]'::jsonb not null,
-  created_at  timestamptz default now(),
-  updated_at  timestamptz default now(),
-  unique(user_id, ciclo)
+-- ── TABLA 1: evaluaciones ────────────────────────────────
+CREATE TABLE IF NOT EXISTS evaluaciones_data (
+  id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  ciclo       text        NOT NULL,
+  datos       jsonb       DEFAULT '[]' NOT NULL,
+  created_at  timestamptz DEFAULT now(),
+  updated_at  timestamptz DEFAULT now(),
+  UNIQUE(user_id, ciclo)
 );
 
--- 2. Habilitar Row Level Security (cada usuario solo ve sus datos)
-alter table evaluaciones_data enable row level security;
+ALTER TABLE evaluaciones_data ENABLE ROW LEVEL SECURITY;
 
--- 3. Políticas de seguridad
-create policy "ver_propios_datos"
-  on evaluaciones_data for select
-  using (auth.uid() = user_id);
+DROP POLICY IF EXISTS "ver_propios_datos"         ON evaluaciones_data;
+DROP POLICY IF EXISTS "insertar_propios_datos"    ON evaluaciones_data;
+DROP POLICY IF EXISTS "actualizar_propios_datos"  ON evaluaciones_data;
+DROP POLICY IF EXISTS "eliminar_propios_datos"    ON evaluaciones_data;
 
-create policy "insertar_propios_datos"
-  on evaluaciones_data for insert
-  with check (auth.uid() = user_id);
+CREATE POLICY "ver_propios_datos"         ON evaluaciones_data FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "insertar_propios_datos"    ON evaluaciones_data FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "actualizar_propios_datos"  ON evaluaciones_data FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "eliminar_propios_datos"    ON evaluaciones_data FOR DELETE USING (auth.uid() = user_id);
 
-create policy "actualizar_propios_datos"
-  on evaluaciones_data for update
-  using (auth.uid() = user_id);
+CREATE INDEX IF NOT EXISTS idx_evaluaciones_user_ciclo ON evaluaciones_data(user_id, ciclo);
 
-create policy "eliminar_propios_datos"
-  on evaluaciones_data for delete
-  using (auth.uid() = user_id);
-
--- 4. Índice para consultas rápidas por usuario y ciclo
-create index if not exists idx_evaluaciones_user_ciclo
-  on evaluaciones_data(user_id, ciclo);
-
--- ============================================================
--- TABLA 2: Total de matriculados por carrera y ciclo
--- ============================================================
-create table if not exists matriculados_por_ciclo (
-  id                 uuid        default gen_random_uuid() primary key,
-  user_id            uuid        references auth.users(id) on delete cascade not null,
-  ciclo              text        not null,
-  facultad           text        not null,
-  carrera            text        not null,
-  total_matriculados integer     not null default 0,
-  created_at         timestamptz default now(),
-  updated_at         timestamptz default now(),
-  unique(user_id, ciclo, facultad, carrera)
+-- ── TABLA 2: matriculados ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS matriculados_por_ciclo (
+  id                  uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id             uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  ciclo               text        NOT NULL,
+  facultad            text        NOT NULL,
+  carrera             text        NOT NULL,
+  total_matriculados  integer     NOT NULL DEFAULT 0,
+  total_encuestados   integer     NOT NULL DEFAULT 0,
+  created_at          timestamptz DEFAULT now(),
+  updated_at          timestamptz DEFAULT now(),
+  UNIQUE(user_id, ciclo, facultad, carrera)
 );
 
-alter table matriculados_por_ciclo enable row level security;
+-- Migración: agregar columna si la tabla ya existía sin ella
+ALTER TABLE matriculados_por_ciclo
+  ADD COLUMN IF NOT EXISTS total_encuestados integer NOT NULL DEFAULT 0;
 
-create policy "ver_matriculados"       on matriculados_por_ciclo for select using (auth.uid() = user_id);
-create policy "insertar_matriculados"  on matriculados_por_ciclo for insert with check (auth.uid() = user_id);
-create policy "actualizar_matriculados" on matriculados_por_ciclo for update using (auth.uid() = user_id);
-create policy "eliminar_matriculados"  on matriculados_por_ciclo for delete using (auth.uid() = user_id);
+ALTER TABLE matriculados_por_ciclo ENABLE ROW LEVEL SECURITY;
 
-create index if not exists idx_matriculados_user_ciclo
-  on matriculados_por_ciclo(user_id, ciclo);
+DROP POLICY IF EXISTS "ver_matriculados"         ON matriculados_por_ciclo;
+DROP POLICY IF EXISTS "insertar_matriculados"    ON matriculados_por_ciclo;
+DROP POLICY IF EXISTS "actualizar_matriculados"  ON matriculados_por_ciclo;
+DROP POLICY IF EXISTS "eliminar_matriculados"    ON matriculados_por_ciclo;
+
+CREATE POLICY "ver_matriculados"         ON matriculados_por_ciclo FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "insertar_matriculados"    ON matriculados_por_ciclo FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "actualizar_matriculados"  ON matriculados_por_ciclo FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "eliminar_matriculados"    ON matriculados_por_ciclo FOR DELETE USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_matriculados_user_ciclo ON matriculados_por_ciclo(user_id, ciclo);
+
+-- ── TABLA 3: reportes públicos ────────────────────────────
+-- El público lee sin autenticar; solo admins escriben.
+CREATE TABLE IF NOT EXISTS public_reports (
+  ciclo         text        PRIMARY KEY,
+  datos         jsonb       NOT NULL DEFAULT '[]',
+  matriculados  jsonb       NOT NULL DEFAULT '[]',
+  published_at  timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public_reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public_reports_read"  ON public_reports;
+DROP POLICY IF EXISTS "public_reports_write" ON public_reports;
+
+CREATE POLICY "public_reports_read"  ON public_reports FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_reports_write" ON public_reports FOR ALL   TO authenticated        USING (true) WITH CHECK (true);

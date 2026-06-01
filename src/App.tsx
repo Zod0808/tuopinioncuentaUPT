@@ -12,12 +12,14 @@ import { loadMatriculados, deleteMatriculados } from './services/matriculadosSer
 import {
   isSupabaseConfigured,
   onAuthStateChange,
-  getCurrentUser,
   signOut,
   saveEvaluacionData,
   loadEvaluacionData,
   getCiclosDisponibles,
   deleteEvaluacionData,
+  publishReport,
+  loadPublicReport,
+  getPublicCiclos,
 } from './services/supabaseService';
 import './App.css';
 
@@ -33,31 +35,63 @@ function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [cicloActual, setCicloActual] = useState(CICLO_DEFAULT);
   const [ciclosDisponibles, setCiclosDisponibles] = useState<string[]>([]);
+  const [ciclosPublicos, setCiclosPublicos] = useState<string[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+  const [publishMsg, setPublishMsg] = useState('');
+
+  // Ref para acceder al cicloActual sin recrear el efecto de auth
+  const cicloRef = useRef<string>(CICLO_DEFAULT);
+  useEffect(() => { cicloRef.current = cicloActual; }, [cicloActual]);
+
+  async function loadPublicDataForAnon(ciclo: string) {
+    if (!isSupabaseConfigured()) return;
+    setLoadingData(true);
+    try {
+      const [ciclos, report] = await Promise.all([getPublicCiclos(), loadPublicReport(ciclo)]);
+      setCiclosPublicos(ciclos);
+      if (report) {
+        setDatos(report.datos);
+        setMatriculados(report.matriculados);
+      } else if (ciclos.length > 0 && ciclos[0] !== ciclo) {
+        const fallback = await loadPublicReport(ciclos[0]);
+        setCicloActual(ciclos[0]);
+        setDatos(fallback?.datos ?? []);
+        setMatriculados(fallback?.matriculados ?? []);
+      } else {
+        setDatos([]);
+        setMatriculados([]);
+      }
+    } catch (err) {
+      console.error('Error cargando datos públicos:', err);
+      setDatos([]);
+    } finally {
+      setLoadingData(false);
+    }
+  }
 
   // ── Auth state ──────────────────────────────────────────────────────────
   useEffect(() => {
-    // Verificar sesión existente al montar
-    getCurrentUser().then(user => {
-      setCurrentUser(user);
-      if (user) loadUserData(user, cicloActual);
-    });
+    if (!isSupabaseConfigured()) {
+      loadPublicDataForAnon(CICLO_DEFAULT);
+      return;
+    }
 
-    if (!isSupabaseConfigured()) return;
-
-    const unsubscribe = onAuthStateChange(async (user) => {
-      setCurrentUser(user);
+    const unsubscribe = onAuthStateChange(async (user, event) => {
       if (user) {
-        const ciclos = await getCiclosDisponibles();
-        setCiclosDisponibles(ciclos);
-        // Si el ciclo actual ya tiene datos en la nube, cargarlo; si no, mantener estado
-        await loadUserData(user, cicloActual);
+        setCurrentUser(user);
+        // Solo cargar datos en eventos de sesión nueva, no en token refresh
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          await loadUserData(user, cicloRef.current);
+        }
       } else {
-        // Al cerrar sesión: limpiar datos y volver a localStorage
+        setCurrentUser(null);
         setCiclosDisponibles([]);
-        const local = localStorage.getItem(LS_KEY(cicloActual));
-        setDatos(local ? JSON.parse(local) : []);
+        setMatriculados([]);
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+          setVistaActual('reportes');
+          await loadPublicDataForAnon(cicloRef.current);
+        }
       }
     });
 
@@ -108,8 +142,7 @@ function App() {
     if (currentUser) {
       await loadUserData(currentUser, nuevoCiclo);
     } else {
-      const local = localStorage.getItem(LS_KEY(nuevoCiclo));
-      setDatos(local ? JSON.parse(local) : []);
+      await loadPublicDataForAnon(nuevoCiclo);
     }
   };
 
@@ -233,11 +266,19 @@ function App() {
     setDatos([]);
   };
 
-  const handleAuthSuccess = async () => {
-    const user = await getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      await loadUserData(user, cicloActual);
+  // onAuthStateChange maneja la carga de datos; aquí solo cerramos el modal
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+  };
+
+  const handlePublicar = async () => {
+    if (!currentUser) return;
+    const ok = await publishReport(cicloActual, datos, matriculados);
+    setPublishMsg(ok ? `✓ Ciclo ${cicloActual} publicado` : '✗ Error al publicar');
+    setTimeout(() => setPublishMsg(''), 4000);
+    if (ok) {
+      const ciclos = await getPublicCiclos();
+      setCiclosPublicos(ciclos);
     }
   };
 
@@ -265,7 +306,10 @@ function App() {
         onLogout={handleLogout}
         cicloActual={cicloActual}
         ciclosDisponibles={ciclosDisponibles}
+        ciclosPublicos={ciclosPublicos}
         onCicloChange={handleCicloChange}
+        onPublicar={handlePublicar}
+        publishMsg={publishMsg}
       />
 
       <main className="app-main">
@@ -275,7 +319,7 @@ function App() {
               <div className="spinner" />
               <p>Cargando datos del ciclo {cicloActual}...</p>
             </div>
-          ) : vistaActual === 'datos' ? (
+          ) : vistaActual === 'datos' && currentUser ? (
             <DataEntryView
               datos={datos}
               graficosElements={graficosElements}
@@ -294,12 +338,17 @@ function App() {
               onDeleteCicloDb={handleDeleteCicloDb}
               onRefreshCiclos={handleRefreshCiclos}
             />
-          ) : vistaActual === 'informe' ? (
+          ) : vistaActual === 'informe' && currentUser ? (
             <InformeFinalView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
-          ) : vistaActual === 'recomendaciones' ? (
+          ) : vistaActual === 'recomendaciones' && currentUser ? (
             <RecomendacionesIAView datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
           ) : (
-            <ReportsView datos={datos} cicloActual={cicloActual} onGraficoReady={handleGraficoReady} />
+            <ReportsView
+              datos={datos}
+              cicloActual={cicloActual}
+              onGraficoReady={handleGraficoReady}
+              esPublico={!currentUser}
+            />
           )}
         </div>
       </main>

@@ -4,7 +4,7 @@ import {
   PageBreak, ShadingType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { ResumenInstitucional, DatosCarrera, DatosFacultad, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion } from './reportCalculations';
+import { ResumenInstitucional, DatosCarrera, DatosFacultad, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from './reportCalculations';
 import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION } from '../config/universityStructure';
 
 // ── Helpers de celdas ─────────────────────────────────────────────────────────
@@ -139,20 +139,42 @@ function tablaParticipacionInstitucional(resumen: ResumenInstitucional): Table {
 // ── Sección 3.2: Participación por facultad ───────────────────────────────────
 
 function tablaParticipacionFacultad(cod: string, f: DatosFacultad): Table {
+  const carreras = [...f.carreras.values()];
+  const esSimple = carreras.length === 1;
   const rows: TableRow[] = [
     new TableRow({ children: [celdaHOscura(FACULTADES[cod]?.nombre ?? cod, 4)] }),
-    new TableRow({ children: [celdaH('Carrera Profesional'), celdaH('N° de estudiantes'), celdaH('N° de estudiantes encuestados'), celdaH('% de estudiantes encuestados')] }),
   ];
-  for (const [, c] of f.carreras) {
+
+  if (esSimple) {
+    // Monofacultad: mostrar solo el consolidado sin fila de carrera redundante
+    rows[0] = new TableRow({ children: [celdaHOscura(FACULTADES[cod]?.nombre ?? cod, 3)] });
     rows.push(new TableRow({ children: [
-      celda(c.carrera), celda(c.totalMatriculados.toString(), true),
-      celda(c.totalEncuestados.toString(), true), celda(c.porcentajeEncuestados.toFixed(2) + '%', true, true),
+      celdaH('N° de estudiantes matriculados'),
+      celdaH('N° de estudiantes encuestados'),
+      celdaH('% de estudiantes encuestados'),
+    ]}));
+    rows.push(new TableRow({ children: [
+      celda(f.totalMatriculados.toString(), true, true),
+      celda(f.totalEncuestados.toString(), true, true),
+      celda(f.porcentajeEncuestados.toFixed(2) + '%', true, true),
+    ]}));
+  } else {
+    // Polifacultad: desglose por carrera + total
+    rows.push(new TableRow({ children: [
+      celdaH('Carrera Profesional'), celdaH('N° de estudiantes'), celdaH('N° de estudiantes encuestados'), celdaH('% de estudiantes encuestados'),
+    ]}));
+    for (const [, c] of f.carreras) {
+      rows.push(new TableRow({ children: [
+        celda(c.carrera), celda(c.totalMatriculados.toString(), true),
+        celda(c.totalEncuestados.toString(), true), celda(c.porcentajeEncuestados.toFixed(2) + '%', true, true),
+      ]}));
+    }
+    rows.push(new TableRow({ children: [
+      celda('TOTAL', false, true, GRIS_ROW), celda(f.totalMatriculados.toString(), true, true, GRIS_ROW),
+      celda(f.totalEncuestados.toString(), true, true, GRIS_ROW), celda(f.porcentajeEncuestados.toFixed(2) + '%', true, true, GRIS_ROW),
     ]}));
   }
-  rows.push(new TableRow({ children: [
-    celda('TOTAL', false, true, GRIS_ROW), celda(f.totalMatriculados.toString(), true, true, GRIS_ROW),
-    celda(f.totalEncuestados.toString(), true, true, GRIS_ROW), celda(f.porcentajeEncuestados.toFixed(2) + '%', true, true, GRIS_ROW),
-  ]}));
+
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows });
 }
 
@@ -374,7 +396,7 @@ export async function generarInformeFinalDocx(
     salto(),
     tablaAEInstitucional(resumen),
     salto(),
-    parrafo(`Interpretación: El aspecto mejor calificado en todas las facultades es la calidad de la presentación y contenido del sílabo (${resumen.promedioAE01.toFixed(2)}). En cambio, el aspecto con menor calificación es la formación actitudinal y relaciones interpersonales con los estudiantes (${resumen.promedioAE04.toFixed(2)}).`),
+    parrafo(`Interpretación: ${interpretarInstitucionAE(resumen)}`),
     salto(),
   );
 
@@ -451,14 +473,14 @@ export async function generarInformeFinalDocx(
     titulo('5. CONCLUSIONES', HeadingLevel.HEADING_1), salto(),
     parrafo(`Los resultados de la encuesta académica empleadas por las Carreras Profesionales permitieron identificar fortalezas y oportunidades de mejora en el proceso de enseñanza aprendizaje, constituyendo un insumo clave para el cumplimiento de los objetivos institucionales respecto a la evaluación del desempeño docente como lo establece la normatividad vigente.`),
     salto(),
-    parrafo(`Del total de ${resumen.totalMatriculados.toLocaleString()} estudiantes matriculados en el semestre académico ${ciclo}, ${resumen.totalEncuestados.toLocaleString()} estudiantes han aplicado la encuesta académica, lo que representa un ${resumen.porcentajeEncuestados.toFixed(2)}% de participación.`),
+    parrafo(generarConclusion1(resumen, ciclo)),
     salto(),
   );
 
   // ── 6. Recomendaciones ──
   children.push(
     titulo('6. RECOMENDACIONES', HeadingLevel.HEADING_1), salto(),
-    parrafo('Dado que el indicador con menor porcentaje fue "Formación actitudinal y relaciones interpersonales con los estudiantes", se recomienda en el marco del proceso de mejora continua de la calidad académica, implementen estrategias orientadas al fortalecimiento de las competencias actitudinales, comunicativas y socioemocionales del docente. Estas acciones deben promover un clima educativo basado en el respeto, la empatía y la comunicación asertiva, factores esenciales para favorecer la motivación, la participación activa y el bienestar de los estudiantes.'),
+    parrafo(generarRecomendacion1(resumen)),
     salto(),
     parrafo('Se recomienda incentivar y motivar la participación activa de los estudiantes en la aplicación de la encuesta académica, considerando que los criterios evaluados constituyen aspectos fundamentales para valorar el desempeño docente y la calidad del proceso formativo.'),
     salto(),

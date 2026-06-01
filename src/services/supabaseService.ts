@@ -1,5 +1,6 @@
 import { createClient, User } from '@supabase/supabase-js';
 import { EvaluacionData } from '../types';
+import { MatriculadosEntry } from './reportCalculations';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://agswvyjifhrrwclfvwur.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnc3d2eWppZmhycndjbGZ2d3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTcyMzUsImV4cCI6MjA5NDk5MzIzNX0.4T3uLC7hiADUM91fvU8qHRIUYJaPKn7rROEHYwTv4mg';
@@ -35,10 +36,10 @@ export async function getCurrentUser(): Promise<User | null> {
   return user;
 }
 
-export function onAuthStateChange(callback: (user: User | null) => void) {
+export function onAuthStateChange(callback: (user: User | null, event: string) => void) {
   if (!supabase) return () => {};
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
   });
   return () => subscription.unsubscribe();
 }
@@ -114,6 +115,41 @@ export async function loadAllCyclesData(): Promise<Record<string, EvaluacionData
     }
   }
   return result;
+}
+
+// ─── Public reports (sin autenticación) ──────────────────────────────────────
+
+export async function publishReport(ciclo: string, datos: EvaluacionData[], matriculados: MatriculadosEntry[]): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from('public_reports')
+    .upsert({ ciclo, datos, matriculados, published_at: new Date().toISOString() }, { onConflict: 'ciclo' });
+  if (error) { console.error('Error publicando reporte:', error); return false; }
+  return true;
+}
+
+export async function loadPublicReport(ciclo: string): Promise<{ datos: EvaluacionData[]; matriculados: MatriculadosEntry[] } | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('public_reports')
+    .select('datos, matriculados')
+    .eq('ciclo', ciclo)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    datos: data.datos as EvaluacionData[],
+    matriculados: data.matriculados as MatriculadosEntry[],
+  };
+}
+
+export async function getPublicCiclos(): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('public_reports')
+    .select('ciclo')
+    .order('ciclo', { ascending: false });
+  if (error || !data) return [];
+  return data.map((r: { ciclo: string }) => r.ciclo);
 }
 
 export async function deleteEvaluacionData(ciclo: string): Promise<boolean> {

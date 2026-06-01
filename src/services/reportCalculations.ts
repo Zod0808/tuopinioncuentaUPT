@@ -5,6 +5,7 @@ export interface MatriculadosEntry {
   facultad: string;
   carrera: string;
   totalMatriculados: number;
+  totalEncuestados?: number;
 }
 
 export interface DatosCarrera {
@@ -66,9 +67,9 @@ export function calcularResumen(
   registros: EvaluacionData[],
   matriculados: MatriculadosEntry[]
 ): ResumenInstitucional {
-  const matriculadosMap = new Map<string, number>();
+  const matriculadosMap = new Map<string, MatriculadosEntry>();
   for (const m of matriculados) {
-    matriculadosMap.set(`${m.facultad}||${m.carrera}`, m.totalMatriculados);
+    matriculadosMap.set(`${m.facultad}||${m.carrera}`, m);
   }
 
   // Agrupar por facultad → carrera
@@ -88,9 +89,14 @@ export function calcularResumen(
     const facAE01: number[] = [], facAE02: number[] = [], facAE03: number[] = [], facAE04: number[] = [];
 
     for (const [carrera, regs] of carreraMap) {
-      const totalMatr = matriculadosMap.get(`${facultad}||${carrera}`) ?? 0;
-      const totalEnc = regs.reduce((s, r) => s + r.encuestados, 0);
-      const totalNoEnc = regs.reduce((s, r) => s + r.noEncuestados, 0);
+      const matEntry = matriculadosMap.get(`${facultad}||${carrera}`);
+      const totalMatr = matEntry?.totalMatriculados ?? 0;
+      const encOficial = matEntry?.totalEncuestados ?? 0;
+      const useOficial = encOficial > 0;
+      const totalEnc = useOficial ? encOficial : regs.reduce((s, r) => s + r.encuestados, 0);
+      const totalNoEnc = useOficial
+        ? Math.max(0, totalMatr - totalEnc)
+        : regs.reduce((s, r) => s + r.noEncuestados, 0);
       const ae01 = avg(regs.map(r => r.ae01));
       const ae02 = avg(regs.map(r => r.ae02));
       const ae03 = avg(regs.map(r => r.ae03));
@@ -215,8 +221,8 @@ export function interpretarDistribucion(d: DatosCarrera): string {
 
 export function interpretarParticipacion(totalEnc: number, totalMatr: number, nombre: string): string {
   const porc = totalMatr > 0 ? (totalEnc / totalMatr * 100).toFixed(2) : '0.00';
-  return `Del total de ${totalMatr.toLocaleString()} estudiantes matriculados en ${nombre}, ` +
-    `${totalEnc.toLocaleString()} han aplicado la encuesta de evaluación docente, ` +
+  return `Del total de ${totalMatr.toLocaleString('es-PE')} estudiantes matriculados en ${nombre}, ` +
+    `${totalEnc.toLocaleString('es-PE')} han aplicado la encuesta de evaluación docente, ` +
     `lo que representa un ${porc}% de participación estudiantil.`;
 }
 
@@ -236,11 +242,11 @@ export function interpretarInstitucionAE(resumen: ResumenInstitucional): string 
 export function generarConclusion1(resumen: ResumenInstitucional, ciclo: string): string {
   const porc = resumen.porcentajeEncuestados.toFixed(2);
   if (resumen.porcentajeEncuestados >= 80) {
-    return `Del total de ${resumen.totalMatriculados.toLocaleString()} estudiantes matriculados en el semestre académico ${ciclo}, ` +
+    return `Del total de ${resumen.totalMatriculados.toLocaleString('es-PE')} estudiantes matriculados en el semestre académico ${ciclo}, ` +
       `el ${porc}% participó en la aplicación de la encuesta académica, lo que refleja un nivel de participación ` +
       `alto y representativo de la comunidad estudiantil, evidenciando un compromiso significativo con la mejora continua de la calidad educativa.`;
   }
-  return `Del total de ${resumen.totalMatriculados.toLocaleString()} estudiantes matriculados en el semestre académico ${ciclo}, ` +
+  return `Del total de ${resumen.totalMatriculados.toLocaleString('es-PE')} estudiantes matriculados en el semestre académico ${ciclo}, ` +
     `el ${porc}% participó en la aplicación de la encuesta académica. Se recomienda implementar estrategias ` +
     `para incrementar la participación estudiantil en futuros ciclos, buscando alcanzar el umbral del 80%.`;
 }

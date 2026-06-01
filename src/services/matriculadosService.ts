@@ -12,6 +12,7 @@ export async function saveMatriculados(ciclo: string, entries: MatriculadosEntry
     facultad: e.facultad,
     carrera: e.carrera,
     total_matriculados: e.totalMatriculados,
+    total_encuestados: e.totalEncuestados ?? 0,
     updated_at: new Date().toISOString(),
   }));
 
@@ -30,15 +31,16 @@ export async function loadMatriculados(ciclo: string): Promise<MatriculadosEntry
 
   const { data, error } = await supabase
     .from('matriculados_por_ciclo')
-    .select('facultad, carrera, total_matriculados')
+    .select('facultad, carrera, total_matriculados, total_encuestados')
     .eq('user_id', user.id)
     .eq('ciclo', ciclo);
 
   if (error || !data) return [];
-  return data.map((r: { facultad: string; carrera: string; total_matriculados: number }) => ({
+  return data.map((r: { facultad: string; carrera: string; total_matriculados: number; total_encuestados?: number }) => ({
     facultad: r.facultad,
     carrera: r.carrera,
     totalMatriculados: r.total_matriculados,
+    totalEncuestados: r.total_encuestados ?? 0,
   }));
 }
 
