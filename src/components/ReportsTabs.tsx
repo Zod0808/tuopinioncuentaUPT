@@ -102,7 +102,7 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
           switch (tabActivaFinal) {
             case 'general': return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
             case 'facultad': return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
-            case 'carrera': return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} />;
+            case 'carrera': return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
             case 'docente-carrera': return <ResumenDocentePorCarrera datos={datos} />;
             case 'docente-facultad': return <ResumenDocentePorFacultad datos={datos} />;
             case 'docente-institucional': return <ResumenDocenteInstitucional datos={datos} />;

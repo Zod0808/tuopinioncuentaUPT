@@ -1,5 +1,5 @@
 import { EvaluacionData } from '../types';
-import { Calificacion, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS, calcularCalificacion } from '../config/universityStructure';
+import { Calificacion, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS, calcularCalificacion, FACULTADES } from '../config/universityStructure';
 
 export interface MatriculadosEntry {
   facultad: string;
@@ -59,6 +59,24 @@ export interface ResumenInstitucional {
 
 const CALIFICACIONES: Calificacion[] = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
 
+/** Normaliza strings para comparación robusta: sin tildes, minúsculas, espacios colapsados. */
+export function normalizeStr(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/** Devuelve todas las claves normalizadas de facultad para un registro de matriculados
+ *  (soporta código 'FAEDCOH' Y nombre completo 'Facultad de Educación...'). */
+function facKeys(facultad: string): string[] {
+  const keys = [normalizeStr(facultad)];
+  const byCode = FACULTADES[facultad]?.nombre;
+  if (byCode) keys.push(normalizeStr(byCode));
+  else {
+    const code = Object.keys(FACULTADES).find(k => normalizeStr(FACULTADES[k].nombre) === normalizeStr(facultad));
+    if (code) keys.push(normalizeStr(code));
+  }
+  return [...new Set(keys)];
+}
+
 function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
@@ -79,7 +97,10 @@ export function calcularResumen(
 ): ResumenInstitucional {
   const matriculadosMap = new Map<string, MatriculadosEntry>();
   for (const m of matriculados) {
-    matriculadosMap.set(`${m.facultad}||${m.carrera}`, m);
+    const carKey = normalizeStr(m.carrera);
+    for (const fk of facKeys(m.facultad)) {
+      matriculadosMap.set(`${fk}||${carKey}`, m);
+    }
   }
 
   // Agrupar por facultad → carrera
@@ -99,7 +120,7 @@ export function calcularResumen(
     const facAE01: number[] = [], facAE02: number[] = [], facAE03: number[] = [], facAE04: number[] = [];
 
     for (const [carrera, regs] of carreraMap) {
-      const matEntry = matriculadosMap.get(`${facultad}||${carrera}`);
+      const matEntry = matriculadosMap.get(`${normalizeStr(facultad)}||${normalizeStr(carrera)}`);
       const totalMatr = matEntry?.totalMatriculados ?? 0;
       const encOficial = matEntry?.totalEncuestados ?? 0;
       const useOficial = encOficial > 0;
