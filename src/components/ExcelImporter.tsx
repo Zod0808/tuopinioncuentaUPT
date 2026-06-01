@@ -212,7 +212,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
       {pendingImport && (
         <div className="import-confirm-box">
           <div className="import-confirm-header">
-            <FileSpreadsheet size={22} color="#667eea" />
+            <FileSpreadsheet size={22} color="#003087" />
             <h3>Confirmar importación</h3>
           </div>
 

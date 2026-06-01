@@ -94,8 +94,8 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     datasets: [{
       label: 'Nota promedio',
       data: metrics.map(m => parseFloat(m.notaPromedio.toFixed(2))),
-      backgroundColor: ciclos.map(c => c === cicloActual ? 'rgba(102,126,234,0.85)' : 'rgba(102,126,234,0.45)'),
-      borderColor: '#667eea',
+      backgroundColor: ciclos.map(c => c === cicloActual ? 'rgba(0,48,135,0.85)' : 'rgba(0,48,135,0.45)'),
+      borderColor: '#003087',
       borderWidth: 2,
       borderRadius: 6,
     }],
@@ -107,9 +107,9 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     datasets: [{
       label: 'Tendencia nota promedio',
       data: metrics.map(m => parseFloat(m.notaPromedio.toFixed(2))),
-      borderColor: '#667eea',
-      backgroundColor: 'rgba(102,126,234,0.15)',
-      pointBackgroundColor: ciclos.map(c => c === cicloActual ? '#764ba2' : '#667eea'),
+      borderColor: '#003087',
+      backgroundColor: 'rgba(0,48,135,0.15)',
+      pointBackgroundColor: ciclos.map(c => c === cicloActual ? '#1a4ab5' : '#003087'),
       pointRadius: 6,
       tension: 0.35,
       fill: true,
@@ -160,7 +160,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
   return (
     <div className="comparativa-ciclos">
       <div className="comparativa-header">
-        <TrendingUp size={28} color="#667eea" />
+        <TrendingUp size={28} color="#003087" />
         <div>
           <h2>Comparativa entre Ciclos</h2>
           <p>{ciclos.length} ciclo{ciclos.length !== 1 ? 's' : ''} con datos · Ciclo actual resaltado: <strong>{cicloActual}</strong></p>
@@ -170,7 +170,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
       {/* Tarjetas resumen rápido */}
       <div className="comparativa-summary-cards">
         <div className="comp-card">
-          <BookOpen size={22} color="#667eea" />
+          <BookOpen size={22} color="#003087" />
           <div><span className="comp-card-value">{ciclos.length}</span><span className="comp-card-label">Ciclos con datos</span></div>
         </div>
         <div className="comp-card">

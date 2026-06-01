@@ -55,7 +55,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
       <div className="auth-modal" onClick={e => e.stopPropagation()}>
         <div className="auth-modal-header">
           <div className="auth-modal-logo">
-            <BookOpen size={28} color="#667eea" />
+            <BookOpen size={28} color="#003087" />
             <span>Tu Opinión Cuenta</span>
           </div>
           <button className="auth-btn-close" onClick={onClose} aria-label="Cerrar">
