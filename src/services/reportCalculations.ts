@@ -64,6 +64,16 @@ export function normalizeStr(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
+/** Extrae el nombre central de una carrera eliminando prefijos institucionales variables
+ *  ("Carrera Profesional de", "Carrera de", "Escuela Profesional de") y normalizando guiones. */
+export function coreCarreraStr(s: string): string {
+  return normalizeStr(s)
+    .replace(/^(carrera profesional de |carrera de |escuela profesional de )/, '')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Devuelve todas las claves normalizadas de facultad para un registro de matriculados
  *  (soporta código 'FAEDCOH' Y nombre completo 'Facultad de Educación...'). */
 function facKeys(facultad: string): string[] {
@@ -98,8 +108,10 @@ export function calcularResumen(
   const matriculadosMap = new Map<string, MatriculadosEntry>();
   for (const m of matriculados) {
     const carKey = normalizeStr(m.carrera);
+    const coreKey = coreCarreraStr(m.carrera);
     for (const fk of facKeys(m.facultad)) {
       matriculadosMap.set(`${fk}||${carKey}`, m);
+      if (coreKey !== carKey) matriculadosMap.set(`${fk}||${coreKey}`, m);
     }
   }
 
@@ -120,7 +132,9 @@ export function calcularResumen(
     const facAE01: number[] = [], facAE02: number[] = [], facAE03: number[] = [], facAE04: number[] = [];
 
     for (const [carrera, regs] of carreraMap) {
-      const matEntry = matriculadosMap.get(`${normalizeStr(facultad)}||${normalizeStr(carrera)}`);
+      const normFac = normalizeStr(facultad);
+      const matEntry = matriculadosMap.get(`${normFac}||${normalizeStr(carrera)}`)
+        ?? matriculadosMap.get(`${normFac}||${coreCarreraStr(carrera)}`);
       const totalMatr = matEntry?.totalMatriculados ?? 0;
       const encOficial = matEntry?.totalEncuestados ?? 0;
       const useOficial = encOficial > 0;
