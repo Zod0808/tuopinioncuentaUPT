@@ -796,6 +796,16 @@
   background: #fff8f0;
 }
 
+.no-valido-section {
+  border-left: 3px solid #e53935;
+  padding-left: 12px;
+  margin-top: 16px;
+}
+
+.row-no-valido td {
+  background: #fff5f5;
+}
+
 /* Charts Styles */
 .charts-container {
   background: white;

@@ -307,7 +307,57 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
               </div>
             </div>
 
-            {/* Tabla 3: Docentes excluidos del reporte */}
+            {/* Tabla 3: Encuestas no válidas */}
+            {(() => {
+              const cursosNoValidos = datosFacultad
+                .filter(d => getExclusionReason(d) === 'no_valido')
+                .sort((a, b) => a.docente.localeCompare(b.docente) || a.curso.localeCompare(b.curso));
+              if (cursosNoValidos.length === 0) return null;
+              return (
+                <div className="table-section no-valido-section">
+                  <h4>Encuestas No Válidas (Excluidas del Reporte)</h4>
+                  <p className="exclusion-notice">
+                    Las siguientes evaluaciones fueron excluidas porque la mayoría de estudiantes
+                    no respondió la encuesta y la calificación resultó INSATISFACTORIO, lo que podría
+                    indicar una situación irregular en contra del docente:
+                  </p>
+                  <div className="faculty-table-container">
+                    <table className="faculty-table">
+                      <thead>
+                        <tr>
+                          <th>N°</th>
+                          <th>Docente</th>
+                          <th>Curso</th>
+                          <th>Sección</th>
+                          <th>Encuestados</th>
+                          <th>No Encuestados</th>
+                          <th>Calificación</th>
+                          <th>Nota</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cursosNoValidos.map((dato, idx) => (
+                          <tr key={dato.id || idx} className="row-no-valido">
+                            <td>{idx + 1}</td>
+                            <td>{dato.docente}</td>
+                            <td>{dato.curso}</td>
+                            <td>{dato.seccion}</td>
+                            <td className="text-center">{dato.encuestados}</td>
+                            <td className="text-center">{dato.noEncuestados}</td>
+                            <td className="text-center">
+                              <span className="badge badge-insatisfactorio">{dato.calificacion}</span>
+                            </td>
+                            <td className="text-right">{dato.nota.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Tabla 4: Docentes excluidos del reporte */}
             {resumen.docentesExcluidos.length > 0 && (
               <div className="table-section excluded-section">
                 <h4>Docentes sin promedio calculable</h4>
