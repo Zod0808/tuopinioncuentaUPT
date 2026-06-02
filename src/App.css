@@ -3210,6 +3210,45 @@
   font-size: 1rem;
 }
 
+/* ── Panel de configuración del informe exportado ── */
+.informe-config-panel {
+  background: #f8fafc;
+  border: 1px solid #c5d5e8;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.informe-config-panel h4 { margin: 0 0 4px; color: #1a365d; font-size: 0.95rem; }
+.informe-config-panel p  { font-size: 0.8rem; color: #666; margin-bottom: 12px; }
+.informe-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+.informe-config-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444;
+  gap: 4px;
+}
+.informe-config-grid label input,
+.informe-config-grid label textarea {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border: 1px solid #c8d8ea;
+  border-radius: 5px;
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.informe-config-grid label input:focus,
+.informe-config-grid label textarea:focus {
+  border-color: #2E5C8A;
+}
+
 .informe-footer-actions {
   display: flex;
   flex-direction: column;

@@ -270,11 +270,26 @@ export function interpretarDistribucion(d: DatosCarrera): string {
     .filter(([, v]) => v.cantidad > 0)
     .sort(([, a], [, b]) => b.porcentaje - a.porcentaje);
   if (califs.length === 0) return 'No hay datos suficientes para generar una interpretación.';
+
+  const nombresLower: Record<string, string> = {
+    DESTACADO: 'destacado', BUENO: 'bueno', ACEPTABLE: 'aceptable', INSATISFACTORIO: 'insatisfactorio',
+  };
   const [mayorKey, mayorVal] = califs[0];
+  const mayorNombre = nombresLower[mayorKey] ?? mayorKey.toLowerCase();
+
+  if (califs.length === 1) {
+    const interp = ESCALA_CALIFICACION[mayorKey as Calificacion]?.interpretacion ?? '';
+    return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula. ${interp}.`;
+  }
+
   const [menorKey, menorVal] = califs[califs.length - 1];
-  const interp = ESCALA_CALIFICACION[mayorKey as Calificacion]?.interpretacion ?? '';
-  return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorKey} en el aula. ` +
-    `${interp}. El ${menorVal.porcentaje.toFixed(2)}% lo califica como ${menorKey}.`;
+  const menorNombre = nombresLower[menorKey] ?? menorKey.toLowerCase();
+  const menorInterp = ESCALA_CALIFICACION[menorKey as Calificacion]?.interpretacion ?? '';
+  const menorInterpLower = menorInterp.length > 0
+    ? menorInterp.charAt(0).toLowerCase() + menorInterp.slice(1)
+    : '';
+
+  return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula, mientras que el ${menorVal.porcentaje.toFixed(2)}% lo califica como ${menorNombre}, que indica que ${menorInterpLower}.`;
 }
 
 export function interpretarParticipacion(totalEnc: number, totalMatr: number, nombre: string): string {
