@@ -31,15 +31,24 @@ const GRIS_ROW    = 'F2F2F2';
 
 // ── Generación de gráficos de torta con Canvas ────────────────────────────────
 
+interface PieChartCfg {
+  title?: string | string[];   // una o varias líneas de título
+  subtitle?: string;           // subtítulo debajo del título
+  width?: number;              // ancho en px (default 800)
+  height?: number;             // alto en px (default 580)
+}
+
 async function canvasPieToUint8(
   valores: number[],
   colores: string[],
   etiquetas: string[],
-  titulo?: string,
+  cfg: PieChartCfg = {},
 ): Promise<Uint8Array | null> {
-  if (valores.reduce((a, b) => a + b, 0) === 0) return null;
+  const total = valores.reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
   try {
-    const W = 520, H = titulo ? 420 : 380;
+    const W = cfg.width ?? 800;
+    const H = cfg.height ?? 580;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -48,19 +57,44 @@ async function canvasPieToUint8(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    const total = valores.reduce((a, b) => a + b, 0);
-    const cx = 200, cy = titulo ? 185 : 165, r = 135;
-
-    // Título opcional
-    if (titulo) {
+    // ── Título (multi-línea) ──
+    const titleLines = Array.isArray(cfg.title) ? cfg.title
+      : cfg.title ? [cfg.title] : [];
+    let topY = 16;
+    if (titleLines.length > 0) {
       ctx.fillStyle = '#1a365d';
-      ctx.font = 'bold 14px Arial';
+      ctx.font = 'bold 18px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(titulo, W / 2, 12);
+      for (const line of titleLines) {
+        ctx.fillText(line, W / 2, topY);
+        topY += 24;
+      }
+      topY += 4;
     }
+    if (cfg.subtitle) {
+      ctx.fillStyle = '#555555';
+      ctx.font = '15px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(cfg.subtitle, W / 2, topY);
+      topY += 22;
+    }
+    topY += 8;
 
-    // Sectores
+    // ── Zona leyenda (abajo) ──
+    const legCols = etiquetas.length <= 2 ? etiquetas.length : 2;
+    const legRows = Math.ceil(etiquetas.length / legCols);
+    const legItemH = 26;
+    const legH = legRows * legItemH + 6;
+    const pieBottom = H - legH - 12;
+
+    // ── Pastel centrado ──
+    const pieAvailH = pieBottom - topY;
+    const cx = W / 2;
+    const cy = topY + pieAvailH / 2;
+    const r = Math.min(pieAvailH / 2, W * 0.30) - 8;
+
     let ang = -Math.PI / 2;
     for (let i = 0; i < valores.length; i++) {
       if (valores[i] === 0) continue;
@@ -70,42 +104,46 @@ async function canvasPieToUint8(
       ctx.arc(cx, cy, r, ang, ang + slice);
       ctx.fillStyle = colores[i];
       ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Texto dentro del sector si es grande suficiente (> 5%)
+      // Solo porcentaje dentro del sector (>= 3% para que quepa)
       const pct = (valores[i] / total) * 100;
-      if (pct > 5) {
+      if (pct >= 3) {
         const mid = ang + slice / 2;
-        const tx = cx + r * 0.62 * Math.cos(mid);
-        const ty = cy + r * 0.62 * Math.sin(mid);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px Arial';
+        const tx = cx + r * 0.64 * Math.cos(mid);
+        const ty = cy + r * 0.64 * Math.sin(mid);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${pct.toFixed(2)}%`, tx, ty - 8);
-        ctx.font = '11px Arial';
-        ctx.fillText(`(${valores[i].toLocaleString('es-PE')})`, tx, ty + 8);
+        ctx.fillText(`${pct.toFixed(2)}%`, tx, ty);
       }
       ang += slice;
     }
 
-    // Leyenda
-    const legY = cy + r + 20;
-    const colWidth = 220;
-    ctx.font = '12px Arial';
-    ctx.textBaseline = 'top';
+    // ── Leyenda en la parte inferior centrada ──
+    const colW = W / legCols;
+    const legStartY = H - legH + 4;
+    ctx.font = '13px Arial';
+    ctx.textBaseline = 'middle';
     for (let i = 0; i < etiquetas.length; i++) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const lx = 40 + col * colWidth;
-      const ly = legY + row * 26;
+      const col = i % legCols;
+      const row = Math.floor(i / legCols);
+      // Centrar cada columna
+      const colCenter = colW * col + colW / 2;
+      const boxW = 14, gap = 6;
+      const textW = ctx.measureText(etiquetas[i]).width;
+      const totalW = boxW + gap + textW;
+      const lx = colCenter - totalW / 2;
+      const ly = legStartY + row * legItemH + legItemH / 2;
+
       ctx.fillStyle = colores[i];
-      ctx.fillRect(lx, ly, 14, 14);
-      ctx.fillStyle = '#333';
+      ctx.fillRect(lx, ly - 7, boxW, 14);
+      ctx.fillStyle = '#222222';
       ctx.textAlign = 'left';
-      ctx.fillText(etiquetas[i], lx + 18, ly + 1);
+      ctx.fillText(etiquetas[i], lx + boxW + gap, ly);
     }
 
     return await new Promise<Uint8Array | null>((resolve) => {
@@ -117,6 +155,14 @@ async function canvasPieToUint8(
   } catch {
     return null;
   }
+}
+
+// Categoría a partir de la nota según la escala visible en el DOCX (18-20=DESTACADO, 15-17=BUENO)
+function categoriaPromedio(nota: number): string {
+  if (nota >= 18) return 'DESTACADO';
+  if (nota >= 15) return 'BUENO';
+  if (nota >= 12) return 'ACEPTABLE';
+  return 'INSATISFACTORIO';
 }
 
 // ── Helpers de celda ──────────────────────────────────────────────────────────
@@ -488,16 +534,21 @@ export async function generarInformeFinalDocx(
 ): Promise<void> {
 
   // Pre-generar todos los gráficos de torta en paralelo
-  const coloresParticipacion = ['#1a365d', '#c5a059'];
-  const coloresCalif = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
-  const etiqParticipacion = ['Encuestados', 'No Encuestados'];
-  const etiqCalif = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+  // Colores participación: navy + dorado (coincide con el original)
+  const coloresParticipacion = ['#2B3A67', '#C4A35A'];
+  const etiqParticipacion    = ['Encuestados', 'No Encuestados'];
+  // Colores calificación: igual al original PDF (INSATISFACTORIO primero → DESTACADO último)
+  const etiqDistrib   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
+  const coloresDistrib = ['#FF0000', '#A5A5A5', '#FFC000', '#4472C4'];
 
   // Pie institucional (3.1)
   const pieInstitucionalPromise = canvasPieToUint8(
     [resumen.totalEncuestados, Math.max(0, resumen.totalMatriculados - resumen.totalEncuestados)],
     coloresParticipacion, etiqParticipacion,
-    'Encuestados vs No Encuestados — Institucional',
+    {
+      title: ['ESTUDIANTES ENCUESTADOS Y', 'ESTUDIANTES NO ENCUESTADOS'],
+      subtitle: 'A NIVEL INSTITUCIONAL',
+    },
   );
 
   // Pies por facultad (3.2)
@@ -507,11 +558,14 @@ export async function generarInformeFinalDocx(
     return canvasPieToUint8(
       [f.totalEncuestados, Math.max(0, f.totalMatriculados - f.totalEncuestados)],
       coloresParticipacion, etiqParticipacion,
-      `Encuestados vs No Encuestados — ${FACULTADES[cod]?.nombre ?? cod}`,
+      {
+        title: ['ESTUDIANTES ENCUESTADOS Y', 'ESTUDIANTES NO ENCUESTADOS'],
+        subtitle: `DE ${cod}`,
+      },
     );
   });
 
-  // Pies de calificación por carrera (3.3.2)
+  // Pies de calificación por carrera (3.3.2) — orden: INSATISFACTORIO→ACEPTABLE→BUENO→DESTACADO
   const todasLasCarreras: { cod: string; carrera: DatosCarrera }[] = [];
   for (const cod of ORDEN_FACULTADES) {
     const f = resumen.facultades.get(cod);
@@ -522,9 +576,9 @@ export async function generarInformeFinalDocx(
   }
   const pieCarrerasPromises = todasLasCarreras.map(({ carrera: c }) =>
     canvasPieToUint8(
-      etiqCalif.map(cal => c.distribucion[cal as 'DESTACADO']?.cantidad ?? 0),
-      coloresCalif, etiqCalif,
-      `Distribución de calificación — ${c.carrera}`,
+      etiqDistrib.map(cal => c.distribucion[cal]?.cantidad ?? 0),
+      coloresDistrib, [...etiqDistrib],
+      { title: c.carrera },
     )
   );
 
@@ -754,7 +808,7 @@ export async function generarInformeFinalDocx(
     titulo('5. CONCLUSIONES', HeadingLevel.HEADING_1), salto(),
     viñeta('Los resultados de la encuesta académica empleadas por las Carreras Profesionales permitieron identificar fortalezas y oportunidades de mejora en el proceso de enseñanza aprendizaje, constituyendo un insumo clave para el cumplimiento de los objetivos institucionales respecto a la evaluación del desempeño docente como lo establece la normatividad vigente.'),
     viñeta(generarConclusion1(resumen, ciclo)),
-    viñeta(`El promedio general institucional del desempeño docente para el ciclo ${ciclo} es de ${resumen.promedioGeneral.toFixed(2)}, que corresponde a la categoría ${resumen.promedioGeneral > 17 ? 'DESTACADO' : resumen.promedioGeneral > 14 ? 'BUENO' : resumen.promedioGeneral > 11 ? 'ACEPTABLE' : 'INSATISFACTORIO'} según la escala de calificación institucional.`),
+    viñeta(`El promedio general institucional del desempeño docente para el ciclo ${ciclo} es de ${resumen.promedioGeneral.toFixed(2)}, que corresponde a la categoría ${categoriaPromedio(resumen.promedioGeneral)} según la escala de calificación institucional.`),
     salto(),
   );
 
@@ -823,21 +877,24 @@ export async function generarInformeFacultadDocx(
   const carreras = [...f.carreras.values()];
   const esSimple = carreras.length === 1;
 
-  const coloresCalif = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
-  const etiqCalif = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+  const etiqDistribFac   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
+  const coloresDistribFac = ['#FF0000', '#A5A5A5', '#FFC000', '#4472C4'];
 
   // Generar gráficos
   const pieFac = await canvasPieToUint8(
     [f.totalEncuestados, Math.max(0, f.totalMatriculados - f.totalEncuestados)],
-    ['#1a365d', '#c5a059'],
+    ['#2B3A67', '#C4A35A'],
     ['Encuestados', 'No Encuestados'],
-    `Encuestados vs No Encuestados — ${nombreFacultad}`,
+    {
+      title: ['ESTUDIANTES ENCUESTADOS Y', 'ESTUDIANTES NO ENCUESTADOS'],
+      subtitle: `DE ${cod}`,
+    },
   );
   const pieCarreras = await Promise.all(carreras.map(c =>
     canvasPieToUint8(
-      etiqCalif.map(cal => c.distribucion[cal as 'DESTACADO']?.cantidad ?? 0),
-      coloresCalif, etiqCalif,
-      `Distribución — ${c.carrera}`,
+      etiqDistribFac.map(cal => c.distribucion[cal]?.cantidad ?? 0),
+      coloresDistribFac, [...etiqDistribFac],
+      { title: c.carrera },
     )
   ));
 
