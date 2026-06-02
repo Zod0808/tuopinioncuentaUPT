@@ -10,7 +10,8 @@ import {
   interpretarTablaAE, interpretarDistribucion, interpretarParticipacion,
   interpretarInstitucionAE, generarConclusion1, generarRecomendacion1,
 } from './reportCalculations';
-import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION } from '../config/universityStructure';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion } from '../config/universityStructure';
+import { EvaluacionData } from '../types';
 
 // ── Configuración del informe (provista por el usuario) ───────────────────────
 
@@ -1007,4 +1008,312 @@ export async function generarInformeFacultadDocx(
   const doc = new Document({ sections: [{ properties: {}, children }] });
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `Informe_${cod}_TuOpinionCuenta_${ciclo}.docx`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 6 REPORTES INDIVIDUALES POR FACULTAD
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Calificación efectiva de un registro (prioriza el campo calificacion del Excel) */
+function getCalifReg(r: EvaluacionData): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' {
+  if (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'].includes(r.calificacion)) {
+    return r.calificacion as 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+  }
+  return calcularCalificacion(r.nota);
+}
+
+/** Encabezado estándar para los 6 reportes */
+function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Paragraph | Table)[] {
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [new TextRun({ text: 'UNIVERSIDAD PRIVADA DE TACNA', bold: true, size: 28, color: AZUL_OSCURO })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [new TextRun({ text: nombreFac, bold: true, size: 22, color: AZUL_HEADER })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [new TextRun({ text: tipo.toUpperCase(), bold: true, size: 24 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [new TextRun({ text: `TU OPINIÓN CUENTA — ${ciclo}`, bold: true, size: 22, color: AZUL_HEADER })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({
+        text: new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        size: 18, color: '666666',
+      })],
+    }),
+    salto(),
+  ];
+}
+
+/** Bloque de firma reutilizable */
+function firmaBloque(config: ConfigInforme): Paragraph[] {
+  const firmante = config.nombreFirmante ?? '[Nombre del responsable]';
+  const cargo    = config.cargoFirmante  ?? '[Cargo]';
+  return [
+    salto(), salto(),
+    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 22 })] }),
+    salto(), salto(), salto(),
+    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: cargo, size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 22 })] }),
+  ];
+}
+
+async function saveDocx(doc: Document, filename: string): Promise<void> {
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, filename);
+}
+
+// ── Reporte 1: Docentes Insatisfactorios ─────────────────────────────────────
+async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
+  const malos     = todosReg.filter(r => getCalifReg(r) === 'INSATISFACTORIO');
+
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
+  ];
+
+  if (malos.length === 0) {
+    children.push(parrafo('No se registran secciones con calificación INSATISFACTORIO para esta facultad en el ciclo indicado.'));
+  } else {
+    const rows: TableRow[] = [
+      new TableRow({ children: [
+        celdaH('Carrera Profesional'), celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
+        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
+        celdaH('Nota'), celdaH('Enc.'),
+      ]}),
+    ];
+    for (const r of malos) {
+      rows.push(new TableRow({ children: [
+        celda(r.carreraProfesional), celda(r.docente), celda(r.curso), celda(r.seccion, true),
+        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
+        celdaN(r.nota, 2, true), celda(r.encuestados.toString(), true),
+      ]}));
+    }
+    children.push(
+      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+      salto(),
+      parrafo(`Total de secciones insatisfactorias: ${malos.length}`),
+    );
+  }
+
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
+}
+
+// ── Reporte 2: Notas Plana Docente (Criterios de Evaluación) por Carrera ─────
+async function rpt2NotasPorCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte de Notas de la Plana Docente (Criterios de Evaluación) por Carrera Profesional', nombreFac, ciclo),
+  ];
+
+  for (const [carreraName, c] of f.carreras) {
+    children.push(negrita(carreraName), salto());
+    const rows: TableRow[] = [
+      new TableRow({ children: [
+        celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
+        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
+        celdaH('Nota'), celdaH('Calificación'),
+      ]}),
+    ];
+    for (const r of c.registros) {
+      rows.push(new TableRow({ children: [
+        celda(r.docente), celda(r.curso), celda(r.seccion, true),
+        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
+        celdaN(r.nota, 2, true), celda(getCalifReg(r), true, true),
+      ]}));
+    }
+    rows.push(new TableRow({ children: [
+      celda('PROMEDIO', false, true, GRIS_ROW),
+      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
+      celdaN(c.promedioAE01), celdaN(c.promedioAE02), celdaN(c.promedioAE03), celdaN(c.promedioAE04),
+      celdaN(c.promedioGeneral, 2, true),
+      celda(categoriaPromedio(c.promedioGeneral), true, true, GRIS_ROW),
+    ]}));
+    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
+  }
+
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_Notas_Plana_Docente_${ciclo}_${cod}.docx`);
+}
+
+// ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
+async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte de Nro. de Estudiantes Encuestados por Carrera Profesional', nombreFac, ciclo),
+  ];
+
+  const rows: TableRow[] = [
+    new TableRow({ children: [
+      celdaH('Carrera Profesional'),
+      celdaH('N° Matriculados'), celdaH('N° Encuestados'),
+      celdaH('N° No Encuestados'), celdaH('% Encuestados'),
+    ]}),
+  ];
+  for (const [carreraName, c] of f.carreras) {
+    rows.push(new TableRow({ children: [
+      celda(carreraName),
+      celda(c.totalMatriculados.toLocaleString('es-PE'), true),
+      celda(c.totalEncuestados.toLocaleString('es-PE'), true),
+      celda(c.totalNoEncuestados.toLocaleString('es-PE'), true),
+      celda(c.porcentajeEncuestados.toFixed(2) + '%', true, true),
+    ]}));
+  }
+  rows.push(new TableRow({ children: [
+    celda('TOTAL', false, true, GRIS_ROW),
+    celda(f.totalMatriculados.toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(f.totalEncuestados.toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(Math.max(0, f.totalMatriculados - f.totalEncuestados).toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(f.porcentajeEncuestados.toFixed(2) + '%', true, true, GRIS_ROW),
+  ]}));
+
+  children.push(
+    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+    salto(),
+    parrafo(interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, nombreFac)),
+  );
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_Estudiantes_Encuestados_${ciclo}_${cod}.docx`);
+}
+
+// ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
+async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte del % de Evaluación a la Plana Docente (Juicio de Valor) por Carrera Profesional', nombreFac, ciclo),
+  ];
+
+  const rows: TableRow[] = [
+    new TableRow({ children: [
+      celdaH('Carrera Profesional'),
+      celdaH('% INSATISFACTORIO'), celdaH('% ACEPTABLE'),
+      celdaH('% BUENO'), celdaH('% DESTACADO'),
+      celdaH('Total Secc.'),
+    ]}),
+  ];
+  for (const [carreraName, c] of f.carreras) {
+    rows.push(new TableRow({ children: [
+      celda(carreraName),
+      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true),
+      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%', true),
+      celda(c.distribucion.BUENO.porcentaje.toFixed(2) + '%', true),
+      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%', true, true),
+      celda(c.seccionesCalificadas.toString(), true, true),
+    ]}));
+  }
+
+  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
+}
+
+// ── Reporte 5: Nro. de Encuestas por Carrera ─────────────────────────────────
+async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte del Nro. de Encuestas por Carrera Profesional', nombreFac, ciclo),
+  ];
+
+  const rows: TableRow[] = [
+    new TableRow({ children: [
+      celdaH('Carrera Profesional'),
+      celdaH('N° Secciones Evaluadas'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
+    ]}),
+  ];
+  let totSec = 0, totEnc = 0, totNoEnc = 0;
+  for (const [carreraName, c] of f.carreras) {
+    const nEnc   = c.registros.reduce((s, r) => s + r.encuestados, 0);
+    const nNoEnc = c.registros.reduce((s, r) => s + r.noEncuestados, 0);
+    rows.push(new TableRow({ children: [
+      celda(carreraName),
+      celda(c.registros.length.toString(), true),
+      celda(nEnc.toLocaleString('es-PE'), true),
+      celda(nNoEnc.toLocaleString('es-PE'), true),
+    ]}));
+    totSec += c.registros.length; totEnc += nEnc; totNoEnc += nNoEnc;
+  }
+  rows.push(new TableRow({ children: [
+    celda('TOTAL', false, true, GRIS_ROW),
+    celda(totSec.toString(), true, true, GRIS_ROW),
+    celda(totEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(totNoEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
+  ]}));
+
+  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_Nro_Encuestas_${ciclo}_${cod}.docx`);
+}
+
+// ── Reporte 6: General de Evaluación por Docente ─────────────────────────────
+async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const children: (Paragraph | Table)[] = [
+    ...cabeceraReporte('Reporte General de Evaluación por Docente', nombreFac, ciclo),
+  ];
+
+  for (const [carreraName, c] of f.carreras) {
+    children.push(negrita(carreraName), salto());
+    const rows: TableRow[] = [
+      new TableRow({ children: [
+        celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
+        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
+        celdaH('Nota'), celdaH('Calif.'),
+        celdaH('Enc.'), celdaH('No Enc.'), celdaH('Validez'),
+      ]}),
+    ];
+    for (const r of c.registros) {
+      rows.push(new TableRow({ children: [
+        celda(r.docente), celda(r.curso), celda(r.seccion, true),
+        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
+        celdaN(r.nota, 2, true),
+        celda(getCalifReg(r), true, true),
+        celda(r.encuestados.toString(), true),
+        celda(r.noEncuestados.toString(), true),
+        celda(r.validez, true),
+      ]}));
+    }
+    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
+  }
+
+  children.push(...firmaBloque(cfg));
+  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+    `Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
+}
+
+// ── Función pública: genera los 6 reportes de la facultad ────────────────────
+
+export async function generarInformesFacultadDocx(
+  ciclo: string,
+  cod: string,
+  f: DatosFacultad,
+  config: ConfigInforme = {},
+): Promise<void> {
+  const pausa = () => new Promise(r => setTimeout(r, 350));
+  await rpt1Insatisfactorios(ciclo, cod, f, config);  await pausa();
+  await rpt2NotasPorCarrera(ciclo, cod, f, config);   await pausa();
+  await rpt3EstudiantesCarrera(ciclo, cod, f, config); await pausa();
+  await rpt4PorcentajeJuicio(ciclo, cod, f, config);  await pausa();
+  await rpt5NroEncuestas(ciclo, cod, f, config);       await pausa();
+  await rpt6GeneralDocente(ciclo, cod, f, config);
 }

@@ -3,7 +3,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
-import { generarInformeFinalDocx, generarInformeFacultadDocx, ConfigInforme } from '../services/docxReportService';
+import { generarInformeFinalDocx, generarInformesFacultadDocx, ConfigInforme } from '../services/docxReportService';
 import { FACULTADES, ORDEN_FACULTADES, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
@@ -118,7 +118,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
     if (!f) return;
     setGenerandoFacultad(cod);
     try {
-      await generarInformeFacultadDocx(cicloActual, cod, f, config);
+      await generarInformesFacultadDocx(cicloActual, cod, f, config);
     } finally {
       setGenerandoFacultad(null);
     }
@@ -643,7 +643,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   className="btn-secondary btn-descarga-facultad"
                   onClick={() => handleDescargarFacultad(cod)}
                   disabled={ocupado}
-                  title={FACULTADES[cod]?.nombre ?? cod}
+                  title={`Generar 6 reportes DOCX — ${FACULTADES[cod]?.nombre ?? cod}`}
                 >
                   {esteGenerando ? 'Generando...' : `⬇ ${cod}`}
                 </button>
