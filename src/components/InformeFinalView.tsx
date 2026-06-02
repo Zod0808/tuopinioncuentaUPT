@@ -3,7 +3,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
-import { generarInformeFinalDocx, generarInformeFacultadDocx } from '../services/docxReportService';
+import { generarInformeFinalDocx, generarInformeFacultadDocx, ConfigInforme } from '../services/docxReportService';
 import { FACULTADES, ORDEN_FACULTADES, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
@@ -70,10 +70,29 @@ function PieCarrera({ carrera }: { carrera: DatosCarrera }) {
   );
 }
 
+const CONFIG_KEY = 'informe_config_v1';
+
+function cargarConfig(): ConfigInforme {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
 export default function InformeFinalView({ datos, matriculados, cicloActual }: InformeFinalViewProps) {
   const [generando, setGenerando] = useState(false);
   const [generandoFacultad, setGenerandoFacultad] = useState<string | null>(null);
   const [seccionAbierta, setSeccionAbierta] = useState<string | null>('3.1');
+  const [configAbierta, setConfigAbierta] = useState(false);
+  const [config, setConfig] = useState<ConfigInforme>(cargarConfig);
+
+  const actualizarConfig = (campo: keyof ConfigInforme, valor: string) => {
+    setConfig(prev => {
+      const nuevo = { ...prev, [campo]: valor };
+      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(nuevo)); } catch { /* quota */ }
+      return nuevo;
+    });
+  };
 
   if (datos.length === 0) {
     return (
@@ -88,7 +107,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
   const handleDescargarDocx = async () => {
     setGenerando(true);
     try {
-      await generarInformeFinalDocx(cicloActual, resumen);
+      await generarInformeFinalDocx(cicloActual, resumen, config);
     } finally {
       setGenerando(false);
     }
@@ -99,7 +118,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
     if (!f) return;
     setGenerandoFacultad(cod);
     try {
-      await generarInformeFacultadDocx(cicloActual, cod, f);
+      await generarInformeFacultadDocx(cicloActual, cod, f, config);
     } finally {
       setGenerandoFacultad(null);
     }
@@ -115,21 +134,98 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
           <h2>Informe Final · Ciclo {cicloActual}</h2>
           <span className="informe-subtitle">Encuesta "Tu Opinión Cuenta" — Universidad Privada de Tacna</span>
         </div>
-        <button
-          className="btn-primary btn-descarga"
-          onClick={handleDescargarDocx}
-          disabled={generando}
-        >
-          {generando ? 'Generando...' : '⬇ Descargar Informe (.docx)'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => setConfigAbierta(v => !v)}
+            title="Configurar datos del informe DOCX"
+          >
+            ⚙ Configurar informe
+          </button>
+          <button
+            type="button"
+            className="btn-primary btn-descarga"
+            onClick={handleDescargarDocx}
+            disabled={generando}
+          >
+            {generando ? 'Generando...' : '⬇ Descargar Informe (.docx)'}
+          </button>
+        </div>
       </div>
+
+      {/* ── Panel de configuración del informe ── */}
+      {configAbierta && (
+        <div className="informe-config-panel">
+          <h4 style={{ margin: '0 0 12px', color: '#1a365d' }}>⚙ Configuración del Informe DOCX</h4>
+          <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>
+            Estos datos se guardan localmente y se incluyen en el documento exportado.
+          </p>
+          <div className="informe-config-grid">
+            <label>
+              N° de Informe
+              <input
+                type="text"
+                value={config.numeroInforme ?? ''}
+                onChange={e => actualizarConfig('numeroInforme', e.target.value)}
+                placeholder="Ej: 008-2025-GPAD-UPT"
+              />
+            </label>
+            <label>
+              Nombre del Responsable
+              <input
+                type="text"
+                value={config.nombreResponsable ?? ''}
+                onChange={e => actualizarConfig('nombreResponsable', e.target.value)}
+                placeholder="Ej: Mg. Juan Pérez Torres"
+              />
+            </label>
+            <label>
+              Cargo del Responsable
+              <input
+                type="text"
+                value={config.cargoResponsable ?? ''}
+                onChange={e => actualizarConfig('cargoResponsable', e.target.value)}
+                placeholder="Ej: Director de Gestión de la Calidad"
+              />
+            </label>
+            <label>
+              Nombre Firmante (cierre)
+              <input
+                type="text"
+                value={config.nombreFirmante ?? ''}
+                onChange={e => actualizarConfig('nombreFirmante', e.target.value)}
+                placeholder="Ej: Mg. Juan Pérez Torres"
+              />
+            </label>
+            <label>
+              Cargo Firmante
+              <input
+                type="text"
+                value={config.cargoFirmante ?? ''}
+                onChange={e => actualizarConfig('cargoFirmante', e.target.value)}
+                placeholder="Ej: Gerente de Planificación y Desarrollo Académico"
+              />
+            </label>
+            <label className="informe-config-col-full">
+              Texto Sección 2 — Difusión de Resultados
+              <textarea
+                rows={3}
+                value={config.textoDifusion ?? ''}
+                onChange={e => actualizarConfig('textoDifusion', e.target.value)}
+                placeholder="Mediante Oficio Circular N° ... los resultados fueron comunicados a las Facultades..."
+              />
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* ── Alertas ── */}
       <AlertasAutomaticas datos={datos} matriculados={matriculados} cicloActual={cicloActual} />
 
       {/* ── 3.1 Participación institucional ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('3.1')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('3.1')}>
           <span>3.1. Participación Estudiantil Institucional</span>
           <span>{seccionAbierta === '3.1' ? '▲' : '▼'}</span>
         </button>
@@ -181,7 +277,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
       {/* ── 3.2 Participación por facultad ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('3.2')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('3.2')}>
           <span>3.2. Participación Estudiantil por Facultad</span>
           <span>{seccionAbierta === '3.2' ? '▲' : '▼'}</span>
         </button>
@@ -238,7 +334,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
       {/* ── 3.3.1 AE institucional ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('3.3.1')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('3.3.1')}>
           <span>3.3.1. Aspectos Evaluados — Resumen Institucional</span>
           <span>{seccionAbierta === '3.3.1' ? '▲' : '▼'}</span>
         </button>
@@ -298,7 +394,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
       {/* ── 3.3.2 AE por carrera con distribución ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('3.3.2')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('3.3.2')}>
           <span>3.3.2. Aspectos Evaluados y Distribución por Carrera</span>
           <span>{seccionAbierta === '3.3.2' ? '▲' : '▼'}</span>
         </button>
@@ -412,7 +508,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
       {/* ── 4. Indicador plan estratégico ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('4')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('4')}>
           <span>4. Indicador del Plan Estratégico Institucional</span>
           <span>{seccionAbierta === '4' ? '▲' : '▼'}</span>
         </button>
@@ -467,7 +563,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
       {/* ── 5. Conclusiones y Recomendaciones ── */}
       <div className="informe-seccion">
-        <button className="informe-seccion-titulo" onClick={() => toggle('5')}>
+        <button type="button" className="informe-seccion-titulo" onClick={() => toggle('5')}>
           <span>5. Conclusiones y Recomendaciones</span>
           <span>{seccionAbierta === '5' ? '▲' : '▼'}</span>
         </button>
@@ -524,6 +620,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
       {/* ── Botones de descarga al pie ── */}
       <div className="informe-footer-actions">
         <button
+          type="button"
           className="btn-primary btn-descarga-lg"
           onClick={handleDescargarDocx}
           disabled={generando || generandoFacultad !== null}
