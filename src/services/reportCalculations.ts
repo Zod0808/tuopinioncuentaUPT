@@ -106,12 +106,19 @@ export function calcularResumen(
   matriculados: MatriculadosEntry[]
 ): ResumenInstitucional {
   const matriculadosMap = new Map<string, MatriculadosEntry>();
+
+  // Totales directos por facultad desde matriculados (no depende del match por carrera)
+  const facSums = new Map<string, { mat: number; enc: number }>();
+
   for (const m of matriculados) {
     const carKey = normalizeStr(m.carrera);
     const coreKey = coreCarreraStr(m.carrera);
     for (const fk of facKeys(m.facultad)) {
       matriculadosMap.set(`${fk}||${carKey}`, m);
       if (coreKey !== carKey) matriculadosMap.set(`${fk}||${coreKey}`, m);
+      // Acumular totales a nivel de facultad
+      const prev = facSums.get(fk) ?? { mat: 0, enc: 0 };
+      facSums.set(fk, { mat: prev.mat + m.totalMatriculados, enc: prev.enc + (m.totalEncuestados ?? 0) });
     }
   }
 
@@ -194,9 +201,15 @@ export function calcularResumen(
       return c === 'DESTACADO';
     }).length / allRegsValidos.length * 100 : 0;
 
+    // Usar totales directos de matriculados a nivel de facultad si están disponibles,
+    // sin importar si el match por carrera funcionó o no.
+    const directFac = facSums.get(normalizeStr(facultad));
+    const facFinalMatr = (directFac?.mat ?? 0) > 0 ? directFac!.mat : facTotalMatr;
+    const facFinalEnc  = (directFac?.enc ?? 0) > 0 ? directFac!.enc  : facTotalEnc;
+
     facultadesMap.set(facultad, {
-      facultad, totalMatriculados: facTotalMatr, totalEncuestados: facTotalEnc,
-      porcentajeEncuestados: facTotalMatr > 0 ? (facTotalEnc / facTotalMatr) * 100 : 0,
+      facultad, totalMatriculados: facFinalMatr, totalEncuestados: facFinalEnc,
+      porcentajeEncuestados: facFinalMatr > 0 ? (facFinalEnc / facFinalMatr) * 100 : 0,
       promedioAE01: facAE01p, promedioAE02: facAE02p, promedioAE03: facAE03p, promedioAE04: facAE04p,
       promedioGeneral: facGeneral,
       porcBueno: pBueno, porcDestacado: pDestacado,

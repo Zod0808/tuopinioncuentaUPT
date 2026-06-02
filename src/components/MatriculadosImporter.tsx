@@ -27,6 +27,27 @@ export default function MatriculadosImporter({
     initializedRef.current = false;
   }, [cicloActual]);
 
+  // Propagar cambios al App en tiempo real para que los reportes se actualicen
+  // sin necesidad de hacer clic en "Guardar" primero.
+  useEffect(() => {
+    if (!userEditedRef.current) return;
+    const timer = setTimeout(() => {
+      const entries: MatriculadosEntry[] = [];
+      for (const fac of ORDEN_FACULTADES) {
+        for (const carrera of FACULTADES[fac].carreras) {
+          const key = `${fac}||${carrera}`;
+          const v = valores[key] ?? 0;
+          if (v > 0) {
+            entries.push({ facultad: fac, carrera, totalMatriculados: v, totalEncuestados: encuestadosVals[key] ?? 0 });
+          }
+        }
+      }
+      onMatriculadosChange(entries);
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valores, encuestadosVals]);
+
   // Sincronizar desde el prop solo si el usuario no ha empezado a editar
   useEffect(() => {
     if (userEditedRef.current) return;

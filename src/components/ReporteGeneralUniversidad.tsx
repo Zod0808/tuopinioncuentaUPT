@@ -59,7 +59,7 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
   }
 
   // Totales oficiales desde MatriculadosImporter (por facultad)
-  // Las claves se normalizan y se añaden tanto para el código ('FAEDCOH') como el nombre completo
+  // matByFac se usa solo para lookup por facultad; los totales globales se calculan directamente
   const matByFac = new Map<string, { mat: number; enc: number }>();
   const addMatFac = (key: string, mat: number, enc: number) => {
     const nk = normalizeStr(key);
@@ -71,8 +71,10 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
     const nombre = FACULTADES[m.facultad]?.nombre;
     if (nombre) addMatFac(nombre, m.totalMatriculados, m.totalEncuestados ?? 0);
   }
-  const totalMatOficial = [...matByFac.values()].reduce((s, v) => s + v.mat, 0);
-  const totalEncOficial = [...matByFac.values()].reduce((s, v) => s + v.enc, 0);
+  // Sumar directamente del array para evitar double-counting (cada facultad aparece
+  // en matByFac tanto con código como con nombre completo).
+  const totalMatOficial = matriculados.reduce((s, m) => s + m.totalMatriculados, 0);
+  const totalEncOficial = matriculados.reduce((s, m) => s + (m.totalEncuestados ?? 0), 0);
   const usarOficial = totalMatOficial > 0;
 
   const totalEncuestados = usarOficial ? totalEncOficial : datos.reduce((sum, d) => sum + d.encuestados, 0);
