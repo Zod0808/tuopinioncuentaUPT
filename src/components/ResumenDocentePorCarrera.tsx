@@ -71,12 +71,12 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
         const cursos = datosCarrera.filter(d => d.docente === doc);
         const razones = new Set(cursos.map(c => getExclusionReason(c)));
         let motivo: string;
-        if (razones.has('sin_datos') && !razones.has('no_valido')) {
-          motivo = 'Sin estudiantes registrados (0 encuestados y 0 no encuestados)';
-        } else if (!razones.has('sin_datos') && razones.has('no_valido')) {
-          motivo = 'Evaluación no válida: mayoría no respondió con calificación INSATISFACTORIO';
+        if (razones.has('sin_datos') && !razones.has('baja_participacion')) {
+          motivo = 'Sin estudiantes registrados (0 encuestados y/o nota 0)';
+        } else if (!razones.has('sin_datos') && razones.has('baja_participacion')) {
+          motivo = 'Baja participación: menos del 30% de la sección respondió la encuesta';
         } else {
-          motivo = 'Combinación: cursos sin datos y/o evaluaciones no válidas';
+          motivo = 'Combinación: cursos sin datos y/o secciones con baja participación';
         }
         return { docente: doc, cantidadCursos: cursos.length, motivo };
       })
@@ -304,7 +304,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
             {/* Tabla 3: Encuestas no válidas */}
             {(() => {
               const cursosNoValidos = datosCarrera
-                .filter(d => getExclusionReason(d) === 'no_valido')
+                .filter(d => getExclusionReason(d) === 'baja_participacion')
                 .sort((a, b) => a.docente.localeCompare(b.docente) || a.curso.localeCompare(b.curso));
               if (cursosNoValidos.length === 0) return null;
               return (

@@ -1,5 +1,5 @@
 import { EvaluacionData } from '../types';
-import { Calificacion, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS, calcularCalificacion, FACULTADES } from '../config/universityStructure';
+import { Calificacion, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS, calcularCalificacion, FACULTADES, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
 
 export interface MatriculadosEntry {
   facultad: string;
@@ -91,9 +91,10 @@ function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
-export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'no_valido' | null {
-  if (r.encuestados === 0) return 'sin_datos';
-  if (r.noEncuestados > r.encuestados && r.calificacion === 'INSATISFACTORIO') return 'no_valido';
+export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'baja_participacion' | null {
+  if (r.encuestados === 0 || r.nota === 0) return 'sin_datos';
+  const total = r.encuestados + r.noEncuestados;
+  if (total > 0 && r.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'baja_participacion';
   return null;
 }
 

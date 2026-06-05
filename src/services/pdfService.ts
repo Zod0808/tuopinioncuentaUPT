@@ -469,7 +469,7 @@ export async function generarPDFResumenDocente(
 // Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
 
 const AZUL_UPT: [number, number, number] = [22, 40, 92];
 const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
@@ -508,19 +508,22 @@ function limpiarNombrePdf(s: string): string {
 }
 
 function resolverCal(d: EvaluacionData): string {
-  if (d.validez !== 'Válido' || d.encuestados === 0) return 'N/A';
+  if (d.validez !== 'Válido') return 'N/A';
+  if (d.encuestados === 0) return 'No Aplica';
+  if (d.nota === 0) return 'Sin Evaluar';
+  const total = d.encuestados + d.noEncuestados;
+  if (total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'Baja Participación';
   const map: Record<string, string> = { DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable', INSATISFACTORIO: 'Insatisfactorio' };
-  const key = (['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const).includes(d.calificacion as any)
-    ? d.calificacion : calcularCalificacion(d.nota);
-  return map[key] ?? key;
+  return map[calcularCalificacion(d.nota)];
 }
 
 function colorPorCalificacion(calStr: string): [number, number, number] {
   if (calStr === 'Insatisfactorio') return ROJO_INSATISFACTORIO;
   if (calStr === 'Destacado') return VERDE_DESTACADO;
   if (calStr === 'Bueno') return [43, 108, 176];
-  if (calStr === 'N/A') return [113, 128, 150];
-  return [192, 86, 33];
+  if (calStr === 'Aceptable') return [192, 86, 33];
+  if (calStr === 'Baja Participación') return [107, 33, 168]; // purple
+  return [113, 128, 150]; // N/A, No Aplica, Sin Evaluar → gris
 }
 
 function cabeceraReporte(doc: jsPDF, facultad: string, titulo: string, subtitulo: string): number {
@@ -553,6 +556,58 @@ function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
+function kpiColorPromedio(nota: number): [number, number, number] {
+  if (nota <= 0) return [113, 128, 150];
+  if (nota >= 17.1) return VERDE_DESTACADO;
+  if (nota >= 15.1) return [43, 108, 176];
+  if (nota >= 11.0) return [192, 86, 33];
+  return ROJO_INSATISFACTORIO;
+}
+
+/** Dibuja tarjetas de KPI horizontales y retorna la Y final. */
+function dibujarKPIsPdf(
+  doc: jsPDF,
+  y: number,
+  margin: number,
+  kpis: { label: string; valor: string; rgb: [number, number, number] }[]
+): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const gap = 4;
+  const cardW = (pw - margin * 2 - (kpis.length - 1) * gap) / kpis.length;
+  const headerH = 6;
+  const valueH = 13;
+  const totalH = headerH + valueH;
+
+  if (y + totalH > ph - margin) { doc.addPage(); y = 20; }
+
+  kpis.forEach((kpi, i) => {
+    const x = margin + i * (cardW + gap);
+    const [r, g, b] = kpi.rgb;
+
+    // Header bar
+    doc.setFillColor(r, g, b);
+    doc.rect(x, y, cardW, headerH, 'F');
+    doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+    doc.text(kpi.label, x + cardW / 2, y + 4.2, { align: 'center' });
+
+    // Value area (light background)
+    doc.setFillColor(247, 249, 252);
+    doc.rect(x, y + headerH, cardW, valueH, 'F');
+
+    // Card border
+    doc.setDrawColor(r, g, b);
+    doc.setLineWidth(0.3);
+    doc.rect(x, y, cardW, totalH);
+
+    // Value text (uses KPI accent color)
+    doc.setFontSize(15).setFont('helvetica', 'bold').setTextColor(r, g, b);
+    doc.text(kpi.valor, x + cardW / 2, y + headerH + valueH / 2 + 3.5, { align: 'center' });
+  });
+
+  return y + totalH + 6;
+}
+
 function agregarLeyendaAEPdf(doc: jsPDF, y: number): number {
   const margin = 12;
   const ph = doc.internal.pageSize.getHeight();
@@ -581,9 +636,26 @@ export async function generarPDFReporteI(
   );
   if (filtrados.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
 
+  // KPI computation
+  const validosKpiI = filtrados.filter(d => {
+    if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
+    const t = d.encuestados + d.noEncuestados;
+    return t === 0 || d.encuestados / t >= UMBRAL_PARTICIPACION_MINIMA;
+  });
+  const nDocentesI = new Set(filtrados.map(d => d.docente)).size;
+  const promedioGenI = validosKpiI.length ? avg(validosKpiI.map(d => d.nota)) : 0;
+  const nInsatisfI = validosKpiI.filter(d => d.nota <= 10.9).length;
+
   const doc = new jsPDF('l', 'mm', 'a4');
   const margin = 12;
   let y = cabeceraReporte(doc, facultad, 'Reporte I: Evaluación General por Docente', carrera || 'Todas las Carreras');
+
+  // KPI cards
+  y = dibujarKPIsPdf(doc, y, margin, [
+    { label: 'Total Docentes Evaluados', valor: nDocentesI.toString(), rgb: AZUL_UPT },
+    { label: 'Promedio General', valor: promedioGenI > 0 ? promedioGenI.toFixed(2) : '—', rgb: kpiColorPromedio(promedioGenI) },
+    { label: 'Secc. Insatisfactorias', valor: nInsatisfI.toString(), rgb: nInsatisfI > 0 ? ROJO_INSATISFACTORIO : VERDE_DESTACADO },
+  ]);
 
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   for (const c of carreras) {
@@ -634,7 +706,11 @@ export async function generarPDFReporteII(
   carrera: string
 ): Promise<void> {
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '')
-    .filter(d => d.nota <= 10.9 && d.validez === 'Válido' && d.encuestados > 0)
+    .filter(d => {
+      if (d.nota <= 0 || d.nota > 10.9 || d.validez !== 'Válido' || d.encuestados === 0) return false;
+      const total = d.encuestados + d.noEncuestados;
+      return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+    })
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
 
   if (filtrados.length === 0) { alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.'); return; }
@@ -645,12 +721,22 @@ export async function generarPDFReporteII(
   });
   const hayInsuf = insuf.some(Boolean);
 
+  const promedioInsatisfII = filtrados.length ? avg(filtrados.map(d => d.nota)) : 0;
+  const nInsufII = filtrados.filter(d => {
+    const t = d.encuestados + d.noEncuestados;
+    return t > 0 && d.encuestados / t < 0.15;
+  }).length;
+
   const doc = new jsPDF('l', 'mm', 'a4');
   const margin = 12;
   let y = cabeceraReporte(doc, facultad, 'Reporte II: Docentes con Calificación Insatisfactoria', carrera || 'Todas las Carreras');
 
-  doc.setFontSize(9).setFont('helvetica', 'italic').setTextColor(100, 0, 0);
-  doc.text(`Total de registros insatisfactorios: ${filtrados.length}`, margin, y); y += 7;
+  // KPI cards
+  y = dibujarKPIsPdf(doc, y, margin, [
+    { label: 'Secciones Insatisfactorias', valor: filtrados.length.toString(), rgb: filtrados.length > 0 ? ROJO_INSATISFACTORIO : VERDE_DESTACADO },
+    { label: 'Promedio (Insatisfactorios)', valor: filtrados.length > 0 ? promedioInsatisfII.toFixed(2) : '—', rgb: ROJO_INSATISFACTORIO },
+    { label: 'Muestra Insuficiente (<15%)', valor: nInsufII.toString(), rgb: nInsufII > 0 ? [192, 86, 33] : VERDE_DESTACADO },
+  ]);
 
   const body = filtrados.map((d, i) => [
     d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion,
@@ -698,7 +784,11 @@ export async function generarPDFReporteIII(
   carrera: string,
   graficoEl: HTMLElement | null
 ): Promise<void> {
-  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '').filter(d => {
+    if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
+    const total = d.encuestados + d.noEncuestados;
+    return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+  });
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
 
@@ -749,7 +839,11 @@ export async function generarPDFReporteIV(
   carrera: string,
   graficoEl: HTMLElement | null
 ): Promise<void> {
-  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '').filter(d => {
+    if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
+    const total = d.encuestados + d.noEncuestados;
+    return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+  });
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
 
@@ -759,10 +853,10 @@ export async function generarPDFReporteIV(
   const pw = doc.internal.pageSize.getWidth();
 
   const body = carreras.map(c => {
-    const regs = filtrados.filter(d => d.carreraProfesional === c && d.validez === 'Válido');
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
     const total = regs.length;
     const p = (cal: string) => {
-      const n = regs.filter(d => (d.calificacion || calcularCalificacion(d.nota)) === cal).length;
+      const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
       return total > 0 ? `${(n / total * 100).toFixed(1)}% (${n})` : '—';
     };
     return [c, total.toString(), p('DESTACADO'), p('BUENO'), p('ACEPTABLE'), p('INSATISFACTORIO')];

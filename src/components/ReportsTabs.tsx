@@ -11,7 +11,7 @@ import ResumenDocenteInstitucional from './ResumenDocenteInstitucional';
 import ReporteCalificacionPorCarrera from './ReporteCalificacionPorCarrera';
 import ReporteCalificacionPorFacultad from './ReporteCalificacionPorFacultad';
 import ReporteCalificacionInstitucional from './ReporteCalificacionInstitucional';
-import ExportacionFAEDCOH from './ExportacionFAEDCOH';
+import ExportacionReportes from './ExportacionFAEDCOH';
 
 interface ReportsTabsProps {
   datos: EvaluacionData[];
@@ -20,7 +20,7 @@ interface ReportsTabsProps {
   matriculados?: MatriculadosEntry[];
 }
 
-type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional' | 'exportacion-faedcoh';
+type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional' | 'exportacion';
 
 interface Tab {
   id: TabType;
@@ -80,7 +80,7 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
       icon: <Building2 size={20} />
     },
     {
-      id: 'exportacion-faedcoh',
+      id: 'exportacion',
       label: 'Exportación por Facultad',
       icon: <Download size={20} />
     }
@@ -115,7 +115,7 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
             case 'calificacion-carrera': return <ReporteCalificacionPorCarrera datos={datos} />;
             case 'calificacion-facultad': return <ReporteCalificacionPorFacultad datos={datos} />;
             case 'calificacion-institucional': return <ReporteCalificacionInstitucional datos={datos} />;
-            case 'exportacion-faedcoh': return <ExportacionFAEDCOH datos={datos} />;
+            case 'exportacion': return <ExportacionReportes datos={datos} />;
             default: return null;
           }
         })()}
