@@ -92,7 +92,7 @@ function avg(arr: number[]): number {
 }
 
 export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'no_valido' | null {
-  if (r.encuestados === 0 && r.noEncuestados === 0) return 'sin_datos';
+  if (r.encuestados === 0) return 'sin_datos';
   if (r.noEncuestados > r.encuestados && r.calificacion === 'INSATISFACTORIO') return 'no_valido';
   return null;
 }
@@ -158,12 +158,7 @@ export function calcularResumen(
 
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
       for (const cal of CALIFICACIONES) {
-        const cnt = regsValidos.filter(r => {
-          const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
-            ? r.calificacion as Calificacion
-            : calcularCalificacion(r.nota);
-          return c === cal;
-        }).length;
+        const cnt = regsValidos.filter(r => calcularCalificacion(r.nota) === cal).length;
         distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
 
@@ -186,20 +181,15 @@ export function calcularResumen(
     // Indicador plan estratégico = % BUENO + DESTACADO entre secciones válidas de la facultad
     const allRegsValidos = [...carreraMap.values()].flat().filter(esValidoParaReporte);
     const buenoDestacado = allRegsValidos.filter(r => {
-      const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
-        ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
+      const c = calcularCalificacion(r.nota);
       return c === 'BUENO' || c === 'DESTACADO';
     }).length;
-    const pBueno = allRegsValidos.length ? allRegsValidos.filter(r => {
-      const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
-        ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
-      return c === 'BUENO';
-    }).length / allRegsValidos.length * 100 : 0;
-    const pDestacado = allRegsValidos.length ? allRegsValidos.filter(r => {
-      const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
-        ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
-      return c === 'DESTACADO';
-    }).length / allRegsValidos.length * 100 : 0;
+    const pBueno = allRegsValidos.length
+      ? allRegsValidos.filter(r => calcularCalificacion(r.nota) === 'BUENO').length / allRegsValidos.length * 100
+      : 0;
+    const pDestacado = allRegsValidos.length
+      ? allRegsValidos.filter(r => calcularCalificacion(r.nota) === 'DESTACADO').length / allRegsValidos.length * 100
+      : 0;
 
     // Usar totales directos de matriculados a nivel de facultad si están disponibles,
     // sin importar si el match por carrera funcionó o no.
@@ -224,8 +214,7 @@ export function calcularResumen(
   const totalEnc = allFac.reduce((s, f) => s + f.totalEncuestados, 0);
   const allRegsGlobal = registros.filter(esValidoParaReporte);
   const buenoDestGlobal = allRegsGlobal.filter(r => {
-    const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
-      ? r.calificacion as Calificacion : calcularCalificacion(r.nota);
+    const c = calcularCalificacion(r.nota);
     return c === 'BUENO' || c === 'DESTACADO';
   }).length;
 

@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO } from '../config/universityStructure';
 
 const CALIFICACION_LABELS: Record<string, string> = {
   DESTACADO: 'Destacado',
@@ -110,6 +110,62 @@ function slugFacultad(facultad: string): string {
   return (FACULTADES[facultad] ? facultad : 'GENERAL').toUpperCase();
 }
 
+// ── Hoja de metadatos + leyenda AE ──────────────────────────────────────────
+
+function hojaInfo(wb: XLSX.WorkBook, facultad: string, carrera: string): void {
+  const hdrStyle = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: '16285C' } } };
+  const keyStyle = { font: { bold: true } };
+  const filas: (string | number)[][] = [
+    ['Campo', 'Valor'],
+    ['ID Facultad', facultad || 'TODAS'],
+    ['Nombre Facultad', etiquetaFacultad(facultad)],
+    ['Carrera Profesional', carrera || 'Todas las carreras'],
+    ['Período Académico', PERIODO_ACADEMICO],
+    ['Fecha de generación', hoy()],
+    [],
+    ['Código AE', 'Descripción del Aspecto Evaluado'],
+    ...Object.entries(ASPECTOS_EVALUADOS).map(([k, v]) => [k, v] as [string, string]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [{ wch: 22 }, { wch: 72 }];
+  ['A1', 'B1', 'A8', 'B8'].forEach(a => { if (ws[a]) ws[a].s = hdrStyle; });
+  ['A2', 'A3', 'A4', 'A5', 'A6'].forEach(a => { if (ws[a]) ws[a].s = keyStyle; });
+  XLSX.utils.book_append_sheet(wb, ws, 'Info');
+}
+
+// ── Semáforo de participación / completitud ──────────────────────────────────
+
+function bgSemaforo(porc: number): string {
+  if (porc < 70) return 'FFC7CE';
+  if (porc <= 85) return 'FFEB9C';
+  return 'C6EFCE';
+}
+
+function fgSemaforo(porc: number): string {
+  if (porc < 70) return 'C53030';
+  if (porc <= 85) return 'C05621';
+  return '276749';
+}
+
+function aplicarSemaforoCell(ws: XLSX.WorkSheet, row: number, col: number, porc: number): void {
+  const cell = XLSX.utils.encode_cell({ r: row, c: col });
+  if (!ws[cell]) return;
+  ws[cell].s = {
+    font: { bold: true, color: { rgb: fgSemaforo(porc) } },
+    fill: { patternType: 'solid', fgColor: { rgb: bgSemaforo(porc) } },
+    alignment: { horizontal: 'right' },
+  };
+}
+
+// ── Alerta de muestra insuficiente ───────────────────────────────────────────
+
+function alertaMuestra(d: EvaluacionData): string {
+  const total = d.encuestados + d.noEncuestados;
+  return total > 0 && d.encuestados / total < 0.15
+    ? 'Muestra Insuficiente - Pendiente de Validación'
+    : '';
+}
+
 // ── Reporte I: General de Evaluación por Docente ────────────────────────────
 
 export function exportarReporteI(datos: EvaluacionData[], facultad: string, carrera: string, docente: string): void {
@@ -156,6 +212,7 @@ export function exportarReporteI(datos: EvaluacionData[], facultad: string, carr
   });
 
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Reporte I');
   XLSX.writeFile(wb, `ReporteI_EvaluacionDocente_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
@@ -169,7 +226,7 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
 
   const encabezados = [
     'Programa Académico', 'Docente', 'Curso', 'Sección',
-    'Nota', 'Calificación', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados',
+    'Nota', 'Calificación', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados', 'Alerta Muestra',
   ];
   const filas: (string | number)[][] = filtrados.map(d => [
     d.carreraProfesional,
@@ -183,12 +240,26 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
     +d.ae03.toFixed(2),
     +d.ae04.toFixed(2),
     d.encuestados,
+    alertaMuestra(d),
   ]);
 
-  const ws = crearHoja(encabezados, filas, [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12]);
-  filas.forEach((_, ri) => aplicarEstiloCalificacion(ws, ri + 1, 5, 'Insatisfactorio'));
+  const ws = crearHoja(encabezados, filas, [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12, 36]);
+  filas.forEach((fila, ri) => {
+    aplicarEstiloCalificacion(ws, ri + 1, 5, 'Insatisfactorio');
+    if (fila[11]) {
+      const alertaCell = XLSX.utils.encode_cell({ r: ri + 1, c: 11 });
+      if (ws[alertaCell]) {
+        ws[alertaCell].s = {
+          font: { bold: true, color: { rgb: 'C05621' } },
+          fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } },
+          alignment: { horizontal: 'center', wrapText: true },
+        };
+      }
+    }
+  });
 
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Insatisfactorios');
   XLSX.writeFile(wb, `ReporteII_Insatisfactorios_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
@@ -213,6 +284,7 @@ export function exportarReporteIII(datos: EvaluacionData[], facultad: string, ca
 
   const ws = crearHoja(encabezados, filas, [40, 10, 10, 10, 10, 16]);
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Criterios AE');
   XLSX.writeFile(wb, `ReporteIII_CriteriosAE_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
@@ -232,7 +304,7 @@ export function exportarReporteIV(datos: EvaluacionData[], facultad: string, car
   const filas: (string | number)[][] = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
     const total = regs.length;
-    const n = (cal: string) => regs.filter(d => (d.calificacion || calcularCalificacion(d.nota)) === cal).length;
+    const n = (cal: string) => regs.filter(d => calcularCalificacion(d.nota) === cal).length;
     const p = (x: number) => total > 0 ? +(x / total * 100).toFixed(2) : 0;
     const dest = n('DESTACADO'); const buen = n('BUENO');
     const acep = n('ACEPTABLE'); const insa = n('INSATISFACTORIO');
@@ -241,6 +313,7 @@ export function exportarReporteIV(datos: EvaluacionData[], facultad: string, car
 
   const ws = crearHoja(encabezados, filas, [40, 18, 14, 14, 12, 12, 14, 14, 18, 18]);
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, '% Calificación');
   XLSX.writeFile(wb, `ReporteIV_JuicioValor_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
@@ -267,7 +340,12 @@ export function exportarReporteV(datos: EvaluacionData[], facultad: string, carr
   filas.push([`TOTAL — ${label}`, totTotal, totEnc, totNoEnc, totTotal > 0 ? +(totEnc / totTotal * 100).toFixed(2) : 0]);
 
   const ws = crearHoja(encabezados, filas, [40, 18, 14, 16, 16]);
+  filas.forEach((fila, ri) => {
+    const porc = fila[4] as number;
+    if (typeof porc === 'number') aplicarSemaforoCell(ws, ri + 1, 4, porc);
+  });
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Est. Encuestados');
   XLSX.writeFile(wb, `ReporteV_EstudiantesEncuestados_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
@@ -294,7 +372,12 @@ export function exportarReporteVI(datos: EvaluacionData[], facultad: string, car
   filas.push([`TOTAL — ${label}`, totP, totR, totNR, totP > 0 ? +(totR / totP * 100).toFixed(2) : 0]);
 
   const ws = crearHoja(encabezados, filas, [40, 20, 18, 18, 14]);
+  filas.forEach((fila, ri) => {
+    const porc = fila[4] as number;
+    if (typeof porc === 'number') aplicarSemaforoCell(ws, ri + 1, 4, porc);
+  });
   const wb = XLSX.utils.book_new();
+  hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Encuestas Totales');
   XLSX.writeFile(wb, `ReporteVI_EncuestasTotales_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }

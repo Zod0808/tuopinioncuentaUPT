@@ -68,6 +68,8 @@ export const ASPECTOS_EVALUADOS: Record<string, string> = {
   'AE-04': 'Formación actitudinal y relaciones interpersonales con los estudiantes',
 };
 
+export const PERIODO_ACADEMICO = '2025-II';
+
 export function calcularCalificacion(nota: number): Calificacion {
   if (nota >= 17.1) return 'DESTACADO';
   if (nota >= 15.1) return 'BUENO';

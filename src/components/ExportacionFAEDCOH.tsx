@@ -115,7 +115,7 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
       data: carrerasParaGrafico.map(c => {
         const regs = base.filter(d => d.carreraProfesional === c && d.validez === 'Válido');
         if (!regs.length) return 0;
-        const n = regs.filter(d => (d.calificacion || calcularCalificacion(d.nota)) === cal).length;
+        const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
         return +(n / regs.length * 100).toFixed(1);
       }),
       backgroundColor: COLORES_CAL[idx],
@@ -346,15 +346,25 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
       )}
 
       {/* ── Alerta Reporte II ── */}
-      {reporteActivo === 'II' && (
-        <div className="faedcoh-alerta">
-          <AlertTriangle size={16} color="#c53030" />
-          <span>
-            Filtra secciones con <strong>nota ≤ 10.9</strong> y <strong>validez = Válido</strong>.
-            Detectados en el ámbito actual: <strong>{base.filter(d => d.nota <= 10.9 && d.validez === 'Válido').length}</strong> registro(s).
-          </span>
-        </div>
-      )}
+      {reporteActivo === 'II' && (() => {
+        const insatisfactorios = base.filter(d => d.nota <= 10.9 && d.validez === 'Válido' && d.encuestados > 0);
+        const muestraInsuf = insatisfactorios.filter(d => {
+          const total = d.encuestados + d.noEncuestados;
+          return total > 0 && d.encuestados / total < 0.15;
+        });
+        return (
+          <div className="faedcoh-alerta">
+            <AlertTriangle size={16} color="#c53030" />
+            <span>
+              Filtra secciones con <strong>nota ≤ 10.9</strong>, <strong>validez = Válido</strong> y <strong>encuestados &gt; 0</strong>.
+              Detectados: <strong>{insatisfactorios.length}</strong> registro(s).
+              {muestraInsuf.length > 0 && (
+                <> — <strong style={{ color: '#c05621' }}>{muestraInsuf.length} con muestra insuficiente (&lt;15%)</strong>, marcados con [!] en el reporte.</>
+              )}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ── Botón generar ── */}
       <div className="faedcoh-accion">
