@@ -502,7 +502,13 @@ function nombreFacultadPdf(codigo: string): string {
   return codigo ? (FACULTADES[codigo]?.nombre ?? codigo) : 'Todas las Facultades';
 }
 
+function limpiarNombrePdf(s: string): string {
+  if (!s) return '';
+  return s.replace(/\s*-\s*,/g, ',').replace(/,\s*-\s+/g, ', ').replace(/\s{2,}/g, ' ').trim();
+}
+
 function resolverCal(d: EvaluacionData): string {
+  if (d.validez !== 'Válido' || d.encuestados === 0) return 'N/A';
   const map: Record<string, string> = { DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable', INSATISFACTORIO: 'Insatisfactorio' };
   const key = (['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const).includes(d.calificacion as any)
     ? d.calificacion : calcularCalificacion(d.nota);
@@ -513,6 +519,7 @@ function colorPorCalificacion(calStr: string): [number, number, number] {
   if (calStr === 'Insatisfactorio') return ROJO_INSATISFACTORIO;
   if (calStr === 'Destacado') return VERDE_DESTACADO;
   if (calStr === 'Bueno') return [43, 108, 176];
+  if (calStr === 'N/A') return [113, 128, 150];
   return [192, 86, 33];
 }
 
@@ -570,7 +577,7 @@ export async function generarPDFReporteI(
     doc.text(c, margin, y); y += 7;
 
     const body = regs.map(d => [
-      d.docente, d.curso, d.seccion, resolverCal(d),
+      limpiarNombrePdf(d.docente), d.curso, d.seccion, resolverCal(d),
       d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
       d.encuestados.toString(), d.noEncuestados.toString(), d.validez,
     ]);
@@ -623,7 +630,7 @@ export async function generarPDFReporteII(
   doc.text(`Total de registros insatisfactorios: ${filtrados.length}`, margin, y); y += 7;
 
   const body = filtrados.map(d => [
-    d.carreraProfesional, d.docente, d.curso, d.seccion,
+    d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion,
     d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
     d.encuestados.toString(),
   ]);
