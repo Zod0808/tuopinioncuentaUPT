@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { Building2, PieChart, BarChart3 } from 'lucide-react';
+import { calcularCalificacion } from '../config/universityStructure';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -51,19 +52,6 @@ export default function ReporteCalificacionPorFacultad({ datos }: ReporteCalific
       </div>
     );
   }
-
-  // Función para calcular calificación basada en nota
-  const calcularCalificacion = (nota: number): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' => {
-    if (nota > 17 && nota <= 20) {
-      return 'DESTACADO';
-    } else if (nota > 15 && nota <= 17) {
-      return 'BUENO';
-    } else if (nota > 11 && nota <= 15) {
-      return 'ACEPTABLE';
-    } else {
-      return 'INSATISFACTORIO';
-    }
-  };
 
   // Obtener todas las facultades
   const facultades = [...new Set(datos.map(d => d.facultad))].sort();

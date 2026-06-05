@@ -465,3 +465,413 @@ export async function generarPDFResumenDocente(
   doc.save(nombreArchivo);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { calcularCalificacion, FACULTADES } from '../config/universityStructure';
+
+const AZUL_UPT: [number, number, number] = [22, 40, 92];
+const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
+const VERDE_DESTACADO: [number, number, number] = [39, 103, 73];
+
+function hoyStr(): string {
+  return new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function normPdf(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function matchesFacultadPdf(recordFacultad: string, codigoSeleccionado: string): boolean {
+  if (!codigoSeleccionado) return true;
+  const rn = normPdf(recordFacultad);
+  const facData = FACULTADES[codigoSeleccionado];
+  if (!facData) return false;
+  return rn.includes(normPdf(codigoSeleccionado)) || rn.includes(normPdf(facData.nombre));
+}
+
+function filtrarPorFacultad(datos: EvaluacionData[], facultad: string, carrera: string, docente: string): EvaluacionData[] {
+  let r = datos.filter(d => matchesFacultadPdf(d.facultad, facultad));
+  if (carrera) r = r.filter(d => d.carreraProfesional === carrera);
+  if (docente) r = r.filter(d => d.docente === docente);
+  return r;
+}
+
+function nombreFacultadPdf(codigo: string): string {
+  return codigo ? (FACULTADES[codigo]?.nombre ?? codigo) : 'Todas las Facultades';
+}
+
+function resolverCal(d: EvaluacionData): string {
+  const map: Record<string, string> = { DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable', INSATISFACTORIO: 'Insatisfactorio' };
+  const key = (['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const).includes(d.calificacion as any)
+    ? d.calificacion : calcularCalificacion(d.nota);
+  return map[key] ?? key;
+}
+
+function colorPorCalificacion(calStr: string): [number, number, number] {
+  if (calStr === 'Insatisfactorio') return ROJO_INSATISFACTORIO;
+  if (calStr === 'Destacado') return VERDE_DESTACADO;
+  if (calStr === 'Bueno') return [43, 108, 176];
+  return [192, 86, 33];
+}
+
+function cabeceraReporte(doc: jsPDF, facultad: string, titulo: string, subtitulo: string): number {
+  const pw = doc.internal.pageSize.getWidth();
+  let y = 12;
+  doc.setFontSize(14).setFont('helvetica', 'bold').setTextColor(...AZUL_UPT);
+  doc.text('Universidad Privada de Tacna', pw / 2, y, { align: 'center' });
+  y += 6;
+  doc.setFontSize(11).setFont('helvetica', 'normal').setTextColor(60, 60, 60);
+  const nombreFac = nombreFacultadPdf(facultad);
+  doc.text(nombreFac, pw / 2, y, { align: 'center' });
+  y += 5;
+  doc.text('Proceso de Encuestas "Tu Opinión Cuenta 2025-II"', pw / 2, y, { align: 'center' });
+  y += 8;
+  doc.setFontSize(13).setFont('helvetica', 'bold').setTextColor(...AZUL_UPT);
+  doc.text(titulo, pw / 2, y, { align: 'center' });
+  y += 6;
+  if (subtitulo) {
+    doc.setFontSize(10).setFont('helvetica', 'italic').setTextColor(80, 80, 80);
+    doc.text(subtitulo, pw / 2, y, { align: 'center' });
+    y += 5;
+  }
+  doc.setFontSize(9).setFont('helvetica', 'normal').setTextColor(100, 100, 100);
+  doc.text(`Fecha de generación: ${hoyStr()}`, pw / 2, y, { align: 'center' });
+  y += 8;
+  return y;
+}
+
+function avg(arr: number[]): number {
+  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+}
+
+// Reporte I – General de Evaluación por Docente (landscape, cortes por carrera)
+export async function generarPDFReporteI(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  docente: string
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, docente).sort((a, b) =>
+    a.carreraProfesional.localeCompare(b.carreraProfesional) || a.docente.localeCompare(b.docente)
+  );
+  if (filtrados.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte I: Evaluación General por Docente', carrera || 'Todas las Carreras');
+
+  const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
+  for (const c of carreras) {
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 20; }
+    doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(...AZUL_UPT);
+    doc.text(c, margin, y); y += 7;
+
+    const body = regs.map(d => [
+      d.docente, d.curso, d.seccion, resolverCal(d),
+      d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
+      d.encuestados.toString(), d.noEncuestados.toString(), d.validez,
+    ]);
+    autoTable(doc, {
+      startY: y,
+      head: [['Docente', 'Curso', 'Sección', 'Calificación', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Enc.', 'No Enc.', 'Validez']],
+      body,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: AZUL_UPT, textColor: [255, 255, 255], fontSize: 8 },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { cellWidth: 55 }, 1: { cellWidth: 45 }, 2: { halign: 'center', cellWidth: 14 },
+        3: { halign: 'center', cellWidth: 22 }, 4: { halign: 'right', cellWidth: 14 },
+        5: { halign: 'right', cellWidth: 14 }, 6: { halign: 'right', cellWidth: 14 },
+        7: { halign: 'right', cellWidth: 14 }, 8: { halign: 'right', cellWidth: 14 },
+        9: { halign: 'center', cellWidth: 14 }, 10: { halign: 'center', cellWidth: 16 },
+        11: { halign: 'center', cellWidth: 16 },
+      },
+      didParseCell(data) {
+        if (data.column.index === 3 && data.section === 'body') {
+          const color = colorPorCalificacion(data.cell.text[0]);
+          data.cell.styles.textColor = color;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+  }
+  const slug = facultad || 'GENERAL';
+  doc.save(`ReporteI_EvaluacionDocente_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Reporte II – Docentes Insatisfactorios
+export async function generarPDFReporteII(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '')
+    .filter(d => d.nota <= 10.9 && d.validez === 'Válido')
+    .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
+
+  if (filtrados.length === 0) { alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte II: Docentes con Calificación Insatisfactoria', carrera || 'Todas las Carreras');
+
+  doc.setFontSize(9).setFont('helvetica', 'italic').setTextColor(100, 0, 0);
+  doc.text(`Total de registros insatisfactorios: ${filtrados.length}`, margin, y); y += 7;
+
+  const body = filtrados.map(d => [
+    d.carreraProfesional, d.docente, d.curso, d.seccion,
+    d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
+    d.encuestados.toString(),
+  ]);
+  autoTable(doc, {
+    startY: y,
+    head: [['Carrera', 'Docente', 'Curso', 'Sección', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados']],
+    body,
+    styles: { fontSize: 7.5, cellPadding: 2 },
+    headStyles: { fillColor: ROJO_INSATISFACTORIO, textColor: [255, 255, 255], fontSize: 8 },
+    margin: { left: margin, right: margin },
+    columnStyles: {
+      0: { cellWidth: 40 }, 1: { cellWidth: 55 }, 2: { cellWidth: 40 },
+      3: { halign: 'center', cellWidth: 14 }, 4: { halign: 'right', cellWidth: 14 },
+      5: { halign: 'right', cellWidth: 14 }, 6: { halign: 'right', cellWidth: 14 },
+      7: { halign: 'right', cellWidth: 14 }, 8: { halign: 'right', cellWidth: 14 },
+      9: { halign: 'center', cellWidth: 18 },
+    },
+    didParseCell(data) {
+      if (data.section === 'body') data.cell.styles.textColor = ROJO_INSATISFACTORIO;
+    },
+  });
+  const slug = facultad || 'GENERAL';
+  doc.save(`ReporteII_Insatisfactorios_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Reporte III – Notas de Criterios AE por Carrera (con gráfico de barras agrupadas)
+export async function generarPDFReporteIII(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte III: Criterios de Evaluación por Carrera', '');
+  const pw = doc.internal.pageSize.getWidth();
+
+  const body = carreras.map(c => {
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
+    const ae01 = avg(regs.map(d => d.ae01));
+    const ae02 = avg(regs.map(d => d.ae02));
+    const ae03 = avg(regs.map(d => d.ae03));
+    const ae04 = avg(regs.map(d => d.ae04));
+    return [c, ae01.toFixed(2), ae02.toFixed(2), ae03.toFixed(2), ae04.toFixed(2), avg([ae01, ae02, ae03, ae04]).toFixed(2)];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Carrera Profesional', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Promedio']],
+    body,
+    styles: { fontSize: 8.5, cellPadding: 3 },
+    headStyles: { fillColor: AZUL_UPT, textColor: [255, 255, 255] },
+    margin: { left: margin, right: margin },
+    columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right', fontStyle: 'bold' } },
+  });
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (graficoEl) {
+    try {
+      const canvas = await html2canvas(graficoEl, { scale: 2, backgroundColor: '#ffffff' });
+      const imgW = pw - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      if (y + imgH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = 20; }
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, imgW, imgH);
+    } catch { /* sin gráfico */ }
+  }
+  const slug = facultad || 'GENERAL';
+  doc.save(`ReporteIII_CriteriosAE_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Reporte IV – % Juicio de Valor por Carrera (con gráfico de barras apiladas)
+export async function generarPDFReporteIV(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte IV: Distribución Porcentual del Juicio de Valor', '');
+  const pw = doc.internal.pageSize.getWidth();
+
+  const body = carreras.map(c => {
+    const regs = filtrados.filter(d => d.carreraProfesional === c && d.validez === 'Válido');
+    const total = regs.length;
+    const p = (cal: string) => {
+      const n = regs.filter(d => (d.calificacion || calcularCalificacion(d.nota)) === cal).length;
+      return total > 0 ? `${(n / total * 100).toFixed(1)}% (${n})` : '—';
+    };
+    return [c, total.toString(), p('DESTACADO'), p('BUENO'), p('ACEPTABLE'), p('INSATISFACTORIO')];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Carrera Profesional', 'Secc. Calificadas', 'Destacado', 'Bueno', 'Aceptable', 'Insatisfactorio']],
+    body,
+    styles: { fontSize: 8.5, cellPadding: 3 },
+    headStyles: { fillColor: AZUL_UPT, textColor: [255, 255, 255] },
+    margin: { left: margin, right: margin },
+    columnStyles: { 0: { cellWidth: 80 }, 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } },
+  });
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (graficoEl) {
+    try {
+      const canvas = await html2canvas(graficoEl, { scale: 2, backgroundColor: '#ffffff' });
+      const imgW = pw - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      if (y + imgH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = 20; }
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, imgW, imgH);
+    } catch { /* sin gráfico */ }
+  }
+  const slug = facultad || 'GENERAL';
+  doc.save(`ReporteIV_JuicioValor_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Reporte V – Estudiantes Encuestados por Carrera (con barras apiladas)
+export async function generarPDFReporteV(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte V: Estudiantes Encuestados por Carrera', '');
+  const pw = doc.internal.pageSize.getWidth();
+  const labelTotal = `TOTAL — ${nombreFacultadPdf(facultad)}`;
+
+  const filas = carreras.map(c => {
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
+    const enc = regs.reduce((s, d) => s + d.encuestados, 0);
+    const noEnc = regs.reduce((s, d) => s + d.noEncuestados, 0);
+    const total = enc + noEnc;
+    return { c, total, enc, noEnc, porc: total > 0 ? enc / total * 100 : 0 };
+  });
+  const totEnc = filas.reduce((s, f) => s + f.enc, 0);
+  const totNoEnc = filas.reduce((s, f) => s + f.noEnc, 0);
+  const totTotal = totEnc + totNoEnc;
+
+  const body: (string | number)[][] = [
+    ...filas.map(f => [f.c, f.total, f.enc, f.noEnc, f.porc.toFixed(2) + '%']),
+    [labelTotal, totTotal, totEnc, totNoEnc, totTotal > 0 ? (totEnc / totTotal * 100).toFixed(2) + '%' : '—'],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Carrera Profesional', 'Total Matriculados', 'Encuestados', 'No Encuestados', '% Participación']],
+    body,
+    styles: { fontSize: 8.5, cellPadding: 3 },
+    headStyles: { fillColor: AZUL_UPT, textColor: [255, 255, 255] },
+    margin: { left: margin, right: margin },
+    columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } },
+    didParseCell(data) {
+      if (data.section === 'body' && data.row.index === filas.length) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [230, 230, 230];
+      }
+    },
+  });
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (graficoEl) {
+    try {
+      const canvas = await html2canvas(graficoEl, { scale: 2, backgroundColor: '#ffffff' });
+      const imgW = pw - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      if (y + imgH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = 20; }
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, imgW, imgH);
+    } catch { /* sin gráfico */ }
+  }
+  const slug = facultad || 'GENERAL';
+  doc.save(`ReporteV_EstudiantesEncuestados_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Reporte VI – Encuestas Totales por Carrera (con barras de deserción)
+export async function generarPDFReporteVI(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<void> {
+  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
+  const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const margin = 12;
+  let y = cabeceraReporte(doc, facultad, 'Reporte VI: Encuestas Totales por Carrera', '');
+  const pw = doc.internal.pageSize.getWidth();
+  const labelTotal6 = `TOTAL — ${nombreFacultadPdf(facultad)}`;
+
+  const filas = carreras.map(c => {
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
+    const realizadas = regs.reduce((s, d) => s + d.encuestados, 0);
+    const noRealizadas = regs.reduce((s, d) => s + d.noEncuestados, 0);
+    const proyectadas = realizadas + noRealizadas;
+    return { c, proyectadas, realizadas, noRealizadas, porc: proyectadas > 0 ? realizadas / proyectadas * 100 : 0 };
+  });
+  const totP = filas.reduce((s, f) => s + f.proyectadas, 0);
+  const totR = filas.reduce((s, f) => s + f.realizadas, 0);
+  const totNR = filas.reduce((s, f) => s + f.noRealizadas, 0);
+
+  const body: (string | number)[][] = [
+    ...filas.map(f => [f.c, f.proyectadas, f.realizadas, f.noRealizadas, f.porc.toFixed(2) + '%']),
+    [labelTotal6, totP, totR, totNR, totP > 0 ? (totR / totP * 100).toFixed(2) + '%' : '—'],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Carrera Profesional', 'Encuestas Proyectadas', 'Realizadas', 'No Realizadas', '% Completitud']],
+    body,
+    styles: { fontSize: 8.5, cellPadding: 3 },
+    headStyles: { fillColor: AZUL_UPT, textColor: [255, 255, 255] },
+    margin: { left: margin, right: margin },
+    columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } },
+    didParseCell(data) {
+      if (data.section === 'body' && data.row.index === filas.length) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [230, 230, 230];
+      }
+    },
+  });
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (graficoEl) {
+    try {
+      const canvas = await html2canvas(graficoEl, { scale: 2, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const imgW = pw - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      if (y + imgH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = 20; }
+      doc.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+    } catch { /* sin gráfico */ }
+  }
+  const slugVI = facultad || 'GENERAL';
+  doc.save(`ReporteVI_EncuestasTotales_${slugVI}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+

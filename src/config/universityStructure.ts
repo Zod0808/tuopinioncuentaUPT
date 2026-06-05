@@ -55,10 +55,10 @@ export const ORDEN_FACULTADES = ['FADE', 'FAEDCOH', 'FAING', 'FACEM', 'FAU', 'FA
 export type Calificacion = 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
 
 export const ESCALA_CALIFICACION: Record<Calificacion, { min: number; max: number; color: string; interpretacion: string }> = {
-  DESTACADO:       { min: 18,    max: 20,    color: '#4472C4', interpretacion: 'El docente tiene muy buen desempeño en el aula, se le felicita' },
-  BUENO:           { min: 15,    max: 17.99, color: '#2b6cb0', interpretacion: 'El docente tiene un desempeño correcto, pero debe seguir mejorando para optimizar sus resultados' },
-  ACEPTABLE:       { min: 12,    max: 14.99, color: '#c05621', interpretacion: 'Si bien el desempeño de docente en aula es aceptable, debe replantear su desempeño en los aspectos que marcan falencias' },
-  INSATISFACTORIO: { min: 0,     max: 11.99, color: '#c53030', interpretacion: 'El docente debe reprogramar en gran medida su desempeño en aula' },
+  DESTACADO:       { min: 17.1, max: 20,   color: '#276749', interpretacion: 'El docente tiene excelente desempeño y merece ser reconocido.' },
+  BUENO:           { min: 15.1, max: 17.0, color: '#2b6cb0', interpretacion: 'Tiene un buen desempeño, pero puede superarlo atendiendo los aspectos que requieren mejora.' },
+  ACEPTABLE:       { min: 11.0, max: 15.0, color: '#c05621', interpretacion: 'El docente debe examinar los resultados de su evaluación y afianzar los aspectos observados.' },
+  INSATISFACTORIO: { min: 0,    max: 10.9, color: '#c53030', interpretacion: 'El docente no tiene un buen desempeño, tiene que replantear radicalmente su desempeño profesional.' },
 };
 
 export const ASPECTOS_EVALUADOS: Record<string, string> = {
@@ -69,8 +69,8 @@ export const ASPECTOS_EVALUADOS: Record<string, string> = {
 };
 
 export function calcularCalificacion(nota: number): Calificacion {
-  if (nota >= 18) return 'DESTACADO';
-  if (nota >= 15) return 'BUENO';
-  if (nota >= 12) return 'ACEPTABLE';
+  if (nota >= 17.1) return 'DESTACADO';
+  if (nota >= 15.1) return 'BUENO';
+  if (nota >= 11.0) return 'ACEPTABLE';
   return 'INSATISFACTORIO';
 }
