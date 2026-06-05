@@ -3,6 +3,7 @@ import { EvaluacionData } from '../types';
 import { GraduationCap, Users, BookOpen, Download } from 'lucide-react';
 import { generarPDFResumenDocente } from '../services/pdfService';
 import { esValidoParaReporte, getExclusionReason } from '../services/reportCalculations';
+import { calcularCalificacion } from '../config/universityStructure';
 
 interface ResumenDocentePorCarreraProps {
   datos: EvaluacionData[];
@@ -40,13 +41,6 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
       </div>
     );
   }
-
-  const calcularCalificacion = (nota: number): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' => {
-    if (nota > 17 && nota <= 20) return 'DESTACADO';
-    if (nota > 15 && nota <= 17) return 'BUENO';
-    if (nota > 11 && nota <= 15) return 'ACEPTABLE';
-    return 'INSATISFACTORIO';
-  };
 
   const carreras = [...new Set(datos.map(d => d.carreraProfesional))].sort();
 

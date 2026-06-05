@@ -2,6 +2,7 @@ import { EvaluacionData } from '../types';
 import { Building2, Users, BookOpen, Download } from 'lucide-react';
 import { generarPDFResumenDocente } from '../services/pdfService';
 import { esValidoParaReporte, getExclusionReason } from '../services/reportCalculations';
+import { calcularCalificacion } from '../config/universityStructure';
 
 interface ResumenDocenteInstitucionalProps {
   datos: EvaluacionData[];
@@ -22,20 +23,6 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
       </div>
     );
   }
-
-  // Función para calcular calificación basada en nota
-  // Rangos: 0-11: INSATISFACTORIO, 11.01-15: ACEPTABLE, 15.01-17: BUENO, 17.01-20: SATISFACTORIO
-  const calcularCalificacion = (nota: number): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' => {
-    if (nota > 17 && nota <= 20) {
-      return 'DESTACADO'; // SATISFACTORIO en el sistema, pero mantenemos DESTACADO para compatibilidad
-    } else if (nota > 15 && nota <= 17) {
-      return 'BUENO';
-    } else if (nota > 11 && nota <= 15) {
-      return 'ACEPTABLE';
-    } else {
-      return 'INSATISFACTORIO'; // 0 a 11 (incluye 11)
-    }
-  };
 
   // Agrupar por docente usando solo registros válidos para los promedios
   const docentesMap = new Map<string, EvaluacionData[]>();

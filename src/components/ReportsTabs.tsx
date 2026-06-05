@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry } from '../services/reportCalculations';
-import { Building2, GraduationCap, BookOpen, Users, Award } from 'lucide-react';
+import { Building2, GraduationCap, BookOpen, Users, Award, Download } from 'lucide-react';
 import ReporteGeneralUniversidad from './ReporteGeneralUniversidad';
 import ReportePorFacultad from './ReportePorFacultad';
 import ReportePorCarrera from './ReportePorCarrera';
@@ -11,6 +11,7 @@ import ResumenDocenteInstitucional from './ResumenDocenteInstitucional';
 import ReporteCalificacionPorCarrera from './ReporteCalificacionPorCarrera';
 import ReporteCalificacionPorFacultad from './ReporteCalificacionPorFacultad';
 import ReporteCalificacionInstitucional from './ReporteCalificacionInstitucional';
+import ExportacionFAEDCOH from './ExportacionFAEDCOH';
 
 interface ReportsTabsProps {
   datos: EvaluacionData[];
@@ -19,7 +20,7 @@ interface ReportsTabsProps {
   matriculados?: MatriculadosEntry[];
 }
 
-type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional';
+type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional' | 'exportacion-faedcoh';
 
 interface Tab {
   id: TabType;
@@ -77,6 +78,11 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
       id: 'calificacion-institucional',
       label: 'Calificación Institucional',
       icon: <Building2 size={20} />
+    },
+    {
+      id: 'exportacion-faedcoh',
+      label: 'Exportación por Facultad',
+      icon: <Download size={20} />
     }
   ];
 
@@ -109,6 +115,7 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
             case 'calificacion-carrera': return <ReporteCalificacionPorCarrera datos={datos} />;
             case 'calificacion-facultad': return <ReporteCalificacionPorFacultad datos={datos} />;
             case 'calificacion-institucional': return <ReporteCalificacionInstitucional datos={datos} />;
+            case 'exportacion-faedcoh': return <ExportacionFAEDCOH datos={datos} />;
             default: return null;
           }
         })()}
