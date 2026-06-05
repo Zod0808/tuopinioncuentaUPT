@@ -13,8 +13,16 @@ function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
-/** Devuelve true si el campo facultad del registro corresponde al código seleccionado.
- *  Compara contra el código (ej. "FAEDCOH") y contra el nombre completo de la facultad. */
+/** Elimina guiones sueltos por campos vacíos en nombres (ej. "ERCILLA -, VICTOR" → "ERCILLA, VICTOR") */
+function limpiarTexto(s: string): string {
+  if (!s) return '';
+  return s
+    .replace(/\s*-\s*,/g, ',')
+    .replace(/,\s*-\s+/g, ', ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function matchesFacultad(recordFacultad: string, codigoSeleccionado: string): boolean {
   if (!codigoSeleccionado) return true;
   const rn = normalizar(recordFacultad);
@@ -35,7 +43,9 @@ function filtrarPorAmbito(
   return r;
 }
 
+/** Devuelve la etiqueta de calificación. Si el registro no es válido o no tiene encuestados, retorna 'N/A'. */
 function resolverCalificacion(d: EvaluacionData): string {
+  if (d.validez !== 'Válido' || d.encuestados === 0) return 'N/A';
   const cal = (['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const).includes(
     d.calificacion as any
   )
@@ -47,6 +57,14 @@ function resolverCalificacion(d: EvaluacionData): string {
 function aplicarEstiloCalificacion(ws: XLSX.WorkSheet, rowIndex: number, colIndex: number, calificacion: string) {
   const cell = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
   if (!ws[cell]) return;
+  if (calificacion === 'N/A') {
+    ws[cell].s = {
+      font: { bold: true, color: { rgb: '718096' } },
+      fill: { patternType: 'solid', fgColor: { rgb: 'E2E8F0' } },
+      alignment: { horizontal: 'center' },
+    };
+    return;
+  }
   const colorMap: Record<string, string> = {
     Destacado: '276749', Bueno: '2b6cb0', Aceptable: 'c05621', Insatisfactorio: 'c53030',
   };
@@ -100,26 +118,41 @@ export function exportarReporteI(datos: EvaluacionData[], facultad: string, carr
   );
 
   const encabezados = [
-    'Carrera Profesional', 'Docente', 'Curso', 'Sección',
+    'Programa Académico', 'Docente', 'Curso', 'Sección',
     'Nota', 'Calificación', 'AE-01', 'AE-02', 'AE-03', 'AE-04',
     'Encuestados', 'No Encuestados', 'Validez',
   ];
   const filas: (string | number)[][] = filtrados.map(d => [
-    d.carreraProfesional, d.docente, d.curso, d.seccion,
-    +d.nota.toFixed(2), resolverCalificacion(d),
-    +d.ae01.toFixed(2), +d.ae02.toFixed(2), +d.ae03.toFixed(2), +d.ae04.toFixed(2),
-    d.encuestados, d.noEncuestados, d.validez,
+    d.carreraProfesional,
+    limpiarTexto(d.docente),
+    d.curso,
+    d.seccion,
+    +d.nota.toFixed(2),
+    resolverCalificacion(d),
+    +d.ae01.toFixed(2),
+    +d.ae02.toFixed(2),
+    +d.ae03.toFixed(2),
+    +d.ae04.toFixed(2),
+    d.encuestados,
+    d.noEncuestados,
+    d.validez,
   ]);
 
-  const ws = crearHoja(encabezados, filas, [30, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12, 14, 10]);
+  const ws = crearHoja(encabezados, filas, [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12, 14, 10]);
   filas.forEach((fila, ri) => {
-    aplicarEstiloCalificacion(ws, ri + 1, 5, fila[5] as string);
-    const notaCell = XLSX.utils.encode_cell({ r: ri + 1, c: 4 });
-    const cal = calcularCalificacion(fila[4] as number);
-    const bgMap: Record<string, string> = {
-      DESTACADO: 'C6EFCE', BUENO: 'BDD7EE', ACEPTABLE: 'FFEB9C', INSATISFACTORIO: 'FFC7CE',
-    };
-    if (ws[notaCell]) ws[notaCell].s = { fill: { patternType: 'solid', fgColor: { rgb: bgMap[cal] } }, alignment: { horizontal: 'right' } };
+    const cal = fila[5] as string;
+    aplicarEstiloCalificacion(ws, ri + 1, 5, cal);
+    if (cal !== 'N/A') {
+      const notaCell = XLSX.utils.encode_cell({ r: ri + 1, c: 4 });
+      const calNivel = calcularCalificacion(fila[4] as number);
+      const bgMap: Record<string, string> = {
+        DESTACADO: 'C6EFCE', BUENO: 'BDD7EE', ACEPTABLE: 'FFEB9C', INSATISFACTORIO: 'FFC7CE',
+      };
+      if (ws[notaCell]) ws[notaCell].s = {
+        fill: { patternType: 'solid', fgColor: { rgb: bgMap[calNivel] } },
+        alignment: { horizontal: 'right' },
+      };
+    }
   });
 
   const wb = XLSX.utils.book_new();
@@ -131,21 +164,28 @@ export function exportarReporteI(datos: EvaluacionData[], facultad: string, carr
 
 export function exportarReporteII(datos: EvaluacionData[], facultad: string, carrera: string, docente: string): void {
   const filtrados = filtrarPorAmbito(datos, facultad, carrera, docente)
-    .filter(d => d.nota <= 10.9 && d.validez === 'Válido')
+    .filter(d => d.nota <= 10.9 && d.validez === 'Válido' && d.encuestados > 0)
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
 
   const encabezados = [
-    'Carrera Profesional', 'Docente', 'Curso', 'Sección',
+    'Programa Académico', 'Docente', 'Curso', 'Sección',
     'Nota', 'Calificación', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados',
   ];
   const filas: (string | number)[][] = filtrados.map(d => [
-    d.carreraProfesional, d.docente, d.curso, d.seccion,
-    +d.nota.toFixed(2), 'Insatisfactorio',
-    +d.ae01.toFixed(2), +d.ae02.toFixed(2), +d.ae03.toFixed(2), +d.ae04.toFixed(2),
+    d.carreraProfesional,
+    limpiarTexto(d.docente),
+    d.curso,
+    d.seccion,
+    +d.nota.toFixed(2),
+    'Insatisfactorio',
+    +d.ae01.toFixed(2),
+    +d.ae02.toFixed(2),
+    +d.ae03.toFixed(2),
+    +d.ae04.toFixed(2),
     d.encuestados,
   ]);
 
-  const ws = crearHoja(encabezados, filas, [30, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12]);
+  const ws = crearHoja(encabezados, filas, [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12]);
   filas.forEach((_, ri) => aplicarEstiloCalificacion(ws, ri + 1, 5, 'Insatisfactorio'));
 
   const wb = XLSX.utils.book_new();
@@ -156,18 +196,19 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
 // ── Reporte III: Notas de Criterios AE por Carrera ──────────────────────────
 
 export function exportarReporteIII(datos: EvaluacionData[], facultad: string, carrera: string): void {
-  const filtrados = filtrarPorAmbito(datos, facultad, carrera, '');
+  const filtrados = filtrarPorAmbito(datos, facultad, carrera, '')
+    .filter(d => d.validez === 'Válido' && d.encuestados > 0);
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
 
-  const encabezados = ['Carrera Profesional', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Promedio General'];
-  const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  const encabezados = ['Programa Académico', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Promedio General'];
+  const avgArr = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
   const filas: (string | number)[][] = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
-    const ae01 = avg(regs.map(d => d.ae01));
-    const ae02 = avg(regs.map(d => d.ae02));
-    const ae03 = avg(regs.map(d => d.ae03));
-    const ae04 = avg(regs.map(d => d.ae04));
-    return [c, +ae01.toFixed(2), +ae02.toFixed(2), +ae03.toFixed(2), +ae04.toFixed(2), +avg([ae01, ae02, ae03, ae04]).toFixed(2)];
+    const ae01 = avgArr(regs.map(d => d.ae01));
+    const ae02 = avgArr(regs.map(d => d.ae02));
+    const ae03 = avgArr(regs.map(d => d.ae03));
+    const ae04 = avgArr(regs.map(d => d.ae04));
+    return [c, +ae01.toFixed(2), +ae02.toFixed(2), +ae03.toFixed(2), +ae04.toFixed(2), +avgArr([ae01, ae02, ae03, ae04]).toFixed(2)];
   });
 
   const ws = crearHoja(encabezados, filas, [40, 10, 10, 10, 10, 16]);
@@ -179,16 +220,17 @@ export function exportarReporteIII(datos: EvaluacionData[], facultad: string, ca
 // ── Reporte IV: % Juicio de Valor por Carrera ────────────────────────────────
 
 export function exportarReporteIV(datos: EvaluacionData[], facultad: string, carrera: string): void {
-  const filtrados = filtrarPorAmbito(datos, facultad, carrera, '');
+  const filtrados = filtrarPorAmbito(datos, facultad, carrera, '')
+    .filter(d => d.validez === 'Válido' && d.encuestados > 0);
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
 
   const encabezados = [
-    'Carrera Profesional', 'Secciones Calificadas',
+    'Programa Académico', 'Secciones Válidas',
     'N° Destacado', '% Destacado', 'N° Bueno', '% Bueno',
     'N° Aceptable', '% Aceptable', 'N° Insatisfactorio', '% Insatisfactorio',
   ];
   const filas: (string | number)[][] = carreras.map(c => {
-    const regs = filtrados.filter(d => d.carreraProfesional === c && d.validez === 'Válido');
+    const regs = filtrados.filter(d => d.carreraProfesional === c);
     const total = regs.length;
     const n = (cal: string) => regs.filter(d => (d.calificacion || calcularCalificacion(d.nota)) === cal).length;
     const p = (x: number) => total > 0 ? +(x / total * 100).toFixed(2) : 0;
@@ -197,7 +239,7 @@ export function exportarReporteIV(datos: EvaluacionData[], facultad: string, car
     return [c, total, dest, p(dest), buen, p(buen), acep, p(acep), insa, p(insa)];
   });
 
-  const ws = crearHoja(encabezados, filas, [40, 20, 14, 14, 12, 12, 14, 14, 18, 18]);
+  const ws = crearHoja(encabezados, filas, [40, 18, 14, 14, 12, 12, 14, 14, 18, 18]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '% Calificación');
   XLSX.writeFile(wb, `ReporteIV_JuicioValor_${slugFacultad(facultad)}_${hoy()}.xlsx`);
@@ -210,7 +252,7 @@ export function exportarReporteV(datos: EvaluacionData[], facultad: string, carr
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   const label = etiquetaFacultad(facultad);
 
-  const encabezados = ['Carrera Profesional', 'Total Matriculados', 'Encuestados', 'No Encuestados', '% Participación'];
+  const encabezados = ['Programa Académico', 'Total Matriculados', 'Encuestados', 'No Encuestados', '% Participación'];
   const filas: (string | number)[][] = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
     const enc = regs.reduce((s, d) => s + d.encuestados, 0);
@@ -237,7 +279,7 @@ export function exportarReporteVI(datos: EvaluacionData[], facultad: string, car
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   const label = etiquetaFacultad(facultad);
 
-  const encabezados = ['Carrera Profesional', 'Encuestas Proyectadas', 'Realizadas', 'No Realizadas', '% Completitud'];
+  const encabezados = ['Programa Académico', 'Encuestas Proyectadas', 'Realizadas', 'No Realizadas', '% Completitud'];
   const filas: (string | number)[][] = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
     const realizadas = regs.reduce((s, d) => s + d.encuestados, 0);
