@@ -469,7 +469,7 @@ export async function generarPDFResumenDocente(
 // Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calcularCalificacion, FACULTADES } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO } from '../config/universityStructure';
 
 const AZUL_UPT: [number, number, number] = [22, 40, 92];
 const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
@@ -533,7 +533,7 @@ function cabeceraReporte(doc: jsPDF, facultad: string, titulo: string, subtitulo
   const nombreFac = nombreFacultadPdf(facultad);
   doc.text(nombreFac, pw / 2, y, { align: 'center' });
   y += 5;
-  doc.text('Proceso de Encuestas "Tu Opinión Cuenta 2025-II"', pw / 2, y, { align: 'center' });
+  doc.text(`Proceso de Encuestas "Tu Opinión Cuenta ${PERIODO_ACADEMICO}"`, pw / 2, y, { align: 'center' });
   y += 8;
   doc.setFontSize(13).setFont('helvetica', 'bold').setTextColor(...AZUL_UPT);
   doc.text(titulo, pw / 2, y, { align: 'center' });
@@ -551,6 +551,22 @@ function cabeceraReporte(doc: jsPDF, facultad: string, titulo: string, subtitulo
 
 function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+}
+
+function agregarLeyendaAEPdf(doc: jsPDF, y: number): number {
+  const margin = 12;
+  const ph = doc.internal.pageSize.getHeight();
+  if (y + 28 > ph - 8) { doc.addPage(); y = 20; }
+  doc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(22, 40, 92);
+  doc.text('Leyenda — Aspectos Evaluados (AE):', margin, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal').setTextColor(60, 60, 60);
+  for (const [codigo, desc] of Object.entries(ASPECTOS_EVALUADOS)) {
+    if (y + 4 > ph - 6) { doc.addPage(); y = 20; }
+    doc.text(`${codigo}: ${desc}`, margin + 3, y);
+    y += 4;
+  }
+  return y;
 }
 
 // Reporte I – General de Evaluación por Docente (landscape, cortes por carrera)
@@ -606,6 +622,7 @@ export async function generarPDFReporteI(
     });
     y = (doc as any).lastAutoTable.finalY + 10;
   }
+  agregarLeyendaAEPdf(doc, y + 4);
   const slug = facultad || 'GENERAL';
   doc.save(`ReporteI_EvaluacionDocente_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
@@ -617,10 +634,16 @@ export async function generarPDFReporteII(
   carrera: string
 ): Promise<void> {
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '')
-    .filter(d => d.nota <= 10.9 && d.validez === 'Válido')
+    .filter(d => d.nota <= 10.9 && d.validez === 'Válido' && d.encuestados > 0)
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
 
   if (filtrados.length === 0) { alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.'); return; }
+
+  const insuf = filtrados.map(d => {
+    const total = d.encuestados + d.noEncuestados;
+    return total > 0 && d.encuestados / total < 0.15;
+  });
+  const hayInsuf = insuf.some(Boolean);
 
   const doc = new jsPDF('l', 'mm', 'a4');
   const margin = 12;
@@ -629,10 +652,10 @@ export async function generarPDFReporteII(
   doc.setFontSize(9).setFont('helvetica', 'italic').setTextColor(100, 0, 0);
   doc.text(`Total de registros insatisfactorios: ${filtrados.length}`, margin, y); y += 7;
 
-  const body = filtrados.map(d => [
+  const body = filtrados.map((d, i) => [
     d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion,
     d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
-    d.encuestados.toString(),
+    insuf[i] ? `${d.encuestados} [!]` : d.encuestados.toString(),
   ]);
   autoTable(doc, {
     startY: y,
@@ -649,9 +672,21 @@ export async function generarPDFReporteII(
       9: { halign: 'center', cellWidth: 18 },
     },
     didParseCell(data) {
-      if (data.section === 'body') data.cell.styles.textColor = ROJO_INSATISFACTORIO;
+      if (data.section === 'body') {
+        data.cell.styles.textColor = ROJO_INSATISFACTORIO;
+        if (insuf[data.row.index]) data.cell.styles.fillColor = [255, 235, 156];
+      }
     },
   });
+
+  let yFinal = (doc as any).lastAutoTable.finalY + 5;
+  if (hayInsuf) {
+    doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor(150, 100, 0);
+    doc.text('[!] Muestra Insuficiente — encuestados < 15% del total de la seccion. Pendiente de Validacion.', margin, yFinal);
+    yFinal += 6;
+  }
+  agregarLeyendaAEPdf(doc, yFinal + 2);
+
   const slug = facultad || 'GENERAL';
   doc.save(`ReporteII_Insatisfactorios_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
@@ -699,8 +734,10 @@ export async function generarPDFReporteIII(
       const imgH = (canvas.height * imgW) / canvas.width;
       if (y + imgH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = 20; }
       doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, imgW, imgH);
+      y += imgH + 6;
     } catch { /* sin gráfico */ }
   }
+  agregarLeyendaAEPdf(doc, y + 4);
   const slug = facultad || 'GENERAL';
   doc.save(`ReporteIII_CriteriosAE_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
@@ -797,9 +834,19 @@ export async function generarPDFReporteV(
     margin: { left: margin, right: margin },
     columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } },
     didParseCell(data) {
-      if (data.section === 'body' && data.row.index === filas.length) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [230, 230, 230];
+      if (data.section === 'body') {
+        if (data.row.index === filas.length) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [230, 230, 230];
+        }
+        if (data.column.index === 4) {
+          const porcStr = data.cell.text[0]?.replace('%', '').replace('—', '').trim();
+          const porc = parseFloat(porcStr);
+          if (!isNaN(porc)) {
+            data.cell.styles.fillColor = porc < 70 ? [255, 199, 206] : porc <= 85 ? [255, 235, 156] : [198, 239, 206];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       }
     },
   });
@@ -860,9 +907,19 @@ export async function generarPDFReporteVI(
     margin: { left: margin, right: margin },
     columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } },
     didParseCell(data) {
-      if (data.section === 'body' && data.row.index === filas.length) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [230, 230, 230];
+      if (data.section === 'body') {
+        if (data.row.index === filas.length) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [230, 230, 230];
+        }
+        if (data.column.index === 4) {
+          const porcStr = data.cell.text[0]?.replace('%', '').replace('—', '').trim();
+          const porc = parseFloat(porcStr);
+          if (!isNaN(porc)) {
+            data.cell.styles.fillColor = porc < 70 ? [255, 199, 206] : porc <= 85 ? [255, 235, 156] : [198, 239, 206];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       }
     },
   });
