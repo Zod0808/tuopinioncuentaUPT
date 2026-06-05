@@ -70,6 +70,11 @@ export const ASPECTOS_EVALUADOS: Record<string, string> = {
 
 export const PERIODO_ACADEMICO = '2025-II';
 
+/** Porcentaje mínimo de participación (Enc / (Enc+NoEnc)) para que una sección
+ *  sea considerada válida. Por debajo de este umbral la nota no se promedia y
+ *  la calificación se muestra como "Baja Participación". */
+export const UMBRAL_PARTICIPACION_MINIMA = 0.30;
+
 export function calcularCalificacion(nota: number): Calificacion {
   if (nota >= 17.1) return 'DESTACADO';
   if (nota >= 15.1) return 'BUENO';

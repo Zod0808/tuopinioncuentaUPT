@@ -1,14 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend,
 } from 'chart.js';
 import { Download, FileSpreadsheet, FileText, Filter, AlertTriangle } from 'lucide-react';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
 import {
   exportarReporteI, exportarReporteII, exportarReporteIII,
   exportarReporteIV, exportarReporteV, exportarReporteVI,
+  exportarBaseDatos,
 } from '../services/excelService';
 import {
   generarPDFReporteI, generarPDFReporteII, generarPDFReporteIII,
@@ -23,10 +24,11 @@ const COLORES_CAL = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
 const LABELS_CAL = ['Destacado', 'Bueno', 'Aceptable', 'Insatisfactorio'];
 const CAL_KEYS = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
 
-type TipoReporte = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+type TipoReporte = 'BD' | 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
 type Formato = 'pdf' | 'excel';
 
-const REPORTES: { id: TipoReporte; titulo: string; desc: string }[] = [
+const REPORTES: { id: TipoReporte; titulo: string; desc: string; esMaestra?: boolean }[] = [
+  { id: 'BD',  titulo: 'Base de Datos',  desc: 'Tabla maestra — todas las facultades, todos los campos, lista para automatización por filtro de facultad', esMaestra: true },
   { id: 'I',   titulo: 'Reporte I',   desc: 'Evaluación General por Docente (tabla completa)' },
   { id: 'II',  titulo: 'Reporte II',  desc: 'Docentes Insatisfactorios — nota ≤ 10.9 y válidos' },
   { id: 'III', titulo: 'Reporte III', desc: 'Promedios AE-01 a AE-04 por Carrera (con gráfico)' },
@@ -49,7 +51,7 @@ function matchesFacultad(recordFacultad: string, codigo: string): boolean {
   return rn.includes(normComp(codigo)) || rn.includes(normComp(fac.nombre));
 }
 
-export default function ExportacionFAEDCOH({ datos }: Props) {
+export default function ExportacionReportes({ datos }: Props) {
   const [facultadFiltro, setFacultadFiltro] = useState('');
   const [carreraFiltro, setCarreraFiltro] = useState('');
   const [docenteFiltro, setDocenteFiltro] = useState('');
@@ -87,6 +89,30 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
   if (carreraFiltro) base = base.filter(d => d.carreraProfesional === carreraFiltro);
   if (docenteFiltro) base = base.filter(d => d.docente === docenteFiltro);
 
+  // ── Métricas en vivo del ámbito activo ─────────────────────────────────────
+  const metricas = useMemo(() => {
+    const totalEnc = base.reduce((s, d) => s + d.encuestados, 0);
+    const totalNoEnc = base.reduce((s, d) => s + d.noEncuestados, 0);
+    const totalPartic = totalEnc + totalNoEnc;
+    const porcPartic = totalPartic > 0 ? totalEnc / totalPartic * 100 : 0;
+
+    const validos = base.filter(d => {
+      if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
+      const t = d.encuestados + d.noEncuestados;
+      return t === 0 || d.encuestados / t >= UMBRAL_PARTICIPACION_MINIMA;
+    });
+    const promedioGeneral = validos.length
+      ? validos.reduce((s, d) => s + d.nota, 0) / validos.length
+      : 0;
+    const nInsatisfactorios = validos.filter(d => d.nota <= 10.9).length;
+    const nBajaParticipacion = base.filter(d => {
+      const t = d.encuestados + d.noEncuestados;
+      return t > 0 && d.encuestados / t < UMBRAL_PARTICIPACION_MINIMA;
+    }).length;
+
+    return { porcPartic, promedioGeneral, nInsatisfactorios, nBajaParticipacion, seccionesValidas: validos.length };
+  }, [base]);
+
   const carrerasParaGrafico = carreraFiltro
     ? [carreraFiltro]
     : [...new Set(base.map(d => d.carreraProfesional))].sort();
@@ -113,7 +139,7 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
     datasets: CAL_KEYS.map((cal, idx) => ({
       label: LABELS_CAL[idx],
       data: carrerasParaGrafico.map(c => {
-        const regs = base.filter(d => d.carreraProfesional === c && d.validez === 'Válido');
+        const regs = base.filter(d => d.carreraProfesional === c && d.validez === 'Válido' && d.encuestados > 0 && d.nota > 0);
         if (!regs.length) return 0;
         const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
         return +(n / regs.length * 100).toFixed(1);
@@ -159,7 +185,7 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
   const opAgrupadas = { responsive: true, scales: { y: { min: 0, max: 20 } }, plugins: { legend: { position: 'top' as const } } };
 
   const graficosPorReporte: Record<TipoReporte, React.ReactNode> = {
-    I: null, II: null,
+    BD: null, I: null, II: null,
     III: <Bar data={datosGraficoIII} options={opAgrupadas} />,
     IV:  <Bar data={datosGraficoIV}  options={opApiladas} />,
     V:   <Bar data={datosGraficoV}   options={opApiladasAbs} />,
@@ -170,6 +196,11 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
     if (generando) return;
     setGenerando(true);
     try {
+      // Base de Datos siempre exporta todo el dataset en Excel, ignora filtros y formato
+      if (reporteActivo === 'BD') {
+        exportarBaseDatos(datos);
+        return;
+      }
       if (formato === 'excel') {
         switch (reporteActivo) {
           case 'I':   exportarReporteI(datos, facultadFiltro, carreraFiltro, docenteFiltro); break;
@@ -197,7 +228,7 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
 
   if (datos.length === 0) {
     return (
-      <div className="exportacion-faedcoh">
+      <div className="exportacion-panel">
         <div className="no-data-container">
           <AlertTriangle size={48} />
           <p className="no-data">No hay datos cargados para este ciclo.</p>
@@ -208,23 +239,24 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
   }
 
   const reporte = REPORTES.find(r => r.id === reporteActivo)!;
+  const esBD = reporteActivo === 'BD';
   const tieneGrafico = ['III', 'IV', 'V', 'VI'].includes(reporteActivo);
   const nombreFacultadSelec = facultadFiltro
     ? (FACULTADES[facultadFiltro]?.nombre ?? facultadFiltro)
     : 'Todas las Facultades';
 
   return (
-    <div className="exportacion-faedcoh">
-      <div className="faedcoh-header">
+    <div className="exportacion-panel">
+      <div className="exportacion-header">
         <h2>Exportación de Reportes Analíticos</h2>
-        <p className="faedcoh-subtitle">
-          Genera los 6 reportes de la campaña "Tu Opinión Cuenta 2025-II" para cualquier facultad, en PDF o Excel.
+        <p className="exportacion-subtitle">
+          Base de Datos maestra + 6 reportes analíticos por facultad — PDF o Excel con formato condicional.
         </p>
-        <span className="faedcoh-badge">{datos.length} registros totales cargados</span>
+        <span className="exportacion-badge">{datos.length} registros totales cargados</span>
       </div>
 
       {/* ── Filtros en cascada ── */}
-      <div className="faedcoh-filtros">
+      <div className="exportacion-filtros">
         <div className="filtro-bloque">
           <Filter size={16} />
           <strong>Filtros de segmentación jerárquica</strong>
@@ -297,47 +329,105 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
           {docenteFiltro && <> → <strong>{docenteFiltro}</strong></>}
           <span className="filtro-count">({base.length} registros)</span>
         </div>
+
+        {/* Métricas en vivo */}
+        {base.length > 0 && (
+          <div className="metricas-grid">
+            <div className="metrica-card">
+              <span className="metrica-label">% Participación</span>
+              <span className="metrica-valor" style={{
+                color: metricas.porcPartic < 70 ? '#c53030' : metricas.porcPartic < 85 ? '#c05621' : '#276749',
+              }}>
+                {metricas.porcPartic.toFixed(1)}%
+              </span>
+            </div>
+            <div className="metrica-card">
+              <span className="metrica-label">Promedio General</span>
+              <span className="metrica-valor" style={{
+                color: metricas.promedioGeneral >= 17.1 ? '#276749' : metricas.promedioGeneral >= 15.1 ? '#2b6cb0' : metricas.promedioGeneral >= 11.0 ? '#c05621' : '#c53030',
+              }}>
+                {metricas.seccionesValidas > 0 ? metricas.promedioGeneral.toFixed(2) : '—'}
+              </span>
+            </div>
+            <div className="metrica-card">
+              <span className="metrica-label">Secc. Válidas</span>
+              <span className="metrica-valor">{metricas.seccionesValidas}</span>
+            </div>
+            <div className="metrica-card">
+              <span className="metrica-label">Insatisfactorios</span>
+              <span className="metrica-valor" style={{ color: metricas.nInsatisfactorios > 0 ? '#c53030' : '#276749' }}>
+                {metricas.nInsatisfactorios}
+              </span>
+            </div>
+            <div className="metrica-card">
+              <span className="metrica-label">Baja Participación</span>
+              <span className="metrica-valor" style={{ color: metricas.nBajaParticipacion > 0 ? '#6B21A8' : '#276749' }}>
+                {metricas.nBajaParticipacion}
+              </span>
+              {metricas.nBajaParticipacion > 0 && (
+                <span className="metrica-hint">&lt;{UMBRAL_PARTICIPACION_MINIMA * 100}% Part.</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Selección de reporte ── */}
-      <div className="faedcoh-reportes">
-        <strong>Seleccionar tipo de reporte</strong>
+      <div className="exportacion-reportes">
+        <strong>Seleccionar tipo de exportación</strong>
         <div className="reportes-grid">
           {REPORTES.map(r => (
             <button
               key={r.id}
-              className={`reporte-btn ${reporteActivo === r.id ? 'reporte-btn-active' : ''}`}
+              className={`reporte-btn ${reporteActivo === r.id ? 'reporte-btn-active' : ''} ${r.esMaestra ? 'reporte-btn-maestra' : ''}`}
               onClick={() => setReporteActivo(r.id)}
             >
-              <span className="reporte-id">{r.titulo}</span>
+              <span className="reporte-id">
+                {r.esMaestra && <FileSpreadsheet size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
+                {r.titulo}
+              </span>
               <span className="reporte-desc">{r.desc}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Formato de exportación ── */}
-      <div className="faedcoh-formato">
-        <strong>Formato de exportación</strong>
-        <div className="formato-opciones">
-          <label className={`formato-opcion ${formato === 'pdf' ? 'formato-activo' : ''}`}>
-            <input type="radio" name="formato" value="pdf" checked={formato === 'pdf'} onChange={() => setFormato('pdf')} />
-            <FileText size={18} />
-            <span>PDF Institucional</span>
-            {tieneGrafico && <small>(incluye gráfico analítico)</small>}
-          </label>
-          <label className={`formato-opcion ${formato === 'excel' ? 'formato-activo' : ''}`}>
-            <input type="radio" name="formato" value="excel" checked={formato === 'excel'} onChange={() => setFormato('excel')} />
-            <FileSpreadsheet size={18} />
-            <span>Excel (.xlsx)</span>
-            <small>(con formato condicional de color)</small>
-          </label>
+      {/* ── Nota Base de Datos ── */}
+      {esBD && (
+        <div className="exportacion-alerta" style={{ borderColor: '#2b6cb0', backgroundColor: '#ebf8ff' }}>
+          <FileSpreadsheet size={16} color="#2b6cb0" />
+          <span style={{ color: '#2b6cb0' }}>
+            <strong>Exportación maestra</strong> — Genera un único Excel con <strong>{datos.length} registros</strong> de todas las
+            facultades. Usa el filtro de la columna <code>ID_Facultad</code> en Excel (o cualquier script) para
+            generar los 6 reportes por facultad en segundos. Los filtros de la izquierda no aplican aquí.
+          </span>
         </div>
-      </div>
+      )}
+
+      {/* ── Formato de exportación (solo para reportes analíticos) ── */}
+      {!esBD && (
+        <div className="exportacion-formato">
+          <strong>Formato de exportación</strong>
+          <div className="formato-opciones">
+            <label className={`formato-opcion ${formato === 'pdf' ? 'formato-activo' : ''}`}>
+              <input type="radio" name="formato" value="pdf" checked={formato === 'pdf'} onChange={() => setFormato('pdf')} />
+              <FileText size={18} />
+              <span>PDF Institucional</span>
+              {tieneGrafico && <small>(incluye gráfico analítico)</small>}
+            </label>
+            <label className={`formato-opcion ${formato === 'excel' ? 'formato-activo' : ''}`}>
+              <input type="radio" name="formato" value="excel" checked={formato === 'excel'} onChange={() => setFormato('excel')} />
+              <FileSpreadsheet size={18} />
+              <span>Excel (.xlsx)</span>
+              <small>(con formato condicional de color)</small>
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* ── Vista previa del gráfico ── */}
       {tieneGrafico && formato === 'pdf' && (
-        <div className="faedcoh-grafico-preview">
+        <div className="exportacion-grafico-preview">
           <p className="grafico-label">Vista previa del gráfico que se incluirá en el PDF:</p>
           <div ref={graficoRef} className="grafico-captura" style={{ background: '#fff', padding: '12px' }}>
             {graficosPorReporte[reporteActivo]}
@@ -353,7 +443,7 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
           return total > 0 && d.encuestados / total < 0.15;
         });
         return (
-          <div className="faedcoh-alerta">
+          <div className="exportacion-alerta">
             <AlertTriangle size={16} color="#c53030" />
             <span>
               Filtra secciones con <strong>nota ≤ 10.9</strong>, <strong>validez = Válido</strong> y <strong>encuestados &gt; 0</strong>.
@@ -367,22 +457,22 @@ export default function ExportacionFAEDCOH({ datos }: Props) {
       })()}
 
       {/* ── Botón generar ── */}
-      <div className="faedcoh-accion">
+      <div className="exportacion-accion">
         <button
           className="btn-generar-reporte"
           onClick={handleGenerar}
-          disabled={generando || base.length === 0}
+          disabled={generando || (!esBD && base.length === 0)}
         >
           {generando ? (
             <span>Generando...</span>
           ) : (
             <>
               <Download size={18} />
-              <span>Generar y Exportar {reporte.titulo}</span>
+              <span>{esBD ? `Exportar Base de Datos (${datos.length} registros)` : `Generar y Exportar ${reporte.titulo}`}</span>
             </>
           )}
         </button>
-        {base.length === 0 && (
+        {!esBD && base.length === 0 && (
           <p className="hint" style={{ color: '#c53030' }}>No hay datos para los filtros seleccionados.</p>
         )}
       </div>
