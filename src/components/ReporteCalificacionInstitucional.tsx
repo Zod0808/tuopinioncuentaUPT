@@ -1,5 +1,6 @@
 import { EvaluacionData } from '../types';
 import { calcularCalificacion } from '../config/universityStructure';
+import { esValidoParaReporte } from '../services/reportCalculations';
 import { Building2, PieChart, BarChart3 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -50,9 +51,9 @@ export default function ReporteCalificacionInstitucional({ datos }: ReporteCalif
     );
   }
 
-  // Agrupar todos los datos por docente (sin importar facultad o carrera)
+  // Agrupar todos los datos por docente (solo registros válidos)
   const docentesMap = new Map<string, EvaluacionData[]>();
-  datos.forEach(dato => {
+  datos.filter(esValidoParaReporte).forEach(dato => {
     const docente = dato.docente;
     if (!docentesMap.has(docente)) {
       docentesMap.set(docente, []);

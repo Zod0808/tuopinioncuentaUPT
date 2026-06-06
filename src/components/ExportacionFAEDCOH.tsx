@@ -6,6 +6,7 @@ import {
 import { Download, FileSpreadsheet, FileText, Filter, AlertTriangle } from 'lucide-react';
 import { EvaluacionData } from '../types';
 import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
+import { esValidoParaReporte } from '../services/reportCalculations';
 import {
   exportarReporteI, exportarReporteII, exportarReporteIII,
   exportarReporteIV, exportarReporteV, exportarReporteVI,
@@ -139,7 +140,7 @@ export default function ExportacionReportes({ datos }: Props) {
     datasets: CAL_KEYS.map((cal, idx) => ({
       label: LABELS_CAL[idx],
       data: carrerasParaGrafico.map(c => {
-        const regs = base.filter(d => d.carreraProfesional === c && d.validez === 'Válido' && d.encuestados > 0 && d.nota > 0);
+        const regs = base.filter(d => d.carreraProfesional === c && esValidoParaReporte(d));
         if (!regs.length) return 0;
         const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
         return +(n / regs.length * 100).toFixed(1);
@@ -437,7 +438,7 @@ export default function ExportacionReportes({ datos }: Props) {
 
       {/* ── Alerta Reporte II ── */}
       {reporteActivo === 'II' && (() => {
-        const insatisfactorios = base.filter(d => d.nota <= 10.9 && d.validez === 'Válido' && d.encuestados > 0);
+        const insatisfactorios = base.filter(d => esValidoParaReporte(d) && d.nota <= 10.9);
         const muestraInsuf = insatisfactorios.filter(d => {
           const total = d.encuestados + d.noEncuestados;
           return total > 0 && d.encuestados / total < 0.15;

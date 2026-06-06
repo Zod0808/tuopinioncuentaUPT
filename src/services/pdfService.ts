@@ -382,7 +382,7 @@ export async function generarPDFResumenDocente(
         dato.docente,
         dato.curso,
         dato.seccion,
-        dato.calificacion,
+        resolverCal(dato),
         dato.ae01.toFixed(2),
         dato.ae02.toFixed(2),
         dato.ae03.toFixed(2),

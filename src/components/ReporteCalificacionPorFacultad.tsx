@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { Building2, PieChart, BarChart3 } from 'lucide-react';
 import { calcularCalificacion } from '../config/universityStructure';
+import { esValidoParaReporte } from '../services/reportCalculations';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -68,8 +69,8 @@ export default function ReporteCalificacionPorFacultad({ datos }: ReporteCalific
     carreras.forEach(carrera => {
       const datosCarrera = datosFacultad.filter(d => d.carreraProfesional === carrera);
       const docentesMap = new Map<string, EvaluacionData[]>();
-      
-      datosCarrera.forEach(dato => {
+
+      datosCarrera.filter(esValidoParaReporte).forEach(dato => {
         const docente = dato.docente;
         if (!docentesMap.has(docente)) {
           docentesMap.set(docente, []);
