@@ -3,7 +3,7 @@ import { EvaluacionData } from '../types';
 import { GraduationCap, Users, BookOpen, Download } from 'lucide-react';
 import { generarPDFResumenDocente } from '../services/pdfService';
 import { esValidoParaReporte, getExclusionReason } from '../services/reportCalculations';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
 
 interface ResumenDocentePorCarreraProps {
   datos: EvaluacionData[];
@@ -20,6 +20,23 @@ interface DocenteExcluido {
   docente: string;
   cantidadCursos: number;
   motivo: string;
+}
+
+function resolverCalDisplay(d: EvaluacionData): string {
+  if (d.encuestados === 0) return 'No Aplica';
+  if (d.nota === 0) return 'Sin Evaluar';
+  const total = d.encuestados + d.noEncuestados;
+  if (total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'Baja Participación';
+  return calcularCalificacion(d.nota);
+}
+
+function badgeClaseCal(cal: string): string {
+  const map: Record<string, string> = {
+    DESTACADO: 'badge-destacado', BUENO: 'badge-bueno',
+    ACEPTABLE: 'badge-aceptable', INSATISFACTORIO: 'badge-insatisfactorio',
+    'Baja Participación': 'badge-baja-participacion',
+  };
+  return map[cal] ?? 'badge-warning';
 }
 
 interface CarreraResumen {
@@ -257,7 +274,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
                       }
                       return datosCarreraOrdenados.map((dato, index) => {
                         const promedioDocente = promediosPorDocente.get(dato.docente) ?? dato.nota;
-                        const calificacionCorrecta = calcularCalificacion(dato.nota);
+                        const calificacionCorrecta = resolverCalDisplay(dato);
                         const rowSpanPromedio = rowSpanMap.get(index);
                         let estaDentroDeGrupo = false;
                         for (const [inicio, span] of rowSpanMap.entries()) {
@@ -273,7 +290,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
                             <td>{dato.curso}</td>
                             <td>{dato.seccion}</td>
                             <td>
-                              <span className={`badge badge-${calificacionCorrecta.toLowerCase()}`}>
+                              <span className={`badge ${badgeClaseCal(calificacionCorrecta)}`}>
                                 {calificacionCorrecta}
                               </span>
                             </td>
@@ -339,7 +356,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
                             <td className="text-center">{dato.encuestados}</td>
                             <td className="text-center">{dato.noEncuestados}</td>
                             <td className="text-center">
-                              <span className="badge badge-insatisfactorio">{dato.calificacion}</span>
+                              <span className={`badge ${badgeClaseCal(resolverCalDisplay(dato))}`}>{resolverCalDisplay(dato)}</span>
                             </td>
                             <td className="text-right">{dato.nota.toFixed(2)}</td>
                           </tr>

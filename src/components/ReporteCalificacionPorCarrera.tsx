@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { GraduationCap, PieChart, BarChart3 } from 'lucide-react';
 import { calcularCalificacion } from '../config/universityStructure';
+import { esValidoParaReporte } from '../services/reportCalculations';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -60,9 +61,9 @@ export default function ReporteCalificacionPorCarrera({ datos }: ReporteCalifica
   const procesarCarrera = (carrera: string): { stats: CalificacionStats; docentes: DocenteResumen[] } => {
     const datosCarrera = datos.filter(d => d.carreraProfesional === carrera);
     
-    // Agrupar por docente
+    // Agrupar por docente (solo registros válidos)
     const docentesMap = new Map<string, EvaluacionData[]>();
-    datosCarrera.forEach(dato => {
+    datosCarrera.filter(esValidoParaReporte).forEach(dato => {
       const docente = dato.docente;
       if (!docentesMap.has(docente)) {
         docentesMap.set(docente, []);
