@@ -11,6 +11,12 @@ export interface EvaluacionData {
   ae03: number;
   ae04: number;
   nota: number;
+  /**
+   * RESPUESTAS DE ENCUESTA para esta sección específica (interacciones totales).
+   * Un mismo alumno puede aparecer en múltiples secciones/cursos, por lo que
+   * la suma de este campo a nivel de carrera representa INTERACCIONES TOTALES,
+   * no alumnos únicos. Ver `MatriculadosEntry.totalEncuestados` para alumnos únicos.
+   */
   encuestados: number;
   noEncuestados: number;
   validez: 'Válido' | 'No válido';

@@ -1022,7 +1022,7 @@ function getCalifReg(r: EvaluacionData): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | '
   return calcularCalificacion(r.nota);
 }
 
-/** Encabezado estándar para los 6 reportes */
+/** Encabezado estándar para los 5 reportes de facultad */
 function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Paragraph | Table)[] {
   return [
     new Paragraph({
@@ -1116,43 +1116,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
     `Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
 }
 
-// ── Reporte 2: Notas Plana Docente (Criterios de Evaluación) por Carrera ─────
-async function rpt2NotasPorCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte de Notas de la Plana Docente (Criterios de Evaluación) por Carrera Profesional', nombreFac, ciclo),
-  ];
-
-  for (const [carreraName, c] of f.carreras) {
-    children.push(negrita(carreraName), salto());
-    const rows: TableRow[] = [
-      new TableRow({ children: [
-        celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
-        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
-        celdaH('Nota'), celdaH('Calificación'),
-      ]}),
-    ];
-    for (const r of c.registros) {
-      rows.push(new TableRow({ children: [
-        celda(r.docente), celda(r.curso), celda(r.seccion, true),
-        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
-        celdaN(r.nota, 2, true), celda(getCalifReg(r), true, true),
-      ]}));
-    }
-    rows.push(new TableRow({ children: [
-      celda('PROMEDIO', false, true, GRIS_ROW),
-      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
-      celdaN(c.promedioAE01), celdaN(c.promedioAE02), celdaN(c.promedioAE03), celdaN(c.promedioAE04),
-      celdaN(c.promedioGeneral, 2, true),
-      celda(categoriaPromedio(c.promedioGeneral), true, true, GRIS_ROW),
-    ]}));
-    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
-  }
-
-  children.push(...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
-    `Reporte_Notas_Plana_Docente_${ciclo}_${cod}.docx`);
-}
+// rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
 
 // ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
 async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
@@ -1265,7 +1229,10 @@ async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cf
     `Reporte_Nro_Encuestas_${ciclo}_${cod}.docx`);
 }
 
-// ── Reporte 6: General de Evaluación por Docente ─────────────────────────────
+// ── Reporte 5 (ex-6): General de Evaluación por Docente ──────────────────────
+// Unifica el anterior Reporte 2 (Notas Plana Docente) y el anterior Reporte 6
+// (General de Evaluación). Ahora incluye las columnas de control Enc./No Enc./Validez
+// Y la fila de PROMEDIO por carrera, eliminando la duplicidad documental.
 async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const children: (Paragraph | Table)[] = [
@@ -1293,6 +1260,15 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
         celda(r.validez, true),
       ]}));
     }
+    // Fila de promedio consolidado por carrera (antes exclusiva de rpt2)
+    rows.push(new TableRow({ children: [
+      celda('PROMEDIO', false, true, GRIS_ROW),
+      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
+      celdaN(c.promedioAE01), celdaN(c.promedioAE02), celdaN(c.promedioAE03), celdaN(c.promedioAE04),
+      celdaN(c.promedioGeneral, 2, true),
+      celda(categoriaPromedio(c.promedioGeneral), true, true, GRIS_ROW),
+      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
+    ]}));
     children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
   }
 
@@ -1301,7 +1277,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
     `Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
 }
 
-// ── Función pública: genera los 6 reportes de la facultad ────────────────────
+// ── Función pública: genera los 5 reportes de la facultad ────────────────────
 
 export async function generarInformesFacultadDocx(
   ciclo: string,
@@ -1310,10 +1286,10 @@ export async function generarInformesFacultadDocx(
   config: ConfigInforme = {},
 ): Promise<void> {
   const pausa = () => new Promise(r => setTimeout(r, 350));
-  await rpt1Insatisfactorios(ciclo, cod, f, config);  await pausa();
-  await rpt2NotasPorCarrera(ciclo, cod, f, config);   await pausa();
+  await rpt1Insatisfactorios(ciclo, cod, f, config);   await pausa();
+  // rpt2NotasPorCarrera eliminado — su contenido está fusionado en rpt6GeneralDocente
   await rpt3EstudiantesCarrera(ciclo, cod, f, config); await pausa();
-  await rpt4PorcentajeJuicio(ciclo, cod, f, config);  await pausa();
-  await rpt5NroEncuestas(ciclo, cod, f, config);       await pausa();
+  await rpt4PorcentajeJuicio(ciclo, cod, f, config);   await pausa();
+  await rpt5NroEncuestas(ciclo, cod, f, config);        await pausa();
   await rpt6GeneralDocente(ciclo, cod, f, config);
 }

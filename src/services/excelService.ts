@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 
 const CALIFICACION_LABELS: Record<string, string> = {
   DESTACADO: 'Destacado',
@@ -272,6 +272,9 @@ function aplicarSemaforoCell(ws: XLSX.WorkSheet, row: number, col: number, porc:
 // ── Alerta de muestra insuficiente ───────────────────────────────────────────
 
 function alertaMuestra(d: EvaluacionData): string {
+  if (d.encuestados < QUORUM_MINIMO_ENCUESTADOS) {
+    return `Sub-Quórum: solo ${d.encuestados} encuestado(s) — no representativo`;
+  }
   const total = d.encuestados + d.noEncuestados;
   return total > 0 && d.encuestados / total < 0.15
     ? 'Muestra Insuficiente - Pendiente de Validación'
@@ -352,9 +355,13 @@ export function exportarReporteI(datos: EvaluacionData[], facultad: string, carr
 // ── Reporte II: Docentes Insatisfactorios ────────────────────────────────────
 
 export function exportarReporteII(datos: EvaluacionData[], facultad: string, carrera: string, docente: string): void {
-  const filtrados = filtrarPorAmbito(datos, facultad, carrera, docente)
+  const base = filtrarPorAmbito(datos, facultad, carrera, docente)
     .filter(d => esValidoParaCalculo(d) && d.nota <= 10.9)
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
+
+  // Separar registros con quórum estadístico mínimo de los que no lo tienen
+  const filtrados   = base.filter(d => d.encuestados >= QUORUM_MINIMO_ENCUESTADOS);
+  const sinQuorum   = base.filter(d => d.encuestados < QUORUM_MINIMO_ENCUESTADOS);
 
   // KPIs
   const promedioInsatisf = avg(filtrados.map(d => d.nota));
@@ -363,8 +370,9 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
     return t > 0 && d.encuestados / t < 0.15;
   }).length;
   const kpis: KpiItem[] = [
-    { label: 'Secciones Insatisfactorias', valor: filtrados.length, bgRGB: filtrados.length > 0 ? 'c53030' : '276749' },
+    { label: `Secciones Insatisfactorias (n≥${QUORUM_MINIMO_ENCUESTADOS} enc.)`, valor: filtrados.length, bgRGB: filtrados.length > 0 ? 'c53030' : '276749' },
     { label: 'Promedio (Insatisfactorios)', valor: filtrados.length > 0 ? promedioInsatisf.toFixed(2) : '—', bgRGB: 'c53030' },
+    { label: `Excluidas por Sub-Quórum (<${QUORUM_MINIMO_ENCUESTADOS} enc.)`, valor: sinQuorum.length, bgRGB: sinQuorum.length > 0 ? '6B21A8' : '276749' },
     { label: 'Muestra Insuficiente (<15%)', valor: nMuestrasInsuf, bgRGB: nMuestrasInsuf > 0 ? 'c05621' : '276749' },
   ];
 
@@ -387,7 +395,7 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
     alertaMuestra(d),
   ]);
 
-  const colWidths = [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12, 36];
+  const colWidths = [35, 35, 30, 10, 8, 16, 8, 8, 8, 8, 12, 40];
   const ws = crearHojaKPI(encabezados, filas, colWidths, kpis);
 
   filas.forEach((fila, ri) => {
@@ -413,6 +421,24 @@ export function exportarReporteII(datos: EvaluacionData[], facultad: string, car
   const wb = XLSX.utils.book_new();
   hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, 'Insatisfactorios');
+
+  // Hoja secundaria: registros excluidos por sub-quórum (informativo, no alerta)
+  if (sinQuorum.length > 0) {
+    const encSQ = ['Programa Académico', 'Docente', 'Curso', 'Sección', 'Nota', 'Encuestados', 'Motivo de Exclusión'];
+    const filasSQ: (string | number)[][] = sinQuorum.map(d => [
+      d.carreraProfesional,
+      limpiarTexto(d.docente),
+      d.curso,
+      d.seccion,
+      +d.nota.toFixed(2),
+      d.encuestados,
+      `Sub-Quórum: solo ${d.encuestados} encuestado(s). Mínimo requerido: ${QUORUM_MINIMO_ENCUESTADOS}. Resultado no representativo estadísticamente.`,
+    ]);
+    const wsSQ = XLSX.utils.aoa_to_sheet([encSQ, ...filasSQ]);
+    wsSQ['!cols'] = [35, 35, 30, 10, 8, 12, 55].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, wsSQ, 'Sub-Quorum (Inf.)');
+  }
+
   XLSX.writeFile(wb, `ReporteII_Insatisfactorios_${slugFacultad(facultad)}_${hoy()}.xlsx`);
 }
 

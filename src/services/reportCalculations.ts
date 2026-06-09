@@ -20,7 +20,14 @@ export interface DatosCarrera {
   promedioAE03: number;
   promedioAE04: number;
   promedioGeneral: number;
+  /** Secciones incluidas en el cálculo de juicio de valor (pasan esValidoParaReporte). */
   seccionesCalificadas: number;
+  /** Total de secciones registradas en la carrera (incluye excluidas). */
+  seccionesTotales: number;
+  /** Secciones excluidas del cálculo: sin encuestados, nota cero o baja participación. */
+  seccionesExcluidas: number;
+  /** Desglose de motivos de exclusión. */
+  exclusionDetalle: { sinDatos: number; bajaParticipacion: number };
   distribucion: Record<Calificacion, { cantidad: number; porcentaje: number }>;
   registros: EvaluacionData[];
 }
@@ -163,12 +170,20 @@ export function calcularResumen(
         distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
 
+      const sinDatos = regs.filter(r => getExclusionReason(r) === 'sin_datos').length;
+      const bajaPartic = regs.filter(r => getExclusionReason(r) === 'baja_participacion').length;
+
       carrerasResult.set(carrera, {
         facultad, carrera, totalMatriculados: totalMatr, totalEncuestados: totalEnc,
         totalNoEncuestados: totalNoEnc,
         porcentajeEncuestados: totalMatr > 0 ? (totalEnc / totalMatr) * 100 : 0,
         promedioAE01: ae01, promedioAE02: ae02, promedioAE03: ae03, promedioAE04: ae04,
-        promedioGeneral: general, seccionesCalificadas: regsValidos.length, distribucion: distrib, registros: regs,
+        promedioGeneral: general,
+        seccionesCalificadas: regsValidos.length,
+        seccionesTotales: regs.length,
+        seccionesExcluidas: regs.length - regsValidos.length,
+        exclusionDetalle: { sinDatos, bajaParticipacion: bajaPartic },
+        distribucion: distrib, registros: regs,
       });
 
       facTotalMatr += totalMatr;

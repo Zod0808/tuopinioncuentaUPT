@@ -469,7 +469,7 @@ export async function generarPDFResumenDocente(
 // Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, UMBRAL_PARTICIPACION_MINIMA, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 
 const AZUL_UPT: [number, number, number] = [22, 40, 92];
 const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
@@ -705,7 +705,7 @@ export async function generarPDFReporteII(
   facultad: string,
   carrera: string
 ): Promise<void> {
-  const filtrados = filtrarPorFacultad(datos, facultad, carrera, '')
+  const baseInsatisf = filtrarPorFacultad(datos, facultad, carrera, '')
     .filter(d => {
       if (d.nota <= 0 || d.nota > 10.9 || d.validez !== 'Válido' || d.encuestados === 0) return false;
       const total = d.encuestados + d.noEncuestados;
@@ -713,7 +713,14 @@ export async function generarPDFReporteII(
     })
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
 
-  if (filtrados.length === 0) { alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.'); return; }
+  // Separar con y sin quórum estadístico mínimo
+  const filtrados  = baseInsatisf.filter(d => d.encuestados >= QUORUM_MINIMO_ENCUESTADOS);
+  const sinQuorum  = baseInsatisf.filter(d => d.encuestados < QUORUM_MINIMO_ENCUESTADOS);
+
+  if (filtrados.length === 0 && sinQuorum.length === 0) {
+    alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.');
+    return;
+  }
 
   const insuf = filtrados.map(d => {
     const total = d.encuestados + d.noEncuestados;
@@ -733,44 +740,71 @@ export async function generarPDFReporteII(
 
   // KPI cards
   y = dibujarKPIsPdf(doc, y, margin, [
-    { label: 'Secciones Insatisfactorias', valor: filtrados.length.toString(), rgb: filtrados.length > 0 ? ROJO_INSATISFACTORIO : VERDE_DESTACADO },
+    { label: `Secciones Insatisfactorias (n≥${QUORUM_MINIMO_ENCUESTADOS})`, valor: filtrados.length.toString(), rgb: filtrados.length > 0 ? ROJO_INSATISFACTORIO : VERDE_DESTACADO },
     { label: 'Promedio (Insatisfactorios)', valor: filtrados.length > 0 ? promedioInsatisfII.toFixed(2) : '—', rgb: ROJO_INSATISFACTORIO },
+    { label: `Excluidas sub-quórum (<${QUORUM_MINIMO_ENCUESTADOS} enc.)`, valor: sinQuorum.length.toString(), rgb: sinQuorum.length > 0 ? [107, 33, 168] : VERDE_DESTACADO },
     { label: 'Muestra Insuficiente (<15%)', valor: nInsufII.toString(), rgb: nInsufII > 0 ? [192, 86, 33] : VERDE_DESTACADO },
   ]);
 
-  const body = filtrados.map((d, i) => [
-    d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion,
-    d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
-    insuf[i] ? `${d.encuestados} [!]` : d.encuestados.toString(),
-  ]);
-  autoTable(doc, {
-    startY: y,
-    head: [['Carrera', 'Docente', 'Curso', 'Sección', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados']],
-    body,
-    styles: { fontSize: 7.5, cellPadding: 2 },
-    headStyles: { fillColor: ROJO_INSATISFACTORIO, textColor: [255, 255, 255], fontSize: 8 },
-    margin: { left: margin, right: margin },
-    columnStyles: {
-      0: { cellWidth: 40 }, 1: { cellWidth: 55 }, 2: { cellWidth: 40 },
-      3: { halign: 'center', cellWidth: 14 }, 4: { halign: 'right', cellWidth: 14 },
-      5: { halign: 'right', cellWidth: 14 }, 6: { halign: 'right', cellWidth: 14 },
-      7: { halign: 'right', cellWidth: 14 }, 8: { halign: 'right', cellWidth: 14 },
-      9: { halign: 'center', cellWidth: 18 },
-    },
-    didParseCell(data) {
-      if (data.section === 'body') {
-        data.cell.styles.textColor = ROJO_INSATISFACTORIO;
-        if (insuf[data.row.index]) data.cell.styles.fillColor = [255, 235, 156];
-      }
-    },
-  });
+  if (filtrados.length > 0) {
+    const body = filtrados.map((d, i) => [
+      d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion,
+      d.nota.toFixed(2), d.ae01.toFixed(2), d.ae02.toFixed(2), d.ae03.toFixed(2), d.ae04.toFixed(2),
+      insuf[i] ? `${d.encuestados} [!]` : d.encuestados.toString(),
+    ]);
+    autoTable(doc, {
+      startY: y,
+      head: [['Carrera', 'Docente', 'Curso', 'Sección', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Encuestados']],
+      body,
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: ROJO_INSATISFACTORIO, textColor: [255, 255, 255], fontSize: 8 },
+      margin: { left: margin, right: margin },
+      columnStyles: {
+        0: { cellWidth: 40 }, 1: { cellWidth: 55 }, 2: { cellWidth: 40 },
+        3: { halign: 'center', cellWidth: 14 }, 4: { halign: 'right', cellWidth: 14 },
+        5: { halign: 'right', cellWidth: 14 }, 6: { halign: 'right', cellWidth: 14 },
+        7: { halign: 'right', cellWidth: 14 }, 8: { halign: 'right', cellWidth: 14 },
+        9: { halign: 'center', cellWidth: 18 },
+      },
+      didParseCell(data) {
+        if (data.section === 'body') {
+          data.cell.styles.textColor = ROJO_INSATISFACTORIO;
+          if (insuf[data.row.index]) data.cell.styles.fillColor = [255, 235, 156];
+        }
+      },
+    });
+  }
 
-  let yFinal = (doc as any).lastAutoTable.finalY + 5;
+  let yFinal = filtrados.length > 0 ? (doc as any).lastAutoTable.finalY + 5 : y + 4;
   if (hayInsuf) {
     doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor(150, 100, 0);
     doc.text('[!] Muestra Insuficiente — encuestados < 15% del total de la seccion. Pendiente de Validacion.', margin, yFinal);
     yFinal += 6;
   }
+
+  // Sección informativa: sub-quórum (no generan alerta institucional)
+  if (sinQuorum.length > 0) {
+    if (yFinal > 175) { doc.addPage(); yFinal = 20; }
+    doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(107, 33, 168);
+    doc.text(`Secciones excluidas por Sub-Quórum (< ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — informativo, sin valor estadístico`, margin, yFinal);
+    yFinal += 5;
+    doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor(100, 100, 100);
+    doc.text('Estas secciones obtuvieron INSATISFACTORIO pero con muestra insuficiente para ser representativas. No generan alerta institucional.', margin, yFinal);
+    yFinal += 5;
+    autoTable(doc, {
+      startY: yFinal,
+      head: [['Carrera', 'Docente', 'Curso', 'Sección', 'Nota', 'Enc.']],
+      body: sinQuorum.map(d => [d.carreraProfesional, limpiarNombrePdf(d.docente), d.curso, d.seccion, d.nota.toFixed(2), d.encuestados.toString()]),
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [107, 33, 168], textColor: [255, 255, 255], fontSize: 7.5 },
+      margin: { left: margin, right: margin },
+      didParseCell(data) {
+        if (data.section === 'body') data.cell.styles.textColor = [107, 33, 168];
+      },
+    });
+    yFinal = (doc as any).lastAutoTable.finalY + 5;
+  }
+
   agregarLeyendaAEPdf(doc, yFinal + 2);
 
   const slug = facultad || 'GENERAL';

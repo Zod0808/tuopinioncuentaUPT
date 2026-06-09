@@ -236,7 +236,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 <tr>
                   <th>Facultad</th>
                   <th>N° Matriculados</th>
-                  <th>N° Encuestados</th>
+                  <th title="Alumnos únicos que completaron al menos una encuesta (fuente: MatriculadosImporter)">Alumnos Encuestados</th>
                   <th>% Encuestados</th>
                 </tr>
               </thead>
@@ -271,6 +271,13 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
             <p className="informe-interpretacion">
               {interpretarParticipacion(resumen.totalEncuestados, resumen.totalMatriculados, 'la Universidad Privada de Tacna')}
             </p>
+            <p className="informe-nota-diccionario">
+              <strong>Nota del diccionario de datos:</strong> "Alumnos Encuestados" en esta sección representa
+              alumnos únicos que respondieron al menos una encuesta (fuente: padrón de matriculados).
+              El campo "Resp. Enc." de la tabla de datos individuales representa respuestas por sección,
+              donde un mismo alumno puede aparecer múltiples veces (una por cada curso/docente evaluado).
+              Ambas métricas son correctas en su contexto y no deben sumarse entre sí.
+            </p>
           </div>
         )}
       </div>
@@ -294,7 +301,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                       <tr>
                         <th>Carrera Profesional</th>
                         <th>N° Matriculados</th>
-                        <th>N° Encuestados</th>
+                        <th title="Alumnos únicos que completaron al menos una encuesta (fuente: MatriculadosImporter)">Alumnos Encuestados</th>
                         <th>% Encuestados</th>
                       </tr>
                     </thead>
@@ -451,13 +458,24 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                           </table>
                           <p className="informe-interpretacion">{interpretarTablaAE(c)}</p>
 
-                          {/* Tabla distribución */}
+                          {/* Tabla distribución — solo secciones válidas */}
+                          {c.seccionesExcluidas > 0 && (
+                            <div className="informe-exclusion-banner">
+                              <strong>Nota de auditoría:</strong> De las <strong>{c.seccionesTotales}</strong> secciones
+                              registradas en esta carrera, <strong>{c.seccionesCalificadas}</strong> son válidas para el
+                              Juicio de Valor y <strong>{c.seccionesExcluidas}</strong> fueron excluidas del cálculo
+                              {c.exclusionDetalle.sinDatos > 0 && ` (${c.exclusionDetalle.sinDatos} sin encuestados/nota`}
+                              {c.exclusionDetalle.bajaParticipacion > 0 && `${c.exclusionDetalle.sinDatos > 0 ? ', ' : ' ('}${c.exclusionDetalle.bajaParticipacion} con baja participación <30%`}
+                              {(c.exclusionDetalle.sinDatos > 0 || c.exclusionDetalle.bajaParticipacion > 0) && ')'}. Los
+                              porcentajes a continuación se calculan sobre las secciones válidas únicamente.
+                            </div>
+                          )}
                           <table className="informe-table informe-table-sm">
                             <thead>
                               <tr>
                                 <th>Calificación</th>
-                                <th>N° secciones</th>
-                                <th>%</th>
+                                <th>N° secciones válidas</th>
+                                <th>% (sobre válidas)</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -475,9 +493,21 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                             </tbody>
                             <tfoot>
                               <tr className="total-row">
-                                <td><strong>TOTAL</strong></td>
+                                <td><strong>TOTAL VÁLIDAS</strong></td>
                                 <td className="text-right"><strong>{c.seccionesCalificadas}</strong></td>
                                 <td className="text-right"><strong>100%</strong></td>
+                              </tr>
+                              {c.seccionesExcluidas > 0 && (
+                                <tr style={{ backgroundColor: '#fef9c3' }}>
+                                  <td style={{ color: '#92400e', fontStyle: 'italic' }}>Excluidas del cálculo</td>
+                                  <td className="text-right" style={{ color: '#92400e', fontStyle: 'italic' }}>{c.seccionesExcluidas}</td>
+                                  <td className="text-right" style={{ color: '#92400e', fontStyle: 'italic' }}>—</td>
+                                </tr>
+                              )}
+                              <tr className="total-row" style={{ borderTop: '2px solid #1a365d' }}>
+                                <td><strong>TOTAL REGISTRADAS</strong></td>
+                                <td className="text-right"><strong>{c.seccionesTotales}</strong></td>
+                                <td className="text-right" style={{ color: '#6b7280', fontSize: '0.85em' }}>base total</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -643,7 +673,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   className="btn-secondary btn-descarga-facultad"
                   onClick={() => handleDescargarFacultad(cod)}
                   disabled={ocupado}
-                  title={`Generar 6 reportes DOCX — ${FACULTADES[cod]?.nombre ?? cod}`}
+                  title={`Generar 5 reportes DOCX — ${FACULTADES[cod]?.nombre ?? cod}`}
                 >
                   {esteGenerando ? 'Generando...' : `⬇ ${cod}`}
                 </button>
