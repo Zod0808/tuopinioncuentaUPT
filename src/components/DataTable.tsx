@@ -92,8 +92,8 @@ export default function DataTable({ datos, onDelete, onDeleteAll }: DataTablePro
               <th>AE-03: Evaluación</th>
               <th>AE-04: Actitudinal</th>
               <th>Nota</th>
-              <th>Encuestados</th>
-              <th>No Encuestados</th>
+              <th title="Respuestas de encuesta para esta sección (interacciones). Un alumno puede aparecer en varias secciones.">Resp. Enc.</th>
+              <th title="Alumnos de la sección que no respondieron la encuesta">No Enc.</th>
               <th>Acciones</th>
             </tr>
           </thead>

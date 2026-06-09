@@ -4298,3 +4298,31 @@
   .formato-opciones { flex-direction: column; }
 }
 
+/* ── Brecha A: Banner de secciones excluidas (InformeFinalView) ─────────── */
+.informe-exclusion-banner {
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #d97706;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.8rem;
+  color: #92400e;
+  margin-bottom: 0.6rem;
+  line-height: 1.5;
+}
+.informe-exclusion-banner strong { color: #b45309; }
+
+/* ── Brecha C: Nota de diccionario de datos (InformeFinalView) ───────────── */
+.informe-nota-diccionario {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0284c7;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.78rem;
+  color: #0c4a6e;
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+.informe-nota-diccionario strong { color: #0369a1; }
+

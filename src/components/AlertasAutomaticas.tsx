@@ -1,7 +1,8 @@
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen } from '../services/reportCalculations';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
+import { esValidoParaReporte } from '../services/reportCalculations';
 
 interface AlertasAutomaticasProps {
   datos: EvaluacionData[];
@@ -35,18 +36,45 @@ export default function AlertasAutomaticas({ datos, matriculados, cicloActual }:
   }
 
   // 2. Secciones con calificación INSATISFACTORIO
-  const insatisfactorios = datos.filter(r => {
+  // Solo se alertan secciones que: (a) son válidas para reporte y (b) superan el quórum mínimo.
+  // Las que tienen muestra insuficiente se reportan como informativas, no como alerta de riesgo.
+  const esInsatisfactorio = (r: typeof datos[0]) => {
     const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
       ? r.calificacion as Calificacion
       : calcularCalificacion(r.nota);
     return c === 'INSATISFACTORIO';
-  });
+  };
+
+  const insatisfactorios = datos.filter(r =>
+    esValidoParaReporte(r) &&
+    r.encuestados >= QUORUM_MINIMO_ENCUESTADOS &&
+    esInsatisfactorio(r)
+  );
+  const insatisfactoriosSubQuorum = datos.filter(r =>
+    esValidoParaReporte(r) &&
+    r.encuestados > 0 &&
+    r.encuestados < QUORUM_MINIMO_ENCUESTADOS &&
+    esInsatisfactorio(r)
+  );
+
   if (insatisfactorios.length > 0) {
     const unicos = [...new Set(insatisfactorios.map(r => r.docente))];
     alertas.push({
       tipo: 'danger',
       titulo: `${insatisfactorios.length} sección(es) con calificación INSATISFACTORIO`,
       detalle: `Docentes: ${unicos.slice(0, 5).join(' | ')}${unicos.length > 5 ? ` y ${unicos.length - 5} más.` : '.'}`,
+    });
+  }
+
+  if (insatisfactoriosSubQuorum.length > 0) {
+    const detalles = insatisfactoriosSubQuorum
+      .slice(0, 3)
+      .map(r => `${r.docente.split(' ')[0]} (${r.encuestados} enc.)`)
+      .join(' | ');
+    alertas.push({
+      tipo: 'info',
+      titulo: `${insatisfactoriosSubQuorum.length} sección(es) INSATISFACTORIO excluidas por sub-quórum`,
+      detalle: `Muestra insuficiente (< ${QUORUM_MINIMO_ENCUESTADOS} encuestados). No estadísticamente representativas. ${detalles}${insatisfactoriosSubQuorum.length > 3 ? '...' : ''}`,
     });
   }
 

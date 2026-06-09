@@ -75,6 +75,18 @@ export const PERIODO_ACADEMICO = '2025-II';
  *  la calificación se muestra como "Baja Participación". */
 export const UMBRAL_PARTICIPACION_MINIMA = 0.30;
 
+/**
+ * Quórum mínimo de estudiantes encuestados para que una calificación INSATISFACTORIO
+ * pueda generar una alerta institucional. Secciones con menos encuestados que este
+ * umbral carecen de representatividad estadística y se reportan como "Sub-Quórum"
+ * (informativo) en lugar de activar una alerta de riesgo docente.
+ *
+ * Base: con n < 3 la desviación estándar es indeterminable y 1 solo respondente
+ * puede mover la nota de 20 a 0. Se fija en 3 como mínimo absoluto; las buenas
+ * prácticas de evaluación docente recomiendan n ≥ 5 para estudios de carrera.
+ */
+export const QUORUM_MINIMO_ENCUESTADOS = 3;
+
 export function calcularCalificacion(nota: number): Calificacion {
   if (nota >= 17.1) return 'DESTACADO';
   if (nota >= 15.1) return 'BUENO';

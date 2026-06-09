@@ -153,12 +153,12 @@ export default function ExportacionReportes({ datos }: Props) {
     labels: carrerasParaGrafico.map(shortLabel),
     datasets: [
       {
-        label: 'Encuestados',
+        label: 'Resp. de Encuesta (Interacciones)',
         data: carrerasParaGrafico.map(c => base.filter(d => d.carreraProfesional === c).reduce((s, d) => s + d.encuestados, 0)),
         backgroundColor: '#2b6cb0',
       },
       {
-        label: 'No Encuestados',
+        label: 'No Respondieron',
         data: carrerasParaGrafico.map(c => base.filter(d => d.carreraProfesional === c).reduce((s, d) => s + d.noEncuestados, 0)),
         backgroundColor: '#c53030',
       },
@@ -169,12 +169,12 @@ export default function ExportacionReportes({ datos }: Props) {
     labels: carrerasParaGrafico.map(shortLabel),
     datasets: [
       {
-        label: 'Realizadas',
+        label: 'Encuestas Realizadas (Interacciones)',
         data: carrerasParaGrafico.map(c => base.filter(d => d.carreraProfesional === c).reduce((s, d) => s + d.encuestados, 0)),
         backgroundColor: '#276749',
       },
       {
-        label: 'No Realizadas',
+        label: 'Encuestas No Realizadas',
         data: carrerasParaGrafico.map(c => base.filter(d => d.carreraProfesional === c).reduce((s, d) => s + d.noEncuestados, 0)),
         backgroundColor: '#c05621',
       },
@@ -251,7 +251,7 @@ export default function ExportacionReportes({ datos }: Props) {
       <div className="exportacion-header">
         <h2>Exportación de Reportes Analíticos</h2>
         <p className="exportacion-subtitle">
-          Base de Datos maestra + 6 reportes analíticos por facultad — PDF o Excel con formato condicional.
+          Base de Datos maestra + 6 reportes analíticos (Excel/PDF) + 5 reportes DOCX por facultad.
         </p>
         <span className="exportacion-badge">{datos.length} registros totales cargados</span>
       </div>
@@ -439,7 +439,9 @@ export default function ExportacionReportes({ datos }: Props) {
       {/* ── Alerta Reporte II ── */}
       {reporteActivo === 'II' && (() => {
         const insatisfactorios = base.filter(d => esValidoParaReporte(d) && d.nota <= 10.9);
-        const muestraInsuf = insatisfactorios.filter(d => {
+        const conQuorum = insatisfactorios.filter(d => d.encuestados >= 3);
+        const sinQuorum = insatisfactorios.filter(d => d.encuestados < 3);
+        const muestraInsuf = conQuorum.filter(d => {
           const total = d.encuestados + d.noEncuestados;
           return total > 0 && d.encuestados / total < 0.15;
         });
@@ -448,10 +450,32 @@ export default function ExportacionReportes({ datos }: Props) {
             <AlertTriangle size={16} color="#c53030" />
             <span>
               Filtra secciones con <strong>nota ≤ 10.9</strong>, <strong>validez = Válido</strong> y <strong>encuestados &gt; 0</strong>.
-              Detectados: <strong>{insatisfactorios.length}</strong> registro(s).
+              Detectados: <strong>{conQuorum.length}</strong> registro(s) con quórum mínimo (n≥3).
+              {sinQuorum.length > 0 && (
+                <> — <strong style={{ color: '#6B21A8' }}>{sinQuorum.length} excluidas por sub-quórum (&lt;3 encuestados)</strong>: sin representatividad estadística, en hoja separada.</>
+              )}
               {muestraInsuf.length > 0 && (
                 <> — <strong style={{ color: '#c05621' }}>{muestraInsuf.length} con muestra insuficiente (&lt;15%)</strong>, marcados con [!] en el reporte.</>
               )}
+            </span>
+          </div>
+        );
+      })()}
+
+      {reporteActivo === 'IV' && (() => {
+        const totalBase = base.length;
+        const validos = base.filter(d => esValidoParaReporte(d)).length;
+        const excluidas = totalBase - validos;
+        if (excluidas === 0) return null;
+        return (
+          <div className="exportacion-alerta" style={{ borderColor: '#c05621', backgroundColor: '#fffbeb' }}>
+            <AlertTriangle size={16} color="#c05621" />
+            <span style={{ color: '#92400e' }}>
+              <strong>Nota de auditoría (Reporte IV):</strong> De las <strong>{totalBase}</strong> secciones en el ámbito
+              seleccionado, <strong>{validos}</strong> son válidas para el cálculo de Juicio de Valor y{' '}
+              <strong>{excluidas}</strong> fueron excluidas (sin encuestados o baja participación &lt;30%).
+              Los porcentajes se calculan sobre las <strong>{validos}</strong> secciones válidas únicamente.
+              Esta diferencia es esperada y correcta metodológicamente.
             </span>
           </div>
         );
