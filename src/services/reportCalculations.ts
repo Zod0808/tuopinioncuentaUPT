@@ -27,7 +27,7 @@ export interface DatosCarrera {
   /** Secciones excluidas del cálculo: sin encuestados, nota cero o baja participación. */
   seccionesExcluidas: number;
   /** Desglose de motivos de exclusión. */
-  exclusionDetalle: { sinDatos: number; bajaParticipacion: number };
+  exclusionDetalle: { sinDatos: number; bajaParticipacion: number; noValido: number };
   distribucion: Record<Calificacion, { cantidad: number; porcentaje: number }>;
   registros: EvaluacionData[];
 }
@@ -98,7 +98,8 @@ function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
-export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'baja_participacion' | null {
+export function getExclusionReason(r: EvaluacionData): 'sin_datos' | 'baja_participacion' | 'no_valido' | null {
+  if (r.validez !== 'Válido') return 'no_valido';
   if (r.encuestados === 0 || r.nota === 0) return 'sin_datos';
   const total = r.encuestados + r.noEncuestados;
   if (total > 0 && r.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'baja_participacion';
@@ -183,6 +184,7 @@ export function calcularResumen(
 
       const sinDatos = regs.filter(r => getExclusionReason(r) === 'sin_datos').length;
       const bajaPartic = regs.filter(r => getExclusionReason(r) === 'baja_participacion').length;
+      const noValido = regs.filter(r => getExclusionReason(r) === 'no_valido').length;
 
       carrerasResult.set(carrera, {
         facultad, carrera, totalMatriculados: totalMatr, totalEncuestados: totalEnc,
@@ -193,7 +195,7 @@ export function calcularResumen(
         seccionesCalificadas: regsValidos.length,
         seccionesTotales: regs.length,
         seccionesExcluidas: regs.length - regsValidos.length,
-        exclusionDetalle: { sinDatos, bajaParticipacion: bajaPartic },
+        exclusionDetalle: { sinDatos, bajaParticipacion: bajaPartic, noValido },
         distribucion: distrib, registros: regs,
       });
 

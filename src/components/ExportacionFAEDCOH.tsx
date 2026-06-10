@@ -473,7 +473,7 @@ export default function ExportacionReportes({ datos }: Props) {
             <span style={{ color: '#92400e' }}>
               <strong>Nota de auditoría (Reporte IV):</strong> De las <strong>{totalBase}</strong> secciones en el ámbito
               seleccionado, <strong>{validos}</strong> son válidas para el cálculo de Juicio de Valor y{' '}
-              <strong>{excluidas}</strong> fueron excluidas (sin encuestados o baja participación &lt;30%).
+              <strong>{excluidas}</strong> fueron excluidas (sin encuestados, baja participación &lt;30% o marcadas "No válido").
               Los porcentajes se calculan sobre las <strong>{validos}</strong> secciones válidas únicamente.
               Esta diferencia es esperada y correcta metodológicamente.
             </span>

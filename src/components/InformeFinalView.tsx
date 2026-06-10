@@ -465,9 +465,13 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                               <strong>Nota de auditoría:</strong> De las <strong>{c.seccionesTotales}</strong> secciones
                               registradas en esta carrera, <strong>{c.seccionesCalificadas}</strong> son válidas para el
                               Juicio de Valor y <strong>{c.seccionesExcluidas}</strong> fueron excluidas del cálculo
-                              {c.exclusionDetalle.sinDatos > 0 && ` (${c.exclusionDetalle.sinDatos} sin encuestados/nota`}
-                              {c.exclusionDetalle.bajaParticipacion > 0 && `${c.exclusionDetalle.sinDatos > 0 ? ', ' : ' ('}${c.exclusionDetalle.bajaParticipacion} con baja participación <30%`}
-                              {(c.exclusionDetalle.sinDatos > 0 || c.exclusionDetalle.bajaParticipacion > 0) && ')'}. Los
+                              {(() => {
+                                const parts: string[] = [];
+                                if (c.exclusionDetalle.sinDatos > 0) parts.push(`${c.exclusionDetalle.sinDatos} sin encuestados/nota`);
+                                if (c.exclusionDetalle.bajaParticipacion > 0) parts.push(`${c.exclusionDetalle.bajaParticipacion} con baja participación <30%`);
+                                if (c.exclusionDetalle.noValido > 0) parts.push(`${c.exclusionDetalle.noValido} marcadas "No válido"`);
+                                return parts.length > 0 ? ` (${parts.join(', ')})` : '';
+                              })()}. Los
                               porcentajes a continuación se calculan sobre las secciones válidas únicamente.
                             </div>
                           )}
