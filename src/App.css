@@ -4326,3 +4326,8 @@
 }
 .informe-nota-diccionario strong { color: #0369a1; }
 
+/* ── Mejora 1: Badges de estado para secciones sin datos / sin evaluar ───── */
+.badge-sin-datos        { background: #718096; color: white; }
+.badge-sin-evaluar      { background: #718096; color: white; }
+.badge-baja-participacion { background: #7c3aed; color: white; }
+

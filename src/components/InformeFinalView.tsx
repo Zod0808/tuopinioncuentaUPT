@@ -4,6 +4,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
 import { generarInformeFinalDocx, generarInformesFacultadDocx, ConfigInforme } from '../services/docxReportService';
+import { exportarBaseDatos } from '../services/excelService';
 import { FACULTADES, ORDEN_FACULTADES, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
@@ -656,6 +657,15 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
           disabled={generando || generandoFacultad !== null}
         >
           {generando ? 'Generando documento...' : '⬇ Descargar Informe Institucional Completo (.docx)'}
+        </button>
+
+        <button
+          type="button"
+          className="btn-secondary btn-descarga-lg"
+          onClick={() => exportarBaseDatos(datos)}
+          title="Exporta toda la base de datos en un único Excel con columna Carrera en cada fila — ideal para filtros rápidos internos"
+        >
+          ⬇ Exportar Base de Datos Plana (.xlsx)
         </button>
 
         <div className="informe-facultad-descargas">

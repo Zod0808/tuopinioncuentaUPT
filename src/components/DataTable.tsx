@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { Trash2, AlertTriangle } from 'lucide-react';
+import { resolverCalDisplay } from '../services/reportCalculations';
 
 interface DataTableProps {
   datos: EvaluacionData[];
@@ -98,14 +99,16 @@ export default function DataTable({ datos, onDelete, onDeleteAll }: DataTablePro
             </tr>
           </thead>
           <tbody>
-            {datosAMostrar.map((item) => (
+            {datosAMostrar.map((item) => {
+              const calDisplay = resolverCalDisplay(item);
+              return (
               <tr key={item.id}>
                 <td>{item.docente}</td>
                 <td>{item.curso}</td>
                 <td>{item.seccion}</td>
                 <td>
-                  <span className={`badge badge-${item.calificacion.toLowerCase()}`}>
-                    {item.calificacion}
+                  <span className={`badge badge-${calDisplay.cssClass}`}>
+                    {calDisplay.label}
                   </span>
                 </td>
                 <td>{item.ae01.toFixed(2)}</td>
@@ -125,7 +128,8 @@ export default function DataTable({ datos, onDelete, onDeleteAll }: DataTablePro
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

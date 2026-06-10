@@ -3,6 +3,8 @@ import { FileSpreadsheet, CheckCircle, AlertCircle, X, Calendar, Upload } from '
 // @ts-ignore
 import readXlsxFile from 'read-excel-file';
 import { EvaluacionData } from '../types';
+import { calcularCalificacion } from '../config/universityStructure';
+import { limpiarTexto } from '../services/excelService';
 
 const TODOS_LOS_CICLOS = [
   '2018-I','2018-II','2019-I','2019-II',
@@ -109,7 +111,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
         if (!row || row.every((c: any) => c === null || c === undefined || c === '')) continue;
         try {
           const facultad = String(row[columnIndices.facultad] || '').trim();
-          const docente = String(row[columnIndices.docente] || '').trim();
+          const docente = limpiarTexto(String(row[columnIndices.docente] || '').trim());
           const curso = String(row[columnIndices.curso] || '').trim();
           const seccion = String(row[columnIndices.seccion] || '').trim();
           if (!facultad || !docente || !curso || !seccion) { errors.push(`Fila ${i + 1}: faltan campos requeridos`); continue; }
@@ -121,7 +123,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
           const nota = parseNumber(row[columnIndices.nota]) || (ae01 + ae02 + ae03 + ae04) / 4;
           const calificacionRaw = String(row[columnIndices.calificacion] || '').trim().toUpperCase();
           const calificacion = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(calificacionRaw as any)
-            ? calificacionRaw as EvaluacionData['calificacion'] : 'BUENO';
+            ? calificacionRaw as EvaluacionData['calificacion'] : calcularCalificacion(nota);
           const validezRaw = String(row[columnIndices.validez] || '').trim();
           const validezUpper = validezRaw.toUpperCase();
           const validez = (validezUpper === 'VÁLIDO' || validezUpper === 'VALIDO')

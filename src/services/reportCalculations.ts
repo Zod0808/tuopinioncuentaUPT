@@ -109,6 +109,17 @@ export function esValidoParaReporte(r: EvaluacionData): boolean {
   return getExclusionReason(r) === null;
 }
 
+/** Display label and CSS class for a record's calificacion — overrides stored value for edge cases. */
+export function resolverCalDisplay(r: EvaluacionData): { label: string; cssClass: string } {
+  if (r.encuestados === 0) return { label: 'Sin Datos', cssClass: 'sin-datos' };
+  if (r.nota === 0) return { label: 'Sin Evaluar', cssClass: 'sin-evaluar' };
+  const total = r.encuestados + r.noEncuestados;
+  if (total > 0 && r.encuestados / total < UMBRAL_PARTICIPACION_MINIMA)
+    return { label: 'Baja Part.', cssClass: 'baja-participacion' };
+  const c = calcularCalificacion(r.nota);
+  return { label: c, cssClass: c.toLowerCase() };
+}
+
 export function calcularResumen(
   registros: EvaluacionData[],
   matriculados: MatriculadosEntry[]
