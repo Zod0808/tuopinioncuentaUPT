@@ -9,6 +9,7 @@ import {
   ResumenInstitucional, DatosCarrera, DatosFacultad,
   interpretarTablaAE, interpretarDistribucion, interpretarParticipacion,
   interpretarInstitucionAE, generarConclusion1, generarRecomendacion1,
+  esValidoParaReporte,
 } from './reportCalculations';
 import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion } from '../config/universityStructure';
 import { EvaluacionData } from '../types';
@@ -1081,7 +1082,7 @@ async function saveDocx(doc: Document, filename: string): Promise<void> {
 async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
-  const malos     = todosReg.filter(r => r.encuestados > 0 && getCalifReg(r) === 'INSATISFACTORIO');
+  const malos     = todosReg.filter(r => esValidoParaReporte(r) && getCalifReg(r) === 'INSATISFACTORIO');
 
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
