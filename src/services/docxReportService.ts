@@ -1081,7 +1081,7 @@ async function saveDocx(doc: Document, filename: string): Promise<void> {
 async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
-  const malos     = todosReg.filter(r => getCalifReg(r) === 'INSATISFACTORIO');
+  const malos     = todosReg.filter(r => r.encuestados > 0 && getCalifReg(r) === 'INSATISFACTORIO');
 
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
@@ -1254,7 +1254,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
         celda(r.docente), celda(r.curso), celda(r.seccion, true),
         celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
         celdaN(r.nota, 2, true),
-        celda(getCalifReg(r), true, true),
+        celda(r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r), true, true),
         celda(r.encuestados.toString(), true),
         celda(r.noEncuestados.toString(), true),
         celda(r.validez, true),

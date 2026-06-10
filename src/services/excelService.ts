@@ -14,7 +14,7 @@ function normalizar(s: string): string {
 }
 
 /** Elimina guiones sueltos por campos vacíos en nombres (ej. "ERCILLA -, VICTOR" → "ERCILLA, VICTOR") */
-function limpiarTexto(s: string): string {
+export function limpiarTexto(s: string): string {
   if (!s) return '';
   return s
     .replace(/\s*-\s*,/g, ',')
