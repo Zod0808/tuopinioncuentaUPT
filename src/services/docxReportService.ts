@@ -11,7 +11,7 @@ import {
   interpretarInstitucionAE, generarConclusion1, generarRecomendacion1,
   esValidoParaReporte,
 } from './reportCalculations';
-import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion } from '../config/universityStructure';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 import { EvaluacionData } from '../types';
 
 // ── Configuración del informe (provista por el usuario) ───────────────────────
@@ -30,6 +30,13 @@ export interface ConfigInforme {
 const AZUL_HEADER = '2E5C8A';
 const AZUL_OSCURO = '1a365d';
 const GRIS_ROW    = 'F2F2F2';
+
+// Semaforización: fondos de celda por calificación (Excel-style)
+const COLOR_DESTACADO       = 'C6EFCE';
+const COLOR_BUENO           = 'BDD7EE';
+const COLOR_ACEPTABLE       = 'FFEB9C';
+const COLOR_INSATISFACTORIO = 'FFC7CE';
+const COLOR_SUBQUORUM       = 'FFF3CD';
 
 // ── Generación de gráficos de torta con Canvas ────────────────────────────────
 
@@ -203,6 +210,15 @@ function celda(text: string, center = false, bold = false, fill?: string): Table
 
 function celdaN(value: number, decimals = 2, bold = false): TableCell {
   return celda(value.toFixed(decimals), true, bold);
+}
+
+/** Devuelve el color de fondo para una calificación (para semaforización). */
+function colorCalif(calif: string): string | undefined {
+  const map: Record<string, string> = {
+    DESTACADO: COLOR_DESTACADO, BUENO: COLOR_BUENO,
+    ACEPTABLE: COLOR_ACEPTABLE, INSATISFACTORIO: COLOR_INSATISFACTORIO,
+  };
+  return map[calif];
 }
 
 // ── Helpers de párrafo ────────────────────────────────────────────────────────
@@ -1073,6 +1089,25 @@ function firmaBloque(config: ConfigInforme): Paragraph[] {
   ];
 }
 
+/** Tabla de leyenda AE-01→AE-04 para insertar al pie de cada reporte. */
+function leyendaAEFooter(): (Paragraph | Table)[] {
+  return [
+    salto(),
+    negrita('Leyenda — Aspectos Evaluados'),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({ children: [celdaH('Código'), celdaH('Aspecto evaluado'), celdaH('Preguntas')] }),
+        new TableRow({ children: [celda('AE-01', true, true), celda(ASPECTOS_EVALUADOS['AE-01']), celda('2, 3, 4', true)] }),
+        new TableRow({ children: [celda('AE-02', true, true), celda(ASPECTOS_EVALUADOS['AE-02']), celda('5, 6, 7, 8', true)] }),
+        new TableRow({ children: [celda('AE-03', true, true), celda(ASPECTOS_EVALUADOS['AE-03']), celda('9, 10, 11', true)] }),
+        new TableRow({ children: [celda('AE-04', true, true), celda(ASPECTOS_EVALUADOS['AE-04']), celda('12, 13, 14, 15', true)] }),
+      ],
+    }),
+    salto(),
+  ];
+}
+
 async function saveDocx(doc: Document, filename: string): Promise<void> {
   const blob = await Packer.toBlob(doc);
   saveAs(blob, filename);
@@ -1098,11 +1133,18 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
         celdaH('Nota'), celdaH('Enc.'),
       ]}),
     ];
+    const subQuorumMalos: EvaluacionData[] = [];
     for (const r of malos) {
+      const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
+      if (esSubQ) subQuorumMalos.push(r);
       rows.push(new TableRow({ children: [
-        celda(r.carreraProfesional), celda(r.docente), celda(r.curso), celda(r.seccion, true),
+        celda(r.carreraProfesional, false, false, COLOR_INSATISFACTORIO),
+        celda(r.docente, false, false, COLOR_INSATISFACTORIO),
+        celda(r.curso, false, false, COLOR_INSATISFACTORIO),
+        celda(r.seccion, true, false, COLOR_INSATISFACTORIO),
         celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
-        celdaN(r.nota, 2, true), celda(r.encuestados.toString(), true),
+        celdaN(r.nota, 2, true),
+        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, esSubQ, esSubQ ? COLOR_SUBQUORUM : COLOR_INSATISFACTORIO),
       ]}));
     }
     children.push(
@@ -1110,9 +1152,12 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
       salto(),
       parrafo(`Total de secciones insatisfactorias: ${malos.length}`),
     );
+    if (subQuorumMalos.length > 0) {
+      children.push(parrafo(`[!] ${subQuorumMalos.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
+    }
   }
 
-  children.push(...firmaBloque(cfg));
+  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
     `Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
 }
@@ -1178,16 +1223,16 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
   for (const [carreraName, c] of f.carreras) {
     rows.push(new TableRow({ children: [
       celda(carreraName),
-      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true),
-      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%', true),
-      celda(c.distribucion.BUENO.porcentaje.toFixed(2) + '%', true),
-      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%', true, true),
+      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true, false, COLOR_INSATISFACTORIO),
+      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%',       true, false, COLOR_ACEPTABLE),
+      celda(c.distribucion.BUENO.porcentaje.toFixed(2) + '%',           true, false, COLOR_BUENO),
+      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%',       true, true,  COLOR_DESTACADO),
       celda(c.seccionesCalificadas.toString(), true, true),
     ]}));
   }
 
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
-  children.push(...firmaBloque(cfg));
+  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
     `Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
 }
@@ -1250,30 +1295,40 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
         celdaH('Enc.'), celdaH('No Enc.'), celdaH('Validez'),
       ]}),
     ];
+    const subQuorumRegs: EvaluacionData[] = [];
     for (const r of c.registros) {
+      const calif = r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r);
+      const califFill = colorCalif(calif);
+      const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
+      if (esSubQ) subQuorumRegs.push(r);
       rows.push(new TableRow({ children: [
         celda(r.docente), celda(r.curso), celda(r.seccion, true),
         celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
         celdaN(r.nota, 2, true),
-        celda(r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r), true, true),
-        celda(r.encuestados.toString(), true),
+        celda(calif, true, true, califFill),
+        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, false, esSubQ ? COLOR_SUBQUORUM : undefined),
         celda(r.noEncuestados.toString(), true),
         celda(r.validez, true),
       ]}));
     }
-    // Fila de promedio consolidado por carrera (antes exclusiva de rpt2)
+    // Fila de promedio consolidado por carrera
+    const promCalif = categoriaPromedio(c.promedioGeneral);
     rows.push(new TableRow({ children: [
       celda('PROMEDIO', false, true, GRIS_ROW),
       celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
       celdaN(c.promedioAE01), celdaN(c.promedioAE02), celdaN(c.promedioAE03), celdaN(c.promedioAE04),
       celdaN(c.promedioGeneral, 2, true),
-      celda(categoriaPromedio(c.promedioGeneral), true, true, GRIS_ROW),
+      celda(promCalif, true, true, colorCalif(promCalif) ?? GRIS_ROW),
       celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
     ]}));
     children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
+    if (subQuorumRegs.length > 0) {
+      children.push(parrafo(`[!] ${subQuorumRegs.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
+      children.push(salto());
+    }
   }
 
-  children.push(...firmaBloque(cfg));
+  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
     `Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
 }
