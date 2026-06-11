@@ -104,6 +104,14 @@ function resolveFacultadCode(facultad: string): string {
   return code ?? facultad;
 }
 
+/** Devuelve la ortografía canónica de la carrera según FACULTADES (comparación sin tildes ni mayúsculas).
+ *  Corrige errores tipográficos presentes en el Excel (ej. "Fisica" → "Física"). */
+function resolveCarreraName(facultadCode: string, carrera: string): string {
+  const canonicas = FACULTADES[facultadCode]?.carreras ?? [];
+  const norm = normalizeStr(carrera);
+  return canonicas.find(c => normalizeStr(c) === norm) ?? carrera;
+}
+
 function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
@@ -152,14 +160,15 @@ export function calcularResumen(
     }
   }
 
-  // Agrupar por facultad → carrera (normaliza a código estándar para match con ORDEN_FACULTADES)
+  // Agrupar por facultad → carrera (normaliza códigos y corrige ortografía de carreras)
   const byFacultad = new Map<string, Map<string, EvaluacionData[]>>();
   for (const r of registros) {
-    const facCode = resolveFacultadCode(r.facultad);
+    const facCode    = resolveFacultadCode(r.facultad);
+    const carreraKey = resolveCarreraName(facCode, r.carreraProfesional);
     if (!byFacultad.has(facCode)) byFacultad.set(facCode, new Map());
     const byCarrera = byFacultad.get(facCode)!;
-    if (!byCarrera.has(r.carreraProfesional)) byCarrera.set(r.carreraProfesional, []);
-    byCarrera.get(r.carreraProfesional)!.push(r);
+    if (!byCarrera.has(carreraKey)) byCarrera.set(carreraKey, []);
+    byCarrera.get(carreraKey)!.push(r);
   }
 
   const facultadesMap = new Map<string, DatosFacultad>();

@@ -8,7 +8,7 @@ export const FACULTADES: Record<string, { nombre: string; carreras: string[] }> 
     carreras: [
       'Carrera de Educación Inicial',
       'Carrera de Educación Primaria',
-      'Carrera de Educación Fisica y Deportes',
+      'Carrera de Educación Física y Deportes',
       'Escuela Profesional de Ciencias de la Comunicación',
       'Carrera de Psicología',
     ],
