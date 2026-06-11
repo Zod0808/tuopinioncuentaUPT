@@ -33,6 +33,13 @@ const AZUL_HEADER = '2E5C8A';
 const AZUL_OSCURO = '1a365d';
 const GRIS_ROW    = 'F2F2F2';
 
+// Fuente corporativa por defecto — Arial 12 pt (24 half-points)
+const DOCX_STYLES = {
+  default: {
+    document: { run: { font: 'Arial', size: 24 } },
+  },
+} as const;
+
 // Semaforización: fondos de celda por calificación (Excel-style)
 const COLOR_DESTACADO       = 'C6EFCE';
 const COLOR_BUENO           = 'BDD7EE';
@@ -303,7 +310,7 @@ function celdaH(text: string, colspan = 1, rowspan = 1): TableCell {
     shading: { type: ShadingType.CLEAR, fill: AZUL_HEADER },
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 18 })],
+      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 24 })],
     })],
   });
 }
@@ -314,7 +321,7 @@ function celdaHOscura(text: string, colspan = 1): TableCell {
     shading: { type: ShadingType.CLEAR, fill: AZUL_OSCURO },
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 18 })],
+      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 24 })],
     })],
   });
 }
@@ -324,7 +331,7 @@ function celda(text: string, center = false, bold = false, fill?: string): Table
     shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
     children: [new Paragraph({
       alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
-      children: [new TextRun({ text: String(text), bold, size: 18 })],
+      children: [new TextRun({ text: String(text), bold, size: 24 })],
     })],
   });
 }
@@ -352,12 +359,12 @@ function parrafo(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.BOTH,
     spacing: { after: 120 },
-    children: [new TextRun({ text, size: 22 })],
+    children: [new TextRun({ text, size: 24 })],
   });
 }
 
 function negrita(text: string): Paragraph {
-  return new Paragraph({ children: [new TextRun({ text, size: 22, bold: true })] });
+  return new Paragraph({ children: [new TextRun({ text, size: 24, bold: true })] });
 }
 
 function salto(): Paragraph {
@@ -369,7 +376,7 @@ function viñeta(text: string): Paragraph {
     alignment: AlignmentType.BOTH,
     indent: { left: convertInchesToTwip(0.3) },
     spacing: { after: 80 },
-    children: [new TextRun({ text: `– ${text}`, size: 22 })],
+    children: [new TextRun({ text: `– ${text}`, size: 24 })],
   });
 }
 
@@ -925,7 +932,7 @@ export async function generarInformeFinalDocx(
 
       for (const c of carreras) {
         children.push(
-          new Paragraph({ children: [new TextRun({ text: c.carrera, bold: true, size: 22, italics: true })] }),
+          new Paragraph({ children: [new TextRun({ text: c.carrera, bold: true, size: 24, italics: true })] }),
           salto(),
         );
         const pieCalif = pieCarreraMap.get(c.carrera) ?? null;
@@ -1005,24 +1012,25 @@ export async function generarInformeFinalDocx(
   children.push(
     salto(), salto(),
     new Paragraph({
-      children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 22 })],
+      children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 24 })],
     }),
     salto(), salto(), salto(),
     new Paragraph({
-      children: [new TextRun({ text: '_'.repeat(50), size: 22 })],
+      children: [new TextRun({ text: '_'.repeat(50), size: 24 })],
     }),
     new Paragraph({
-      children: [new TextRun({ text: firmante, bold: true, size: 22 })],
+      children: [new TextRun({ text: firmante, bold: true, size: 24 })],
     }),
     new Paragraph({
-      children: [new TextRun({ text: cargoFirmante, size: 22 })],
+      children: [new TextRun({ text: cargoFirmante, size: 24 })],
     }),
     new Paragraph({
-      children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 22 })],
+      children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 24 })],
     }),
   );
 
   const doc = new Document({
+    styles: DOCX_STYLES,
     numbering: {
       config: [{
         reference: 'bullets',
@@ -1082,11 +1090,11 @@ export async function generarInformeFacultadDocx(
     salto(), salto(),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 1000, after: 300 }, children: [new TextRun({ text: 'UNIVERSIDAD PRIVADA DE TACNA', bold: true, size: 36, color: AZUL_OSCURO })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: nombreFacultad.toUpperCase(), bold: true, size: 26, color: AZUL_HEADER })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: numInforme, size: 22, color: AZUL_HEADER })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: numInforme, size: 24, color: AZUL_HEADER })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Informe de Resultados de Encuesta Académica', bold: true, size: 26 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new TextRun({ text: `"TU OPINIÓN CUENTA ${ciclo}"`, bold: true, size: 30, color: AZUL_HEADER })] }),
     salto(), salto(),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Tacna, ${new Date().getFullYear()}`, size: 22 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Tacna, ${new Date().getFullYear()}`, size: 24 })] }),
     new Paragraph({ children: [new PageBreak()] }),
   );
 
@@ -1174,15 +1182,15 @@ export async function generarInformeFacultadDocx(
   const cargoFirmante = config.cargoFirmante ?? '[Cargo]';
   children.push(
     salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 24 })] }),
     salto(), salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: cargoFirmante, size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: cargoFirmante, size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 24 })] }),
   );
 
-  const doc = new Document({ sections: [{ properties: {}, children }] });
+  const doc = new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] });
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `Informe_${cod}_TuOpinionCuenta_${ciclo}.docx`);
 }
@@ -1210,7 +1218,7 @@ function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Parag
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
-      children: [new TextRun({ text: nombreFac, bold: true, size: 22, color: AZUL_HEADER })],
+      children: [new TextRun({ text: nombreFac, bold: true, size: 24, color: AZUL_HEADER })],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1220,14 +1228,14 @@ function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Parag
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
-      children: [new TextRun({ text: `TU OPINIÓN CUENTA — ${ciclo}`, bold: true, size: 22, color: AZUL_HEADER })],
+      children: [new TextRun({ text: `TU OPINIÓN CUENTA — ${ciclo}`, bold: true, size: 24, color: AZUL_HEADER })],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 },
       children: [new TextRun({
         text: new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        size: 18, color: '666666',
+        size: 24, color: '666666',
       })],
     }),
     salto(),
@@ -1240,12 +1248,12 @@ function firmaBloque(config: ConfigInforme): Paragraph[] {
   const cargo    = config.cargoFirmante  ?? '[Cargo]';
   return [
     salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 24 })] }),
     salto(), salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: cargo, size: 22 })] }),
-    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 22 })] }),
+    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: cargo, size: 24 })] }),
+    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 24 })] }),
   ];
 }
 
@@ -1280,7 +1288,7 @@ function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Tab
         children: [new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 60, after: 20 },
-          children: [new TextRun({ text: k.label, bold: true, size: 16, color: '555555' })],
+          children: [new TextRun({ text: k.label, bold: true, size: 20, color: '555555' })],
         })],
       })) }),
       new TableRow({ children: kpis.map(k => new TableCell({
@@ -1352,7 +1360,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
   }
 
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
 }
 
@@ -1401,7 +1409,7 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
     parrafo(interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, nombreFac)),
   );
   children.push(...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Estudiantes_Encuestados_${ciclo}_${cod}.docx`);
 }
 
@@ -1439,7 +1447,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
 
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
 }
 
@@ -1485,7 +1493,7 @@ async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cf
 
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
   children.push(...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Nro_Encuestas_${ciclo}_${cod}.docx`);
 }
 
@@ -1552,7 +1560,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
   }
 
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
-  await saveDocx(new Document({ sections: [{ properties: {}, children }] }),
+  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
 }
 
