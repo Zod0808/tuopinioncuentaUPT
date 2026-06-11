@@ -1108,6 +1108,33 @@ function leyendaAEFooter(): (Paragraph | Table)[] {
   ];
 }
 
+/** Cuadro de KPIs horizontales para insertar al inicio de cada reporte. */
+function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Table {
+  const FONDO_LABEL = 'FAFAFA';
+  const FONDO_VALOR = 'EBF3FB';
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ children: kpis.map(k => new TableCell({
+        shading: { type: ShadingType.CLEAR, fill: FONDO_LABEL },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 20 },
+          children: [new TextRun({ text: k.label, bold: true, size: 16, color: '555555' })],
+        })],
+      })) }),
+      new TableRow({ children: kpis.map(k => new TableCell({
+        shading: { type: ShadingType.CLEAR, fill: k.color ?? FONDO_VALOR },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 80, after: 80 },
+          children: [new TextRun({ text: k.value, bold: true, size: 28, color: AZUL_OSCURO })],
+        })],
+      })) }),
+    ],
+  });
+}
+
 async function saveDocx(doc: Document, filename: string): Promise<void> {
   const blob = await Packer.toBlob(doc);
   saveAs(blob, filename);
@@ -1119,9 +1146,16 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
   const malos     = todosReg.filter(r => esValidoParaReporte(r) && getCalifReg(r) === 'INSATISFACTORIO');
 
+  const seccionesValidas1 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
   ];
+  children.push(tablaKPI([
+    { label: 'Secciones INSATISFACTORIO', value: malos.length.toString(), color: COLOR_INSATISFACTORIO },
+    { label: 'Secciones Válidas (total)', value: seccionesValidas1.toString() },
+    { label: 'Promedio Facultad', value: f.promedioGeneral.toFixed(2) },
+    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(1) + '%' : '—', color: COLOR_INSATISFACTORIO },
+  ]), salto());
 
   if (malos.length === 0) {
     children.push(parrafo('No se registran secciones con calificación INSATISFACTORIO para esta facultad en el ciclo indicado.'));
@@ -1170,6 +1204,12 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte de Nro. de Estudiantes Encuestados por Carrera Profesional', nombreFac, ciclo),
   ];
+  children.push(tablaKPI([
+    { label: 'Total Matriculados', value: f.totalMatriculados.toLocaleString('es-PE') },
+    { label: 'Encuestados', value: f.totalEncuestados.toLocaleString('es-PE') },
+    { label: 'No Encuestados', value: Math.max(0, f.totalMatriculados - f.totalEncuestados).toLocaleString('es-PE') },
+    { label: '% Participación', value: f.porcentajeEncuestados.toFixed(1) + '%' },
+  ]), salto());
 
   const rows: TableRow[] = [
     new TableRow({ children: [
@@ -1208,9 +1248,15 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
 // ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
 async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const seccionesValidas4 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte del % de Evaluación a la Plana Docente (Juicio de Valor) por Carrera Profesional', nombreFac, ciclo),
   ];
+  children.push(tablaKPI([
+    { label: 'Secciones Válidas', value: seccionesValidas4.toString() },
+    { label: '% BUENO + DESTACADO', value: f.indicadorPlanEstrategico.toFixed(1) + '%', color: COLOR_DESTACADO },
+    { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
+  ]), salto());
 
   const rows: TableRow[] = [
     new TableRow({ children: [
@@ -1243,6 +1289,14 @@ async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cf
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte del Nro. de Encuestas por Carrera Profesional', nombreFac, ciclo),
   ];
+  const totSecKPI  = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
+  const totEncKPI  = [...f.carreras.values()].flatMap(c => c.registros).reduce((s, r) => s + r.encuestados, 0);
+  const totNoEncKPI = [...f.carreras.values()].flatMap(c => c.registros).reduce((s, r) => s + r.noEncuestados, 0);
+  children.push(tablaKPI([
+    { label: 'Total Secciones', value: totSecKPI.toString() },
+    { label: 'Total Encuestados', value: totEncKPI.toLocaleString('es-PE') },
+    { label: 'Total No Encuestados', value: totNoEncKPI.toLocaleString('es-PE') },
+  ]), salto());
 
   const rows: TableRow[] = [
     new TableRow({ children: [
@@ -1281,9 +1335,18 @@ async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cf
 // Y la fila de PROMEDIO por carrera, eliminando la duplicidad documental.
 async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const todosRegKPI    = [...f.carreras.values()].flatMap(c => c.registros);
+  const docentesUnicos = new Set(todosRegKPI.map(r => r.docente)).size;
+  const seccionesValidas6 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte General de Evaluación por Docente', nombreFac, ciclo),
   ];
+  children.push(tablaKPI([
+    { label: 'Docentes Únicos', value: docentesUnicos.toString() },
+    { label: 'Secciones Evaluadas', value: seccionesValidas6.toString() },
+    { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
+    { label: '% Bueno + Destacado', value: f.indicadorPlanEstrategico.toFixed(1) + '%', color: COLOR_DESTACADO },
+  ]), salto());
 
   for (const [carreraName, c] of f.carreras) {
     children.push(negrita(carreraName), salto());
