@@ -1141,7 +1141,6 @@ export async function generarInformeFacultadDocx(
   const rowsInd: TableRow[] = [
     new TableRow({ children: [celdaH('Carrera Profesional'), celdaH('% BUENO'), celdaH('% DESTACADO'), celdaH('TOTAL')] }),
   ];
-  let totalB = 0, totalD = 0, countC = 0;
   for (const c of carreras) {
     const pB = c.distribucion.BUENO.porcentaje;
     const pD = c.distribucion.DESTACADO.porcentaje;
@@ -1149,12 +1148,11 @@ export async function generarInformeFacultadDocx(
       celda(c.carrera), celda(pB.toFixed(2) + '%', true), celda(pD.toFixed(2) + '%', true),
       celda((pB + pD).toFixed(2) + '%', true, true),
     ]}));
-    totalB += pB; totalD += pD; countC++;
   }
   rowsInd.push(new TableRow({ children: [
     celda('TOTAL', false, true, GRIS_ROW),
-    celda(countC > 0 ? (totalB / countC).toFixed(2) + '%' : '—', true, true, GRIS_ROW),
-    celda(countC > 0 ? (totalD / countC).toFixed(2) + '%' : '—', true, true, GRIS_ROW),
+    celda(f.porcBueno.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(f.porcDestacado.toFixed(2) + '%', true, true, GRIS_ROW),
     celda(f.indicadorPlanEstrategico.toFixed(2) + '%', true, true, GRIS_ROW),
   ]}));
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: rowsInd }), salto());
@@ -1322,7 +1320,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
     { label: 'Secciones INSATISFACTORIO', value: malos.length.toString(), color: COLOR_INSATISFACTORIO },
     { label: 'Secciones Válidas (total)', value: seccionesValidas1.toString() },
     { label: 'Promedio Facultad', value: f.promedioGeneral.toFixed(2) },
-    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(1) + '%' : '—', color: COLOR_INSATISFACTORIO },
+    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(2) + '%' : '—', color: COLOR_INSATISFACTORIO },
   ]), salto());
 
   if (malos.length === 0) {
@@ -1376,7 +1374,7 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
     { label: 'Total Matriculados', value: f.totalMatriculados.toLocaleString('es-PE') },
     { label: 'Encuestados', value: f.totalEncuestados.toLocaleString('es-PE') },
     { label: 'No Encuestados', value: Math.max(0, f.totalMatriculados - f.totalEncuestados).toLocaleString('es-PE') },
-    { label: '% Participación', value: f.porcentajeEncuestados.toFixed(1) + '%' },
+    { label: '% Participación', value: f.porcentajeEncuestados.toFixed(2) + '%' },
   ]), salto());
 
   const rows: TableRow[] = [
@@ -1422,7 +1420,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
   ];
   children.push(tablaKPI([
     { label: 'Secciones Válidas', value: seccionesValidas4.toString() },
-    { label: '% BUENO + DESTACADO', value: f.indicadorPlanEstrategico.toFixed(1) + '%', color: COLOR_DESTACADO },
+    { label: '% BUENO + DESTACADO', value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
     { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
   ]), salto());
 
@@ -1513,7 +1511,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
     { label: 'Docentes Únicos', value: docentesUnicos.toString() },
     { label: 'Secciones Evaluadas', value: seccionesValidas6.toString() },
     { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
-    { label: '% Bueno + Destacado', value: f.indicadorPlanEstrategico.toFixed(1) + '%', color: COLOR_DESTACADO },
+    { label: '% Bueno + Destacado', value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
   ]), salto());
 
   for (const [carreraName, c] of f.carreras) {
