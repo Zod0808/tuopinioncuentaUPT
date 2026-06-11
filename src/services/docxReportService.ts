@@ -17,12 +17,14 @@ import { EvaluacionData } from '../types';
 // ── Configuración del informe (provista por el usuario) ───────────────────────
 
 export interface ConfigInforme {
-  numeroInforme?: string;      // p.ej. "008-2025-GPAD-UPT"
-  nombreResponsable?: string;  // nombre del responsable de la encuesta
-  cargoResponsable?: string;   // cargo del responsable
-  textoDifusion?: string;      // texto para sección 2 de difusión
-  nombreFirmante?: string;     // nombre para el cierre
-  cargoFirmante?: string;      // cargo para el cierre
+  numeroInforme?: string;            // p.ej. "008-2025-GPAD-UPT"
+  nombreResponsable?: string;        // nombre del responsable de la encuesta
+  cargoResponsable?: string;         // cargo del responsable
+  textoDifusion?: string;            // texto para sección 2 de difusión
+  nombreFirmante?: string;           // nombre para el cierre
+  cargoFirmante?: string;            // cargo para el cierre
+  semesterAnterior?: string;         // etiqueta del ciclo anterior, p.ej. "2025-II"
+  participacionAnteriorPct?: number; // % de participación del ciclo anterior, p.ej. 84.99
 }
 
 // ── Colores corporativos ──────────────────────────────────────────────────────
@@ -166,6 +168,125 @@ async function canvasPieToUint8(
   }
 }
 
+// ── Generación de gráfico de barras horizontales con Canvas ──────────────────
+
+interface BarChartCfg {
+  title?: string;
+  maxValue?: number;   // eje X máximo (20 para notas, 100 para porcentajes)
+  unit?: string;       // sufijo del valor, p.ej. '' o '%'
+  width?: number;
+}
+
+async function canvasBarToUint8(
+  labels: string[],
+  values: number[],
+  cfg: BarChartCfg = {},
+): Promise<Uint8Array | null> {
+  if (labels.length === 0) return null;
+  try {
+    const maxVal = cfg.maxValue ?? 20;
+    const unit   = cfg.unit ?? '';
+    const W      = cfg.width ?? 750;
+    const barH   = 34;
+    const gap    = 12;
+    const leftPad = 120;
+    const rightPad = 65;
+    const topPad   = 48;
+    const botPad   = 36;
+    const chartW = W - leftPad - rightPad;
+    const H = topPad + labels.length * (barH + gap) + gap + botPad;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    if (cfg.title) {
+      ctx.fillStyle = '#1a365d';
+      ctx.font = 'bold 15px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(cfg.title, W / 2, 10);
+    }
+
+    const chartTop = topPad;
+    const chartBot = H - botPad;
+
+    // Líneas de cuadrícula verticales y etiquetas de eje X
+    const isNota = maxVal <= 20;
+    const gridSteps = isNota ? [0, 5, 10, 15, 20] : [0, 25, 50, 75, 100];
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    for (const s of gridSteps) {
+      const x = leftPad + (s / maxVal) * chartW;
+      ctx.beginPath(); ctx.moveTo(x, chartTop); ctx.lineTo(x, chartBot); ctx.stroke();
+      ctx.fillStyle = '#718096';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${s}${unit}`, x, chartBot + 4);
+    }
+
+    // Líneas de umbral de calificación (punteadas) para escala de nota
+    if (isNota) {
+      const thresholds = [
+        { v: 11.0, c: '#fc8181' }, { v: 15.1, c: '#ecc94b' }, { v: 17.1, c: '#48bb78' },
+      ];
+      for (const th of thresholds) {
+        const x = leftPad + (th.v / maxVal) * chartW;
+        ctx.strokeStyle = th.c;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath(); ctx.moveTo(x, chartTop); ctx.lineTo(x, chartBot); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Barras
+    for (let i = 0; i < labels.length; i++) {
+      const v  = values[i] ?? 0;
+      const y  = chartTop + gap / 2 + i * (barH + gap);
+      const bw = Math.max(0, Math.min((v / maxVal) * chartW, chartW));
+
+      const bColor = isNota
+        ? (v >= 17.1 ? '#48bb78' : v >= 15.1 ? '#4299e1' : v >= 11.0 ? '#ecc94b' : '#fc8181')
+        : (v >= 85   ? '#48bb78' : v >= 70    ? '#4299e1' : v >= 50   ? '#ecc94b' : '#fc8181');
+
+      ctx.fillStyle = bColor;
+      ctx.fillRect(leftPad, y, bw, barH);
+
+      // Etiqueta facultad
+      ctx.fillStyle = '#1a365d';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labels[i], leftPad - 8, y + barH / 2);
+
+      // Valor al final de la barra
+      ctx.fillStyle = '#2d3748';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${v.toFixed(2)}${unit}`, leftPad + bw + 6, y + barH / 2);
+    }
+
+    // Línea base eje X
+    ctx.strokeStyle = '#a0aec0';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(leftPad, chartBot); ctx.lineTo(leftPad + chartW, chartBot); ctx.stroke();
+
+    return await new Promise<Uint8Array | null>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(null); return; }
+        blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf)));
+      }, 'image/png');
+    });
+  } catch { return null; }
+}
+
 // Categoría a partir de la nota según la escala visible en el DOCX (18-20=DESTACADO, 15-17=BUENO)
 function categoriaPromedio(nota: number): string {
   if (nota >= 18) return 'DESTACADO';
@@ -229,6 +350,7 @@ function titulo(text: string, level: (typeof HeadingLevel)[keyof typeof HeadingL
 
 function parrafo(text: string): Paragraph {
   return new Paragraph({
+    alignment: AlignmentType.BOTH,
     spacing: { after: 120 },
     children: [new TextRun({ text, size: 22 })],
   });
@@ -244,6 +366,7 @@ function salto(): Paragraph {
 
 function viñeta(text: string): Paragraph {
   return new Paragraph({
+    alignment: AlignmentType.BOTH,
     indent: { left: convertInchesToTwip(0.3) },
     spacing: { after: 80 },
     children: [new TextRun({ text: `– ${text}`, size: 22 })],
@@ -412,10 +535,11 @@ function tablaDistribucion(c: DatosCarrera): Table {
   ];
   for (const cal of califs) {
     const d = c.distribucion[cal];
+    const fill = d.porcentaje > 0 ? colorCalif(cal) : undefined;
     rows.push(new TableRow({ children: [
-      celda(cal, true, true),
-      celda(d.cantidad.toString(), true),
-      celda(d.porcentaje.toFixed(2) + '%', true),
+      celda(cal, true, true, fill),
+      celda(d.cantidad.toString(), true, false, fill),
+      celda(d.porcentaje.toFixed(2) + '%', true, false, fill),
     ]}));
   }
   rows.push(new TableRow({ children: [
@@ -431,7 +555,6 @@ function tablaIndicador(resumen: ResumenInstitucional): Table {
     new TableRow({ children: [celdaHOscura('UNIVERSIDAD PRIVADA DE TACNA', 4)] }),
     new TableRow({ children: [celdaH('FACULTAD'), celdaH('% BUENO'), celdaH('% DESTACADO'), celdaH('TOTAL')] }),
   ];
-  let totalBueno = 0, totalDestacado = 0, count = 0;
   for (const cod of ORDEN_FACULTADES) {
     const f = resumen.facultades.get(cod);
     if (!f) continue;
@@ -441,12 +564,11 @@ function tablaIndicador(resumen: ResumenInstitucional): Table {
       celda(f.porcDestacado.toFixed(2) + '%', true),
       celda(f.indicadorPlanEstrategico.toFixed(2) + '%', true, true),
     ]}));
-    totalBueno += f.porcBueno; totalDestacado += f.porcDestacado; count++;
   }
   rows.push(new TableRow({ children: [
     celda('TOTAL', false, true, GRIS_ROW),
-    celda(count > 0 ? (totalBueno / count).toFixed(2) + '%' : '—', true, true, GRIS_ROW),
-    celda(count > 0 ? (totalDestacado / count).toFixed(2) + '%' : '—', true, true, GRIS_ROW),
+    celda(resumen.porcBueno.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(resumen.porcDestacado.toFixed(2) + '%', true, true, GRIS_ROW),
     celda(resumen.indicadorPlanEstrategico.toFixed(2) + '%', true, true, GRIS_ROW),
   ]}));
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows });
@@ -600,9 +722,24 @@ export async function generarInformeFinalDocx(
     )
   );
 
+  // Barras de desempeño por facultad (3.3.1 y sección 4)
+  const activeFacs = ORDEN_FACULTADES.filter(cod => resumen.facultades.has(cod));
+  const barPromedioPromise = canvasBarToUint8(
+    activeFacs.map(cod => cod),
+    activeFacs.map(cod => resumen.facultades.get(cod)!.promedioGeneral),
+    { title: 'PROMEDIO GENERAL DE DESEMPEÑO DOCENTE POR FACULTAD', maxValue: 20, unit: '' },
+  );
+  const barIndicadorPromise = canvasBarToUint8(
+    activeFacs.map(cod => cod),
+    activeFacs.map(cod => resumen.facultades.get(cod)!.indicadorPlanEstrategico),
+    { title: '% EVALUADOS CON CALIFICACIÓN BUENO Y DESTACADO POR FACULTAD', maxValue: 100, unit: '%' },
+  );
+
   // Esperar todas en paralelo
-  const [pieInstitucional, ...restResults] = await Promise.all([
+  const [pieInstitucional, barPromedioImg, barIndicadorImg, ...restResults] = await Promise.all([
     pieInstitucionalPromise,
+    barPromedioPromise,
+    barIndicadorPromise,
     ...pieFacultadesPromises,
     ...pieCarrerasPromises,
   ]);
@@ -745,6 +882,9 @@ export async function generarInformeFinalDocx(
     salto(),
     tablaAEInstitucional(resumen),
     salto(),
+  );
+  if (barPromedioImg) children.push(imagenCentrada(barPromedioImg, 500, 40 + activeFacs.length * 46), salto());
+  children.push(
     parrafo(`Interpretación: ${interpretarInstitucionAE(resumen)}`),
     salto(),
   );
@@ -817,16 +957,36 @@ export async function generarInformeFinalDocx(
     salto(),
     tablaIndicador(resumen),
     salto(),
+  );
+  if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, 40 + activeFacs.length * 46), salto());
+  children.push(
     parrafo(`El indicador del Plan Estratégico Institucional para el ciclo ${ciclo} es del ${resumen.indicadorPlanEstrategico.toFixed(2)}%, representando la proporción de secciones evaluadas con calificación BUENO o DESTACADO.`),
     salto(),
   );
 
   // ── 5. Conclusiones ──
+  const porcPartAct = resumen.totalMatriculados > 0
+    ? (resumen.totalEncuestados / resumen.totalMatriculados) * 100
+    : 0;
+  const comparativoParticipacion = (() => {
+    const prev = config.participacionAnteriorPct;
+    const cicloP = config.semesterAnterior;
+    if (prev == null || !cicloP) return null;
+    const diff = porcPartAct - prev;
+    const cambio = Math.abs(diff).toFixed(2);
+    const tendencia = diff > 0
+      ? `un incremento de ${cambio} puntos porcentuales`
+      : diff < 0
+        ? `una disminución de ${cambio} puntos porcentuales`
+        : 'sin variación';
+    return `Respecto al ciclo ${cicloP}, en el que se registró un porcentaje de participación del ${prev.toFixed(2)}%, el ciclo ${ciclo} presenta ${tendencia} (${porcPartAct.toFixed(2)}% vs. ${prev.toFixed(2)}%), lo que evidencia ${diff >= 0 ? 'una mejora en la respuesta estudiantil hacia la encuesta académica' : 'la necesidad de reforzar las estrategias de sensibilización para incrementar la participación estudiantil'}.`;
+  })();
   children.push(
     titulo('5. CONCLUSIONES', HeadingLevel.HEADING_1), salto(),
     viñeta('Los resultados de la encuesta académica empleadas por las Carreras Profesionales permitieron identificar fortalezas y oportunidades de mejora en el proceso de enseñanza aprendizaje, constituyendo un insumo clave para el cumplimiento de los objetivos institucionales respecto a la evaluación del desempeño docente como lo establece la normatividad vigente.'),
     viñeta(generarConclusion1(resumen, ciclo)),
     viñeta(`El promedio general institucional del desempeño docente para el ciclo ${ciclo} es de ${resumen.promedioGeneral.toFixed(2)}, que corresponde a la categoría ${categoriaPromedio(resumen.promedioGeneral)} según la escala de calificación institucional.`),
+    ...(comparativoParticipacion ? [viñeta(comparativoParticipacion)] : []),
     salto(),
   );
 
