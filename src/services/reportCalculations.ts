@@ -94,6 +94,16 @@ function facKeys(facultad: string): string[] {
   return [...new Set(keys)];
 }
 
+/** Convierte r.facultad (código o nombre completo) al código estándar (FADE, FAEDCOH...).
+ *  Garantiza que facultadesMap use siempre el mismo código que ORDEN_FACULTADES. */
+function resolveFacultadCode(facultad: string): string {
+  if (FACULTADES[facultad]) return facultad;
+  const code = Object.keys(FACULTADES).find(k =>
+    normalizeStr(FACULTADES[k].nombre) === normalizeStr(facultad)
+  );
+  return code ?? facultad;
+}
+
 function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
@@ -142,11 +152,12 @@ export function calcularResumen(
     }
   }
 
-  // Agrupar por facultad → carrera
+  // Agrupar por facultad → carrera (normaliza a código estándar para match con ORDEN_FACULTADES)
   const byFacultad = new Map<string, Map<string, EvaluacionData[]>>();
   for (const r of registros) {
-    if (!byFacultad.has(r.facultad)) byFacultad.set(r.facultad, new Map());
-    const byCarrera = byFacultad.get(r.facultad)!;
+    const facCode = resolveFacultadCode(r.facultad);
+    if (!byFacultad.has(facCode)) byFacultad.set(facCode, new Map());
+    const byCarrera = byFacultad.get(facCode)!;
     if (!byCarrera.has(r.carreraProfesional)) byCarrera.set(r.carreraProfesional, []);
     byCarrera.get(r.carreraProfesional)!.push(r);
   }
@@ -247,19 +258,24 @@ export function calcularResumen(
     return c === 'BUENO' || c === 'DESTACADO';
   }).length;
 
-  const activeFac = allFac.filter(f => f.totalEncuestados > 0 || f.totalMatriculados > 0);
-  const pBuenoInst = activeFac.length > 0 ? activeFac.reduce((s, f) => s + f.porcBueno, 0) / activeFac.length : 0;
-  const pDestacadoInst = activeFac.length > 0 ? activeFac.reduce((s, f) => s + f.porcDestacado, 0) / activeFac.length : 0;
+  // Promedios ponderados institucionales: se calculan directo sobre cada sección válida,
+  // no como promedio de promedios de facultad (que daría igual peso a facultades pequeñas y grandes).
+  const pBuenoInst = allRegsGlobal.length > 0
+    ? allRegsGlobal.filter(r => calcularCalificacion(r.nota) === 'BUENO').length / allRegsGlobal.length * 100
+    : 0;
+  const pDestacadoInst = allRegsGlobal.length > 0
+    ? allRegsGlobal.filter(r => calcularCalificacion(r.nota) === 'DESTACADO').length / allRegsGlobal.length * 100
+    : 0;
 
   return {
     totalMatriculados: totalMatr, totalEncuestados: totalEnc,
     totalNoEncuestados: totalMatr - totalEnc,
     porcentajeEncuestados: totalMatr > 0 ? (totalEnc / totalMatr) * 100 : 0,
-    promedioAE01: avg(allFac.map(f => f.promedioAE01)),
-    promedioAE02: avg(allFac.map(f => f.promedioAE02)),
-    promedioAE03: avg(allFac.map(f => f.promedioAE03)),
-    promedioAE04: avg(allFac.map(f => f.promedioAE04)),
-    promedioGeneral: avg(allFac.map(f => f.promedioGeneral)),
+    promedioAE01: avg(allRegsGlobal.map(r => r.ae01)),
+    promedioAE02: avg(allRegsGlobal.map(r => r.ae02)),
+    promedioAE03: avg(allRegsGlobal.map(r => r.ae03)),
+    promedioAE04: avg(allRegsGlobal.map(r => r.ae04)),
+    promedioGeneral: avg(allRegsGlobal.map(r => (r.ae01 + r.ae02 + r.ae03 + r.ae04) / 4)),
     indicadorPlanEstrategico: allRegsGlobal.length ? (buenoDestGlobal / allRegsGlobal.length) * 100 : 0,
     porcBueno: pBuenoInst,
     porcDestacado: pDestacadoInst,

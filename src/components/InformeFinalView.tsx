@@ -208,6 +208,35 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 placeholder="Ej: Gerente de Planificación y Desarrollo Académico"
               />
             </label>
+            <label>
+              Ciclo Anterior (comparativo)
+              <input
+                type="text"
+                value={config.semesterAnterior ?? ''}
+                onChange={e => actualizarConfig('semesterAnterior', e.target.value)}
+                placeholder="Ej: 2025-II"
+              />
+            </label>
+            <label>
+              % Participación Ciclo Anterior
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={config.participacionAnteriorPct ?? ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  const num = parseFloat(val);
+                  setConfig(prev => {
+                    const nuevo = { ...prev, participacionAnteriorPct: isNaN(num) ? undefined : num };
+                    try { localStorage.setItem(CONFIG_KEY, JSON.stringify(nuevo)); } catch { /* quota */ }
+                    return nuevo;
+                  });
+                }}
+                placeholder="Ej: 84.99"
+              />
+            </label>
             <label className="informe-config-col-full">
               Texto Sección 2 — Difusión de Resultados
               <textarea
