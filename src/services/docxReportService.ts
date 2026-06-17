@@ -25,6 +25,7 @@ export interface ConfigInforme {
   cargoFirmante?: string;            // cargo para el cierre
   semesterAnterior?: string;         // etiqueta del ciclo anterior, p.ej. "2025-II"
   participacionAnteriorPct?: number; // % de participación del ciclo anterior, p.ej. 84.99
+  cronograma?: string;               // p.ej. "Del 11 al 25 de mayo del 2026"
 }
 
 // ── Colores corporativos ──────────────────────────────────────────────────────
@@ -40,11 +41,11 @@ const DOCX_STYLES = {
   },
 } as const;
 
-// Semaforización: fondos de celda por calificación (Excel-style)
-const COLOR_DESTACADO       = 'C6EFCE';
-const COLOR_BUENO           = 'BDD7EE';
-const COLOR_ACEPTABLE       = 'FFEB9C';
-const COLOR_INSATISFACTORIO = 'FFC7CE';
+// Semaforización: fondos de celda por calificación (paleta institucional sobria)
+const COLOR_DESTACADO       = '1F3864'; // azul marino
+const COLOR_BUENO           = '9DC3E6'; // celeste
+const COLOR_ACEPTABLE       = 'FFD966'; // oro
+const COLOR_INSATISFACTORIO = 'FFFFFF'; // blanco
 const COLOR_SUBQUORUM       = 'FFF3CD';
 
 // ── Generación de gráficos de torta con Canvas ────────────────────────────────
@@ -193,11 +194,11 @@ async function canvasBarToUint8(
   try {
     const maxVal = cfg.maxValue ?? 20;
     const unit   = cfg.unit ?? '';
-    const W      = cfg.width ?? 750;
-    const barH   = 34;
-    const gap    = 12;
-    const leftPad = 120;
-    const rightPad = 65;
+    const W      = cfg.width ?? 800;
+    const barH   = 46;
+    const gap    = 10;
+    const leftPad  = 230;
+    const rightPad = 70;
     const topPad   = 48;
     const botPad   = 36;
     const chartW = W - leftPad - rightPad;
@@ -253,29 +254,46 @@ async function canvasBarToUint8(
     }
 
     // Barras
+    const wrapLabel = (text: string, maxW: number, fontSize: number): string[] => {
+      ctx.font = `bold ${fontSize}px Arial`;
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let cur = '';
+      for (const w of words) {
+        const test = cur ? `${cur} ${w}` : w;
+        if (ctx.measureText(test).width <= maxW) { cur = test; }
+        else { if (cur) lines.push(cur); cur = w; }
+      }
+      if (cur) lines.push(cur);
+      return lines;
+    };
+
     for (let i = 0; i < labels.length; i++) {
       const v  = values[i] ?? 0;
       const y  = chartTop + gap / 2 + i * (barH + gap);
       const bw = Math.max(0, Math.min((v / maxVal) * chartW, chartW));
 
-      const bColor = isNota
-        ? (v >= 17.1 ? '#48bb78' : v >= 15.1 ? '#4299e1' : v >= 11.0 ? '#ecc94b' : '#fc8181')
-        : (v >= 85   ? '#48bb78' : v >= 70    ? '#4299e1' : v >= 50   ? '#ecc94b' : '#fc8181');
-
-      ctx.fillStyle = bColor;
+      // Color sólido azul marino
+      ctx.fillStyle = '#1F3864';
       ctx.fillRect(leftPad, y, bw, barH);
 
-      // Etiqueta facultad
+      // Etiqueta con word-wrap
+      const labelLines = wrapLabel(labels[i], leftPad - 14, 10);
+      const lineH = 13;
+      const totalTextH = labelLines.length * lineH;
+      const textStartY = y + (barH - totalTextH) / 2;
       ctx.fillStyle = '#1a365d';
-      ctx.font = 'bold 12px Arial';
       ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(labels[i], leftPad - 8, y + barH / 2);
+      ctx.textBaseline = 'top';
+      for (let li = 0; li < labelLines.length; li++) {
+        ctx.fillText(labelLines[li], leftPad - 8, textStartY + li * lineH);
+      }
 
       // Valor al final de la barra
       ctx.fillStyle = '#2d3748';
       ctx.font = 'bold 12px Arial';
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
       ctx.fillText(`${v.toFixed(2)}${unit}`, leftPad + bw + 6, y + barH / 2);
     }
 
@@ -326,12 +344,20 @@ function celdaHOscura(text: string, colspan = 1): TableCell {
   });
 }
 
+function isLightFill(hex: string): boolean {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (r * 0.299 + g * 0.587 + b * 0.114) > 128;
+}
+
 function celda(text: string, center = false, bold = false, fill?: string): TableCell {
+  const textColor = fill ? (isLightFill(fill) ? '000000' : 'FFFFFF') : '000000';
   return new TableCell({
     shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
     children: [new Paragraph({
       alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
-      children: [new TextRun({ text: String(text), bold, size: 24 })],
+      children: [new TextRun({ text: String(text), bold, size: 24, color: textColor })],
     })],
   });
 }
@@ -566,7 +592,7 @@ function tablaIndicador(resumen: ResumenInstitucional): Table {
     const f = resumen.facultades.get(cod);
     if (!f) continue;
     rows.push(new TableRow({ children: [
-      celda(cod, true, true),
+      celda(FACULTADES[cod]?.nombre ?? cod, false, true),
       celda(f.porcBueno.toFixed(2) + '%', true),
       celda(f.porcDestacado.toFixed(2) + '%', true),
       celda(f.indicadorPlanEstrategico.toFixed(2) + '%', true, true),
@@ -594,67 +620,126 @@ async function bloquesCarrera(
     items.push(parrafo(interpretarTablaAE(c)), salto());
   }
 
-  items.push(
-    parrafo(`N° de secciones calificadas: ${c.seccionesCalificadas}`),
-    tablaDistribucion(c),
-    salto(),
-  );
+  items.push(parrafo(`N° de secciones calificadas: ${c.seccionesCalificadas}`));
 
-  // Gráfico de torta de calificación por carrera
+  // Gráfico de torta primero, después tabla, después interpretación
   if (pieCalif) {
     items.push(imagenCentrada(pieCalif, 400, 290));
   }
 
   items.push(
+    tablaDistribucion(c),
+    salto(),
     parrafo(interpretarDistribucion(c)),
     salto(),
   );
   return items;
 }
 
+// ── Tabla indicador plan estratégico (cabecera sección 4) ────────────────────
+
+function tablaPlanEstrategico(ciclo: string): Table {
+  const fila = (label: string, value: string): TableRow =>
+    new TableRow({ children: [
+      new TableCell({
+        width: { size: 30, type: WidthType.PERCENTAGE },
+        shading: { type: ShadingType.CLEAR, fill: 'BDD7EE' },
+        children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 22, color: '1F3864' })] })],
+      }),
+      new TableCell({
+        width: { size: 70, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ alignment: AlignmentType.BOTH, children: [new TextRun({ text: value, size: 22 })] })],
+      }),
+    ]});
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      fila('Indicador', 'Porcentaje de estudiantes que considera como bueno y muy bueno el proceso de enseñanza aprendizaje.'),
+      fila('Periodicidad de la medición', `Semestral\n(${ciclo})`),
+      fila('Fórmula', '% promedio de las facultades.'),
+      fila('Frecuencia de reporte', 'Único'),
+      fila('Resultado a obtener', 'Estudiantes encuestados que consideran como bueno o muy bueno el proceso de enseñanza aprendizaje'),
+    ],
+  });
+}
+
 // ── Sección 1: Introducción ───────────────────────────────────────────────────
 
+function espacioImagen(): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 300, after: 300 },
+    children: [new TextRun({ text: '[Imagen del manual]', color: 'AAAAAA', italics: true, size: 24 })],
+  });
+}
+
 function seccion1(ciclo: string, config: ConfigInforme): (Paragraph | Table)[] {
-  const año = new Date().getFullYear();
   const responsable = config.nombreResponsable ?? '[Nombre del Responsable]';
-  const cargo = config.cargoResponsable ?? '[Cargo]';
+  const cargo       = config.cargoResponsable  ?? '[Cargo]';
+  const cronograma  = config.cronograma        ?? 'Del 11 al 25 de mayo del 2026';
 
   return [
-    titulo('1. INFORMACIÓN GENERAL', HeadingLevel.HEADING_1), salto(),
+    titulo('1. INTRODUCCIÓN', HeadingLevel.HEADING_1), salto(),
+    parrafo(`El presente informe evidencia las actividades ejecutadas de la encuesta académica Tu Opinión Cuenta ${ciclo} en el marco de lo programado en el Plan Anual de Trabajo de la oficina de GPAD 2025. A través de los resultados de la aplicación de la encuesta se fortalecerá el desarrollo pedagógico y la mejora continua del desempeño docente.`),
+    salto(),
 
-    titulo('1.1. Antecedentes normativos', HeadingLevel.HEADING_2), salto(),
-    parrafo('La evaluación del desempeño docente en la Universidad Privada de Tacna (UPT) se sustenta en la normatividad institucional vigente que establece la aplicación periódica de encuestas académicas como mecanismo de mejora continua de la calidad educativa.'),
-    parrafo('Este proceso se enmarca en el Estatuto de la Universidad Privada de Tacna, el Reglamento de Evaluación del Desempeño Docente, así como en los lineamientos del Modelo de Licenciamiento Institucional y los estándares del proceso de acreditación de las carreras profesionales.'),
+    titulo('1.1. Antecedentes Normativos', HeadingLevel.HEADING_2), salto(),
+    viñeta('Con Resolución N°200-2019-UPT-CU se aprueba el Reglamento de evaluación de desempeño docente de la Universidad Privada de Tacna.'),
+    viñeta(`Con Resolución N°190-2025-UPT-CU se aprueba la Directiva N°006-2025-UPT-VRAC Distribución de carga horaria semestre académico ${ciclo}.`),
+    viñeta('Con Resolución Rectoral N°562-2025-UPT-R se aprueba el Plan de trabajo de la oficina de gestión de procesos académicos y docencia para el año 2025.'),
     salto(),
 
     titulo('1.2. Generalidades', HeadingLevel.HEADING_2), salto(),
-    parrafo(`La encuesta académica "Tu Opinión Cuenta" del semestre ${ciclo} tiene como objetivo recoger la percepción de los estudiantes sobre el desempeño docente en cuatro aspectos evaluados: calidad de la presentación y contenido silábico (AE-01), ejecución del proceso enseñanza-aprendizaje (AE-02), aplicación de la evaluación (AE-03) y formación actitudinal y relaciones interpersonales con los estudiantes (AE-04).`),
-    parrafo('Los resultados obtenidos permiten identificar fortalezas y oportunidades de mejora en la práctica docente, constituyendo un insumo clave para la toma de decisiones académicas y la formulación de planes de mejora.'),
+    parrafo('Implementar el mecanismo de la aplicación de las encuestas académicas virtuales en la universidad es fundamental para evaluar el desempeño del docente universitario, con la finalidad de potenciar sus competencias en el cumplimiento de sus funciones y conocer la percepción de los estudiantes respecto a su desempeño, lo que resulta esencial para identificar fortalezas y debilidades en el proceso educativo y promover su mejora continua.'),
+    parrafo('Además, la recopilación de información del desempeño docente según criterios de evaluación permitirá tomar decisiones respecto a políticas y medidas que permitan mejorar la calidad de la formación profesional de los estudiantes como lo establece el Reglamento de Evaluación del Desempeño docente de la UPT en su Art°21. Evaluación a cargo de los estudiantes.'),
+    parrafo(`La aplicación de la encuesta académica TU OPINIÓN CUENTA en el semestre académico ${ciclo} tienen por objeto promover la mejora de la calidad del servicio educativo que ofrece nuestra universidad, en el ámbito de la enseñanza aprendizaje:`),
+    viñeta('Identificar las fortalezas y debilidades de los docentes en su desempeño durante el desarrollo del proceso académico.'),
+    viñeta('Lograr la participación activa y responsable de los estudiantes en la verificación de la calidad de la formación profesional que reciben.'),
+    viñeta('Recopilar y analizar datos de evaluación para medir la eficacia de las mejoras educativas.'),
+    parrafo('En relación a los criterios a evaluar:'),
+    negrita('Calidad de la presentación y contenido silábico de la asignatura'),
+    parrafo('Evaluar la pertinencia, coherencia y actualización del contenido silábico, asegurando su alineación con los resultados de aprendizaje y los objetivos curriculares establecidos.'),
+    negrita('Ejecución del proceso de enseñanza-aprendizaje'),
+    parrafo('Analizar la efectividad de las estrategias metodológicas y didácticas implementadas por el docente para promover un aprendizaje significativo y participativo en los estudiantes.'),
+    negrita('Aplicación de la evaluación de la asignatura'),
+    parrafo('Examinar la adecuación, transparencia y consistencia de los mecanismos e instrumentos de evaluación empleados, verificando su correspondencia con las competencias y resultados de aprendizaje previstos.'),
+    negrita('Formación actitudinal y relaciones interpersonales con los estudiantes'),
+    parrafo('Valorar el desarrollo de actitudes éticas, comunicativas y colaborativas del docente, así como la calidad de las relaciones interpersonales que establece con los estudiantes en el proceso formativo.'),
     salto(),
 
     titulo('1.3. Responsabilidades', HeadingLevel.HEADING_2), salto(),
-    parrafo(`La aplicación, procesamiento y presentación de los resultados de la encuesta académica "${ciclo}" estuvo a cargo de la Oficina de Gestión de Procesos Académicos y Docente, bajo la responsabilidad de:`),
     viñeta(`${responsable} — ${cargo}`),
+    viñeta('Mag. Ivette Eneida Atencio Iturry — Encargada del área de desarrollo académico'),
     salto(),
 
     titulo('1.4. Cronograma de ejecución', HeadingLevel.HEADING_2), salto(),
-    parrafo(`La encuesta académica "Tu Opinión Cuenta" del semestre ${ciclo} se ejecutó durante el período de evaluación parcial y final del semestre académico, conforme al cronograma establecido por la Dirección Académica. El procesamiento y análisis de resultados se realizó durante el mes de ${new Date().toLocaleString('es-PE', { month: 'long' })} del año ${año}.`),
+    parrafo('De acuerdo al cronograma se ejecutó en la siguiente fecha:'),
+    parrafo(cronograma),
     salto(),
 
     titulo('1.5. Ejecución presupuestal', HeadingLevel.HEADING_2), salto(),
-    parrafo('La aplicación de la encuesta académica se realizó mediante plataforma virtual institucional, sin demanda de recursos presupuestales adicionales, utilizando la infraestructura tecnológica disponible en la Universidad Privada de Tacna.'),
+    parrafo('La aplicación de la encuesta académica se realizó mediante plataforma virtual institucional (INTRANET), sin demanda de recursos presupuestales adicionales, utilizando la infraestructura tecnológica disponible en la Universidad Privada de Tacna.'),
     salto(),
 
     titulo('1.6. Publicidad y difusión', HeadingLevel.HEADING_2), salto(),
-    parrafo('La convocatoria para la participación en la encuesta académica se realizó a través de los canales oficiales de comunicación de la universidad, incluyendo el portal web institucional, correos electrónicos institucionales, y comunicación directa a través de los directores de escuela y docentes.'),
+    parrafo('La convocatoria para la participación en la encuesta académica se realizó a través de los canales oficiales de comunicación de la universidad, plataformas institucionales y publicidad física.'),
     salto(),
 
     titulo('1.7. Acciones promovidas', HeadingLevel.HEADING_2), salto(),
-    parrafo('Con la finalidad de incrementar la tasa de participación estudiantil, se llevaron a cabo las siguientes acciones:'),
-    viñeta('Distribución de manuales de instrucción para el acceso a la plataforma de encuestas.'),
-    viñeta('Comunicación mediante banners y material informativo en las instalaciones de la universidad.'),
-    viñeta('Sensibilización a los estudiantes a través de los directores de escuela y coordinadores académicos.'),
-    viñeta('Monitoreo continuo de la participación durante el período de aplicación.'),
+
+    titulo('1.7.1. Publicidad física', HeadingLevel.HEADING_3),
+    parrafo('Se realizó las instalaciones de Banners en las puertas de ingreso de las Facultades de: FACEM, FACSA, FAEDCOH y FAING.'),
+    salto(),
+
+    titulo('1.7.2. Manual didáctico de pasos de aplicación de la encuesta académica – estudiantes.', HeadingLevel.HEADING_3),
+    parrafo('A través del oficio Nro. 00576-2025-UPT-GPAD se remite a las diferentes Facultades el manual didáctico que establece los pasos para la ejecución de la encuesta académica a cargo de los estudiantes.'),
+    espacioImagen(),
+    salto(),
+
+    titulo('1.7.3. Manual para la visualización de resultados de la aplicación de la encuesta académica – docentes.', HeadingLevel.HEADING_3),
+    parrafo('A través del oficio Nro. 00576-2025-UPT-GPAD se remite a las diferentes Facultades el manual didáctico que establece los pasos para la visualización de los resultados de la aplicación de la encuesta académica de las asignaturas evaluadas de la plana docente.'),
+    espacioImagen(),
     salto(),
   ];
 }
@@ -686,7 +771,7 @@ export async function generarInformeFinalDocx(
   const etiqParticipacion    = ['Encuestados', 'No Encuestados'];
   // Colores calificación: igual al original PDF (INSATISFACTORIO primero → DESTACADO último)
   const etiqDistrib   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
-  const coloresDistrib = ['#FF0000', '#FFC000', '#4472C4', '#70AD47'];
+  const coloresDistrib = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Pie institucional (3.1)
   const pieInstitucionalPromise = canvasPieToUint8(
@@ -732,12 +817,12 @@ export async function generarInformeFinalDocx(
   // Barras de desempeño por facultad (3.3.1 y sección 4)
   const activeFacs = ORDEN_FACULTADES.filter(cod => resumen.facultades.has(cod));
   const barPromedioPromise = canvasBarToUint8(
-    activeFacs.map(cod => cod),
+    activeFacs.map(cod => FACULTADES[cod]?.nombre ?? cod),
     activeFacs.map(cod => resumen.facultades.get(cod)!.promedioGeneral),
     { title: 'PROMEDIO GENERAL DE DESEMPEÑO DOCENTE POR FACULTAD', maxValue: 20, unit: '' },
   );
   const barIndicadorPromise = canvasBarToUint8(
-    activeFacs.map(cod => cod),
+    activeFacs.map(cod => FACULTADES[cod]?.nombre ?? cod),
     activeFacs.map(cod => resumen.facultades.get(cod)!.indicadorPlanEstrategico),
     { title: '% EVALUADOS CON CALIFICACIÓN BUENO Y DESTACADO POR FACULTAD', maxValue: 100, unit: '%' },
   );
@@ -890,7 +975,7 @@ export async function generarInformeFinalDocx(
     tablaAEInstitucional(resumen),
     salto(),
   );
-  if (barPromedioImg) children.push(imagenCentrada(barPromedioImg, 500, Math.round(500 * (96 + activeFacs.length * 46) / 750)), salto());
+  if (barPromedioImg) children.push(imagenCentrada(barPromedioImg, 500, Math.round(500 * (94 + activeFacs.length * 56) / 800)), salto());
   children.push(
     parrafo(`Interpretación: ${interpretarInstitucionAE(resumen)}`),
     salto(),
@@ -960,12 +1045,14 @@ export async function generarInformeFinalDocx(
     new Paragraph({ children: [new PageBreak()] }),
     titulo('4. INDICADOR DEL PLAN ESTRATÉGICO DE LA UPT', HeadingLevel.HEADING_1),
     salto(),
-    parrafo('4.1 Reporte del porcentaje de estudiantes que consideran como "BUENO Y DESTACADO" (Indicador del Plan Estratégico institucional) por Facultad.'),
+    tablaPlanEstrategico(ciclo),
+    salto(),
+    titulo('4.1 Reporte del porcentaje de estudiantes que consideran como "BUENO Y DESTACADO" (Indicador del Plan Estratégico institucional) por Facultad.', HeadingLevel.HEADING_2),
     salto(),
     tablaIndicador(resumen),
     salto(),
   );
-  if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, Math.round(500 * (96 + activeFacs.length * 46) / 750)), salto());
+  if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, Math.round(500 * (94 + activeFacs.length * 56) / 800)), salto());
   children.push(
     parrafo(`El indicador del Plan Estratégico Institucional para el ciclo ${ciclo} es del ${resumen.indicadorPlanEstrategico.toFixed(2)}%, representando la proporción de secciones evaluadas con calificación BUENO o DESTACADO.`),
     salto(),
@@ -1064,7 +1151,7 @@ export async function generarInformeFacultadDocx(
   const esSimple = carreras.length === 1;
 
   const etiqDistribFac   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
-  const coloresDistribFac = ['#FF0000', '#FFC000', '#4472C4', '#70AD47'];
+  const coloresDistribFac = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Generar gráficos
   const pieFac = await canvasPieToUint8(
