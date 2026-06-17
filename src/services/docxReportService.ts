@@ -602,7 +602,7 @@ async function bloquesCarrera(
 
   // Gráfico de torta de calificación por carrera
   if (pieCalif) {
-    items.push(imagenCentrada(pieCalif, 340, 280));
+    items.push(imagenCentrada(pieCalif, 400, 290));
   }
 
   items.push(
@@ -633,7 +633,7 @@ function seccion1(ciclo: string, config: ConfigInforme): (Paragraph | Table)[] {
     salto(),
 
     titulo('1.3. Responsabilidades', HeadingLevel.HEADING_2), salto(),
-    parrafo(`La aplicación, procesamiento y presentación de los resultados de la encuesta académica "${ciclo}" estuvo a cargo de la Gerencia de Planificación y Desarrollo Académico, bajo la responsabilidad de:`),
+    parrafo(`La aplicación, procesamiento y presentación de los resultados de la encuesta académica "${ciclo}" estuvo a cargo de la Oficina de Gestión de Procesos Académicos y Docente, bajo la responsabilidad de:`),
     viñeta(`${responsable} — ${cargo}`),
     salto(),
 
@@ -686,7 +686,7 @@ export async function generarInformeFinalDocx(
   const etiqParticipacion    = ['Encuestados', 'No Encuestados'];
   // Colores calificación: igual al original PDF (INSATISFACTORIO primero → DESTACADO último)
   const etiqDistrib   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
-  const coloresDistrib = ['#FF0000', '#A5A5A5', '#FFC000', '#4472C4'];
+  const coloresDistrib = ['#FF0000', '#FFC000', '#4472C4', '#70AD47'];
 
   // Pie institucional (3.1)
   const pieInstitucionalPromise = canvasPieToUint8(
@@ -772,7 +772,7 @@ export async function generarInformeFinalDocx(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 },
-      children: [new TextRun({ text: 'Gerencia de Planificación y Desarrollo Académico', size: 24, color: '555555' })],
+      children: [new TextRun({ text: 'Oficina de Gestión de Procesos Académicos y Docente', size: 24, color: '555555' })],
     }),
     salto(),
     new Paragraph({
@@ -839,7 +839,7 @@ export async function generarInformeFinalDocx(
     salto(),
   );
   if (pieInstitucional) {
-    children.push(imagenCentrada(pieInstitucional, 360, 300));
+    children.push(imagenCentrada(pieInstitucional, 400, 290));
   }
   children.push(
     parrafo(interpretarParticipacion(resumen.totalEncuestados, resumen.totalMatriculados, 'la Universidad Privada de Tacna')),
@@ -860,7 +860,7 @@ export async function generarInformeFinalDocx(
     );
     const pieFac = pieFacultades[idx];
     if (pieFac) {
-      children.push(imagenCentrada(pieFac, 360, 290));
+      children.push(imagenCentrada(pieFac, 400, 290));
     }
     children.push(
       parrafo(interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, FACULTADES[cod]?.nombre ?? cod)),
@@ -890,7 +890,7 @@ export async function generarInformeFinalDocx(
     tablaAEInstitucional(resumen),
     salto(),
   );
-  if (barPromedioImg) children.push(imagenCentrada(barPromedioImg, 500, 40 + activeFacs.length * 46), salto());
+  if (barPromedioImg) children.push(imagenCentrada(barPromedioImg, 500, Math.round(500 * (96 + activeFacs.length * 46) / 750)), salto());
   children.push(
     parrafo(`Interpretación: ${interpretarInstitucionAE(resumen)}`),
     salto(),
@@ -965,7 +965,7 @@ export async function generarInformeFinalDocx(
     tablaIndicador(resumen),
     salto(),
   );
-  if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, 40 + activeFacs.length * 46), salto());
+  if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, Math.round(500 * (96 + activeFacs.length * 46) / 750)), salto());
   children.push(
     parrafo(`El indicador del Plan Estratégico Institucional para el ciclo ${ciclo} es del ${resumen.indicadorPlanEstrategico.toFixed(2)}%, representando la proporción de secciones evaluadas con calificación BUENO o DESTACADO.`),
     salto(),
@@ -1064,7 +1064,7 @@ export async function generarInformeFacultadDocx(
   const esSimple = carreras.length === 1;
 
   const etiqDistribFac   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
-  const coloresDistribFac = ['#FF0000', '#A5A5A5', '#FFC000', '#4472C4'];
+  const coloresDistribFac = ['#FF0000', '#FFC000', '#4472C4', '#70AD47'];
 
   // Generar gráficos
   const pieFac = await canvasPieToUint8(
@@ -1106,7 +1106,7 @@ export async function generarInformeFacultadDocx(
     tablaParticipacionFacultad(cod, f),
     salto(),
   );
-  if (pieFac) children.push(imagenCentrada(pieFac, 360, 290));
+  if (pieFac) children.push(imagenCentrada(pieFac, 400, 290));
   children.push(parrafo(interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, nombreFacultad)), salto());
 
   // Criterios y escala
