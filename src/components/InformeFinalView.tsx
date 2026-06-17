@@ -237,6 +237,15 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 placeholder="Ej: 84.99"
               />
             </label>
+            <label>
+              Cronograma de ejecución (1.4)
+              <input
+                type="text"
+                value={config.cronograma ?? ''}
+                onChange={e => actualizarConfig('cronograma', e.target.value)}
+                placeholder="Ej: Del 11 al 25 de mayo del 2026"
+              />
+            </label>
             <label className="informe-config-col-full">
               Texto Sección 2 — Difusión de Resultados
               <textarea
