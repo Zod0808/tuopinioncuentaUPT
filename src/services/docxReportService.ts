@@ -328,7 +328,7 @@ function celdaH(text: string, colspan = 1, rowspan = 1): TableCell {
     shading: { type: ShadingType.CLEAR, fill: AZUL_HEADER },
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 24 })],
+      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 18 })],
     })],
   });
 }
@@ -339,7 +339,7 @@ function celdaHOscura(text: string, colspan = 1): TableCell {
     shading: { type: ShadingType.CLEAR, fill: AZUL_OSCURO },
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 24 })],
+      children: [new TextRun({ text, bold: true, color: 'FFFFFF', size: 18 })],
     })],
   });
 }
@@ -357,7 +357,7 @@ function celda(text: string, center = false, bold = false, fill?: string): Table
     shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
     children: [new Paragraph({
       alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
-      children: [new TextRun({ text: String(text), bold, size: 24, color: textColor })],
+      children: [new TextRun({ text: String(text), bold, size: 18, color: textColor })],
     })],
   });
 }
@@ -644,11 +644,11 @@ function tablaPlanEstrategico(ciclo: string): Table {
       new TableCell({
         width: { size: 30, type: WidthType.PERCENTAGE },
         shading: { type: ShadingType.CLEAR, fill: 'BDD7EE' },
-        children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 22, color: '1F3864' })] })],
+        children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 18, color: '1F3864' })] })],
       }),
       new TableCell({
         width: { size: 70, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ alignment: AlignmentType.BOTH, children: [new TextRun({ text: value, size: 22 })] })],
+        children: [new Paragraph({ alignment: AlignmentType.BOTH, children: [new TextRun({ text: value, size: 18 })] })],
       }),
     ]});
 
