@@ -322,7 +322,7 @@ export function interpretarDistribucion(d: DatosCarrera): string {
 
   if (califs.length === 1) {
     const interp = ESCALA_CALIFICACION[mayorKey as Calificacion]?.interpretacion ?? '';
-    return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula. ${interp}.`;
+    return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula. ${interp.replace(/\.$/, '')}.`;
   }
 
   const [menorKey, menorVal] = califs[califs.length - 1];
@@ -332,7 +332,7 @@ export function interpretarDistribucion(d: DatosCarrera): string {
     ? menorInterp.charAt(0).toLowerCase() + menorInterp.slice(1)
     : '';
 
-  return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula, mientras que el ${menorVal.porcentaje.toFixed(2)}% lo califica como ${menorNombre}, que indica que ${menorInterpLower}.`;
+  return `De acuerdo con la escala de calificación aplicada, el ${mayorVal.porcentaje.toFixed(2)}% de los estudiantes considera que el docente demuestra un desempeño ${mayorNombre} en el aula, mientras que el ${menorVal.porcentaje.toFixed(2)}% lo califica como ${menorNombre}, que indica que ${menorInterpLower.replace(/\.$/, '')}.`;
 }
 
 export function interpretarParticipacion(totalEnc: number, totalMatr: number, nombre: string): string {
