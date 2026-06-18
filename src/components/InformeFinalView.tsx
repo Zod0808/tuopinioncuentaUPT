@@ -119,7 +119,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
     if (!f) return;
     setGenerandoFacultad(cod);
     try {
-      await generarInformesFacultadDocx(cicloActual, cod, f, config);
+      await generarInformesFacultadDocx(cicloActual, cod, f);
     } finally {
       setGenerandoFacultad(null);
     }
