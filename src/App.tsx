@@ -286,9 +286,12 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-header-content">
-          <div>
-            <h1>Tu Opinión Cuenta</h1>
-            <p>Sistema de Evaluación de la Calidad Educativa</p>
+          <div className="app-header-brand">
+            <img src="/logo-upt.png" alt="Logo UPT" className="app-header-logo" />
+            <div>
+              <h1>Tu Opinión Cuenta</h1>
+              <p>Sistema de Evaluación de la Calidad Educativa</p>
+            </div>
           </div>
           {!currentUser && !isSupabaseConfigured() && (
             <div className="supabase-warning">

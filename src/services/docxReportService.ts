@@ -1361,6 +1361,15 @@ function leyendaAEFooter(): (Paragraph | Table)[] {
   ];
 }
 
+/** Pie de tabla con fuente de datos. */
+function fuenteTabla(): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.RIGHT,
+    spacing: { before: 40, after: 80 },
+    children: [new TextRun({ text: 'Fuente: INTRANET UPT', italics: true, size: 16, color: '666666' })],
+  });
+}
+
 /** Cuadro de KPIs horizontales para insertar al inicio de cada reporte. */
 function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Table {
   const FONDO_LABEL = 'FAFAFA';
@@ -1436,7 +1445,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
     }
     children.push(
       new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
-      salto(),
+      fuenteTabla(),
       parrafo(`Total de secciones insatisfactorias: ${malos.length}`),
     );
     if (subQuorumMalos.length > 0) {
@@ -1446,56 +1455,73 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
 
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
+    `Reporte_Docentes_Insatisfactorios ${ciclo} ${cod}.docx`);
 }
 
 // rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
 
 // ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
 async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
+  const nombreFac    = FACULTADES[cod]?.nombre ?? cod;
+  const totalSec     = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
+  const totalEnc     = f.totalEncuestados;
+  const totalNoEnc   = [...f.carreras.values()].reduce((s, c) => s + c.totalNoEncuestados, 0);
+
+  // Gráfico de participación
+  const pieData = await canvasPieToUint8(
+    [totalEnc, totalNoEnc],
+    ['#2B3A67', '#C4A35A'],
+    ['Encuestados', 'No Encuestados'],
+    { title: ['ESTUDIANTES ENCUESTADOS Y', 'ESTUDIANTES NO ENCUESTADOS'], subtitle: `DE ${cod}` },
+  );
+
   const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte de Nro. de Estudiantes Encuestados por Carrera Profesional', nombreFac, ciclo),
+    ...cabeceraReporte('Reporte del Nro. de Encuestados por Carrera Profesional', nombreFac, ciclo),
   ];
   children.push(tablaKPI([
-    { label: 'Total Matriculados', value: f.totalMatriculados.toLocaleString('es-PE') },
-    { label: 'Encuestados', value: f.totalEncuestados.toLocaleString('es-PE') },
-    { label: 'No Encuestados', value: Math.max(0, f.totalMatriculados - f.totalEncuestados).toLocaleString('es-PE') },
-    { label: '% Participación', value: f.porcentajeEncuestados.toFixed(2) + '%' },
+    { label: 'Total Secciones',     value: totalSec.toLocaleString('es-PE') },
+    { label: 'Total Encuestados',   value: totalEnc.toLocaleString('es-PE') },
+    { label: 'Total No Encuestados', value: totalNoEnc.toLocaleString('es-PE') },
   ]), salto());
 
   const rows: TableRow[] = [
     new TableRow({ children: [
       celdaH('Carrera Profesional'),
-      celdaH('N° Matriculados'), celdaH('N° Encuestados'),
-      celdaH('N° No Encuestados'), celdaH('% Encuestados'),
+      celdaH('N° Secciones Evaluadas'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
     ]}),
   ];
+  let sumSec = 0, sumEnc = 0, sumNoEnc = 0;
   for (const [carreraName, c] of f.carreras) {
+    const nSec   = c.registros.length;
+    const nEnc   = c.totalEncuestados;
+    const nNoEnc = c.totalNoEncuestados;
     rows.push(new TableRow({ children: [
       celda(carreraName),
-      celda(c.totalMatriculados.toLocaleString('es-PE'), true),
-      celda(c.totalEncuestados.toLocaleString('es-PE'), true),
-      celda(c.totalNoEncuestados.toLocaleString('es-PE'), true),
-      celda(c.porcentajeEncuestados.toFixed(2) + '%', true, true),
+      celda(nSec.toLocaleString('es-PE'), true),
+      celda(nEnc.toLocaleString('es-PE'), true),
+      celda(nNoEnc.toLocaleString('es-PE'), true),
     ]}));
+    sumSec += nSec; sumEnc += nEnc; sumNoEnc += nNoEnc;
   }
   rows.push(new TableRow({ children: [
     celda('TOTAL', false, true, GRIS_ROW),
-    celda(f.totalMatriculados.toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(f.totalEncuestados.toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(Math.max(0, f.totalMatriculados - f.totalEncuestados).toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(f.porcentajeEncuestados.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(sumSec.toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(sumEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
+    celda(sumNoEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
   ]}));
 
   children.push(
     new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+    fuenteTabla(),
     salto(),
-    parrafo(interpretarParticipacion(f.totalEncuestados, f.totalMatriculados, nombreFac)),
   );
-  children.push(...firmaBloque(cfg));
+  if (pieData) children.push(imagenCentrada(pieData, 400, 290), salto());
+  children.push(
+    parrafo(interpretarParticipacion(totalEnc, f.totalMatriculados, nombreFac)),
+    ...firmaBloque(cfg),
+  );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Estudiantes_Encuestados_${ciclo}_${cod}.docx`);
+    `Reporte del Nro. Encuestados por Carrera Profesional ${ciclo} ${cod}.docx`);
 }
 
 // ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
@@ -1530,56 +1556,10 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     ]}));
   }
 
-  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
+  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla());
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
-}
-
-// ── Reporte 5: Nro. de Encuestas por Carrera ─────────────────────────────────
-async function rpt5NroEncuestas(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte del Nro. de Encuestas por Carrera Profesional', nombreFac, ciclo),
-  ];
-  const totSecKPI  = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
-  const totEncKPI  = [...f.carreras.values()].flatMap(c => c.registros).reduce((s, r) => s + r.encuestados, 0);
-  const totNoEncKPI = [...f.carreras.values()].flatMap(c => c.registros).reduce((s, r) => s + r.noEncuestados, 0);
-  children.push(tablaKPI([
-    { label: 'Total Secciones', value: totSecKPI.toString() },
-    { label: 'Total Encuestados', value: totEncKPI.toLocaleString('es-PE') },
-    { label: 'Total No Encuestados', value: totNoEncKPI.toLocaleString('es-PE') },
-  ]), salto());
-
-  const rows: TableRow[] = [
-    new TableRow({ children: [
-      celdaH('Carrera Profesional'),
-      celdaH('N° Secciones Evaluadas'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
-    ]}),
-  ];
-  let totSec = 0, totEnc = 0, totNoEnc = 0;
-  for (const [carreraName, c] of f.carreras) {
-    const nEnc   = c.registros.reduce((s, r) => s + r.encuestados, 0);
-    const nNoEnc = c.registros.reduce((s, r) => s + r.noEncuestados, 0);
-    rows.push(new TableRow({ children: [
-      celda(carreraName),
-      celda(c.registros.length.toString(), true),
-      celda(nEnc.toLocaleString('es-PE'), true),
-      celda(nNoEnc.toLocaleString('es-PE'), true),
-    ]}));
-    totSec += c.registros.length; totEnc += nEnc; totNoEnc += nNoEnc;
-  }
-  rows.push(new TableRow({ children: [
-    celda('TOTAL', false, true, GRIS_ROW),
-    celda(totSec.toString(), true, true, GRIS_ROW),
-    celda(totEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(totNoEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
-  ]}));
-
-  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
-  children.push(...firmaBloque(cfg));
-  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Nro_Encuestas_${ciclo}_${cod}.docx`);
+    `Reporte_Porcentaje_Juicio_Valor ${ciclo} ${cod}.docx`);
 }
 
 // ── Reporte 5 (ex-6): General de Evaluación por Docente ──────────────────────
@@ -1637,7 +1617,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
       celda(promCalif, true, true, colorCalif(promCalif) ?? GRIS_ROW),
       celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
     ]}));
-    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), salto());
+    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
     if (subQuorumRegs.length > 0) {
       children.push(parrafo(`[!] ${subQuorumRegs.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
       children.push(salto());
@@ -1646,7 +1626,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
 
   children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
+    `Reporte_General_Evaluacion ${ciclo} ${cod}.docx`);
 }
 
 // ── Función pública: genera los 5 reportes de la facultad ────────────────────
@@ -1658,10 +1638,8 @@ export async function generarInformesFacultadDocx(
   config: ConfigInforme = {},
 ): Promise<void> {
   const pausa = () => new Promise(r => setTimeout(r, 350));
-  await rpt1Insatisfactorios(ciclo, cod, f, config);   await pausa();
-  // rpt2NotasPorCarrera eliminado — su contenido está fusionado en rpt6GeneralDocente
   await rpt3EstudiantesCarrera(ciclo, cod, f, config); await pausa();
   await rpt4PorcentajeJuicio(ciclo, cod, f, config);   await pausa();
-  await rpt5NroEncuestas(ciclo, cod, f, config);        await pausa();
+  await rpt1Insatisfactorios(ciclo, cod, f, config);   await pausa();
   await rpt6GeneralDocente(ciclo, cod, f, config);
 }
