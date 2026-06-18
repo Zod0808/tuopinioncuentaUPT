@@ -1444,7 +1444,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
 
   children.push(...leyendaAEFooter());
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Docentes_Insatisfactorios ${ciclo} ${cod}.docx`);
+    `3. Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
 }
 
 // rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
@@ -1509,7 +1509,7 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
     parrafo(interpretarParticipacion(totalEnc, f.totalMatriculados, nombreFac)),
   );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte del Nro. Encuestados por Carrera Profesional ${ciclo} ${cod}.docx`);
+    `1. Reporte_Nro_Encuestados_por_Carrera_Profesional_${ciclo}_${cod}.docx`);
 }
 
 // ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
@@ -1553,7 +1553,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     ...leyendaAEFooter(),
   );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_Porcentaje_Juicio_Valor ${ciclo} ${cod}.docx`);
+    `2. Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
 }
 
 // ── Reporte 5 (ex-6): General de Evaluación por Docente ──────────────────────
@@ -1626,7 +1626,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     tablaEscalaCalificacion(),
   );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `Reporte_General_Evaluacion ${ciclo} ${cod}.docx`);
+    `4. Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
 }
 
 // ── Función pública: genera los 5 reportes de la facultad ────────────────────
