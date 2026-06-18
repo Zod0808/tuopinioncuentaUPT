@@ -1398,11 +1398,13 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
   const children: (Paragraph | Table)[] = [
     ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
   ];
+  const ROJO = 'FFB3B3'; // rojo claro para filas INSATISFACTORIO
+
   children.push(tablaKPI([
-    { label: 'Secciones INSATISFACTORIO', value: malos.length.toString(), color: COLOR_INSATISFACTORIO },
+    { label: 'Secciones INSATISFACTORIO', value: malos.length.toString(), color: ROJO },
     { label: 'Secciones Válidas (total)', value: seccionesValidas1.toString() },
     { label: 'Promedio Facultad', value: f.promedioGeneral.toFixed(2) },
-    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(2) + '%' : '—', color: COLOR_INSATISFACTORIO },
+    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(2) + '%' : '—', color: ROJO },
   ]), salto());
 
   if (malos.length === 0) {
@@ -1410,23 +1412,24 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
   } else {
     const rows: TableRow[] = [
       new TableRow({ children: [
-        celdaH('Carrera Profesional'), celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
-        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
-        celdaH('Nota'), celdaH('Enc.'),
+        celdaH('Carrera Profesional'), celdaH('Docente'),
+        celdaH('Curso / Asignatura'), celdaH('Sección'),
+        celdaH('Nota'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
       ]}),
     ];
     const subQuorumMalos: EvaluacionData[] = [];
     for (const r of malos) {
       const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
       if (esSubQ) subQuorumMalos.push(r);
+      const fill = esSubQ ? COLOR_SUBQUORUM : ROJO;
       rows.push(new TableRow({ children: [
-        celda(r.carreraProfesional, false, false, COLOR_INSATISFACTORIO),
-        celda(r.docente, false, false, COLOR_INSATISFACTORIO),
-        celda(r.curso, false, false, COLOR_INSATISFACTORIO),
-        celda(r.seccion, true, false, COLOR_INSATISFACTORIO),
-        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
+        celda(r.carreraProfesional, false, false, fill),
+        celda(r.docente,            false, false, fill),
+        celda(r.curso,              false, false, fill),
+        celda(r.seccion,            true,  false, fill),
         celdaN(r.nota, 2, true),
-        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, esSubQ, esSubQ ? COLOR_SUBQUORUM : COLOR_INSATISFACTORIO),
+        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, false, fill),
+        celda(r.noEncuestados.toString(), true, false, fill),
       ]}));
     }
     children.push(
@@ -1563,7 +1566,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
   const docentesUnicos = new Set(todosRegKPI.map(r => r.docente)).size;
   const seccionesValidas6 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte General de Evaluación por Docente', nombreFac, ciclo),
+    ...cabeceraReporte('REPORTE GENERAL DE EVALUACIÓN DOCENTE POR SECCION', nombreFac, ciclo),
   ];
   children.push(tablaKPI([
     { label: 'Docentes Únicos', value: docentesUnicos.toString() },
@@ -1615,7 +1618,13 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     }
   }
 
-  children.push(...leyendaAEFooter());
+  children.push(
+    ...leyendaAEFooter(),
+    salto(),
+    negrita('Escala de calificación'),
+    salto(),
+    tablaEscalaCalificacion(),
+  );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_General_Evaluacion ${ciclo} ${cod}.docx`);
 }
