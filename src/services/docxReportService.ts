@@ -1327,20 +1327,6 @@ function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Parag
   ];
 }
 
-/** Bloque de firma reutilizable */
-function firmaBloque(config: ConfigInforme): Paragraph[] {
-  const firmante = config.nombreFirmante ?? '[Nombre del responsable]';
-  const cargo    = config.cargoFirmante  ?? '[Cargo]';
-  return [
-    salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: 'Sin otro en particular. Atentamente,', size: 24 })] }),
-    salto(), salto(), salto(),
-    new Paragraph({ children: [new TextRun({ text: '_'.repeat(50), size: 24 })] }),
-    new Paragraph({ children: [new TextRun({ text: firmante, bold: true, size: 24 })] }),
-    new Paragraph({ children: [new TextRun({ text: cargo, size: 24 })] }),
-    new Paragraph({ children: [new TextRun({ text: 'Universidad Privada de Tacna', size: 24 })] }),
-  ];
-}
 
 /** Tabla de leyenda AE-01→AE-04 para insertar al pie de cada reporte. */
 function leyendaAEFooter(): (Paragraph | Table)[] {
@@ -1403,7 +1389,7 @@ async function saveDocx(doc: Document, filename: string): Promise<void> {
 }
 
 // ── Reporte 1: Docentes Insatisfactorios ─────────────────────────────────────
-async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
   const malos     = todosReg.filter(r => esValidoParaReporte(r) && getCalifReg(r) === 'INSATISFACTORIO');
@@ -1453,7 +1439,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
     }
   }
 
-  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
+  children.push(...leyendaAEFooter());
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Docentes_Insatisfactorios ${ciclo} ${cod}.docx`);
 }
@@ -1461,7 +1447,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
 // rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
 
 // ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
-async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
   const nombreFac    = FACULTADES[cod]?.nombre ?? cod;
   const totalSec     = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
   const totalEnc     = f.totalEncuestados;
@@ -1518,14 +1504,13 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
   if (pieData) children.push(imagenCentrada(pieData, 400, 290), salto());
   children.push(
     parrafo(interpretarParticipacion(totalEnc, f.totalMatriculados, nombreFac)),
-    ...firmaBloque(cfg),
   );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte del Nro. Encuestados por Carrera Profesional ${ciclo} ${cod}.docx`);
 }
 
 // ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
-async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const seccionesValidas4 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
@@ -1556,8 +1541,14 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     ]}));
   }
 
-  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla());
-  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
+  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
+  children.push(
+    negrita('Escala de calificación'),
+    salto(),
+    tablaEscalaCalificacion(),
+    salto(),
+    ...leyendaAEFooter(),
+  );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_Porcentaje_Juicio_Valor ${ciclo} ${cod}.docx`);
 }
@@ -1566,7 +1557,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
 // Unifica el anterior Reporte 2 (Notas Plana Docente) y el anterior Reporte 6
 // (General de Evaluación). Ahora incluye las columnas de control Enc./No Enc./Validez
 // Y la fila de PROMEDIO por carrera, eliminando la duplicidad documental.
-async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, cfg: ConfigInforme): Promise<void> {
+async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosRegKPI    = [...f.carreras.values()].flatMap(c => c.registros);
   const docentesUnicos = new Set(todosRegKPI.map(r => r.docente)).size;
@@ -1624,7 +1615,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad, 
     }
   }
 
-  children.push(...leyendaAEFooter(), ...firmaBloque(cfg));
+  children.push(...leyendaAEFooter());
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `Reporte_General_Evaluacion ${ciclo} ${cod}.docx`);
 }
@@ -1635,11 +1626,10 @@ export async function generarInformesFacultadDocx(
   ciclo: string,
   cod: string,
   f: DatosFacultad,
-  config: ConfigInforme = {},
 ): Promise<void> {
   const pausa = () => new Promise(r => setTimeout(r, 350));
-  await rpt3EstudiantesCarrera(ciclo, cod, f, config); await pausa();
-  await rpt4PorcentajeJuicio(ciclo, cod, f, config);   await pausa();
-  await rpt1Insatisfactorios(ciclo, cod, f, config);   await pausa();
-  await rpt6GeneralDocente(ciclo, cod, f, config);
+  await rpt3EstudiantesCarrera(ciclo, cod, f); await pausa();
+  await rpt4PorcentajeJuicio(ciclo, cod, f);   await pausa();
+  await rpt1Insatisfactorios(ciclo, cod, f);   await pausa();
+  await rpt6GeneralDocente(ciclo, cod, f);
 }
