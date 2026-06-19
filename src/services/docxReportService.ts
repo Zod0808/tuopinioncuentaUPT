@@ -1428,7 +1428,7 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
         celda(r.curso,              false, false, fill),
         celda(r.seccion,            true,  false, fill),
         celdaN(r.nota, 2, true),
-        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, false, fill),
+        celda(esSubQ ? `${r.encuestados} *` : r.encuestados.toString(), true, false, fill),
         celda(r.noEncuestados.toString(), true, false, fill),
       ]}));
     }
@@ -1438,11 +1438,15 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
       parrafo(`Total de secciones insatisfactorias: ${malos.length}`),
     );
     if (subQuorumMalos.length > 0) {
-      children.push(parrafo(`[!] ${subQuorumMalos.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
+      children.push(parrafo(`* ${subQuorumMalos.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
     }
   }
 
-  children.push(...leyendaAEFooter());
+  children.push(
+    negrita('Escala de calificación'),
+    salto(),
+    tablaEscalaCalificacion(),
+  );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `3. Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
 }
@@ -1596,7 +1600,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
         celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
         celdaN(r.nota, 2, true),
         celda(calif, true, true, califFill),
-        celda(esSubQ ? `${r.encuestados} [!]` : r.encuestados.toString(), true, false, esSubQ ? COLOR_SUBQUORUM : undefined),
+        celda(esSubQ ? `${r.encuestados} *` : r.encuestados.toString(), true, false, esSubQ ? COLOR_SUBQUORUM : undefined),
         celda(r.noEncuestados.toString(), true),
         celda(r.validez, true),
       ]}));
@@ -1613,7 +1617,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     ]}));
     children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
     if (subQuorumRegs.length > 0) {
-      children.push(parrafo(`[!] ${subQuorumRegs.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
+      children.push(parrafo(`* ${subQuorumRegs.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
       children.push(salto());
     }
   }
