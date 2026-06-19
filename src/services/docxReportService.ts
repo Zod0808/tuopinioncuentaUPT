@@ -1547,13 +1547,17 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
       celda(c.seccionesCalificadas.toString(), true, true),
     ]}));
   }
-  // Fila de promedio
-  const n = carrerasArr.length || 1;
-  const promInsatisf  = carrerasArr.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.porcentaje, 0) / n;
-  const promAceptable = carrerasArr.reduce((s, c) => s + c.distribucion.ACEPTABLE.porcentaje, 0) / n;
-  const promBueno     = carrerasArr.reduce((s, c) => s + c.distribucion.BUENO.porcentaje, 0) / n;
-  const promDestacado = carrerasArr.reduce((s, c) => s + c.distribucion.DESTACADO.porcentaje, 0) / n;
-  const promBD        = promBueno + promDestacado;
+  // Fila de promedio — ponderada por secciones reales (igual que el KPI)
+  const totalSecc     = seccionesValidas4 || 1;
+  const totalInsatisf  = carrerasArr.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.cantidad, 0);
+  const totalAceptable = carrerasArr.reduce((s, c) => s + c.distribucion.ACEPTABLE.cantidad, 0);
+  const totalBueno     = carrerasArr.reduce((s, c) => s + c.distribucion.BUENO.cantidad, 0);
+  const totalDestacado = carrerasArr.reduce((s, c) => s + c.distribucion.DESTACADO.cantidad, 0);
+  const promInsatisf  = totalInsatisf  / totalSecc * 100;
+  const promAceptable = totalAceptable / totalSecc * 100;
+  const promBueno     = totalBueno     / totalSecc * 100;
+  const promDestacado = totalDestacado / totalSecc * 100;
+  const promBD        = (totalBueno + totalDestacado) / totalSecc * 100;
   rows.push(new TableRow({ children: [
     celda('PROMEDIO', false, true, GRIS_ROW),
     celda(promInsatisf.toFixed(2)  + '%', true, true, GRIS_ROW),
@@ -1592,7 +1596,6 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     { label: 'Docentes Únicos', value: docentesUnicos.toString() },
     { label: 'Secciones Evaluadas', value: seccionesValidas6.toString() },
     { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
-    { label: '% Bueno + Destacado', value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
   ]), salto());
 
   for (const [carreraName, c] of f.carreras) {
