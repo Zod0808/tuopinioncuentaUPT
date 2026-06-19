@@ -108,7 +108,7 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady, esPubl
               }
             </div>
           ) : (
-            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} esPublico={esPublico} matriculados={matriculados} />
+            <ReportsTabs datos={datos} onGraficoReady={onGraficoReady} esPublico={esPublico} matriculados={matriculados} cicloActual={cicloActual} />
           )}
         </div>
       )}
