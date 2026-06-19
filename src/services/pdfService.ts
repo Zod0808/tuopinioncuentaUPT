@@ -429,7 +429,7 @@ export async function generarPDFResumenDocente(
       doc.text('Encuestas No Válidas (Excluidas del Reporte)', margin, yPosition);
       yPosition += 7;
       doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-      doc.text('Evaluaciones excluidas por baja participación (<30% de la sección respondió la encuesta).', margin, yPosition);
+      doc.text('Evaluaciones excluidas por baja participación (<50% de la sección respondió la encuesta).', margin, yPosition);
       yPosition += 6;
       autoTable(doc, {
         startY: yPosition,
