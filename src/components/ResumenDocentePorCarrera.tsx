@@ -135,7 +135,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
           promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota]))
         };
       });
-      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte de Notas de la Plana Docente por Carrera');
+      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte de Notas de la Plana Docente por Carrera', carreraSeleccionada || undefined);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al exportar el PDF. Por favor, intente nuevamente.');

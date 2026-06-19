@@ -197,7 +197,8 @@ const nombresFacultades: Record<string, string> = {
 export async function generarPDFResumenDocente(
   resumenes: ResumenData[],
   tipo: 'carrera' | 'facultad' | 'institucional',
-  titulo: string
+  titulo: string,
+  nombreFiltro?: string
 ): Promise<void> {
   const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -458,9 +459,10 @@ export async function generarPDFResumenDocente(
 
   // Guardar PDF
   const fechaArchivo = new Date().toISOString().split('T')[0];
-  const nombreArchivo = tipo === 'carrera'
-    ? `resumen-docente-carrera-${fechaArchivo}.pdf`
-    : `resumen-docente-facultad-${fechaArchivo}.pdf`;
+  const sanitizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const sufijo = nombreFiltro ? sanitizar(nombreFiltro) : tipo === 'carrera' ? 'todas_las_carreras' : 'todas_las_facultades';
+  const nombreArchivo = `Resumen_Docente_${sufijo}_${fechaArchivo}.pdf`;
   doc.save(nombreArchivo);
 }
 
