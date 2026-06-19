@@ -73,7 +73,7 @@ export const PERIODO_ACADEMICO = '2025-II';
 /** Porcentaje mínimo de participación (Enc / (Enc+NoEnc)) para que una sección
  *  sea considerada válida. Por debajo de este umbral la nota no se promedia y
  *  la calificación se muestra como "Baja Participación". */
-export const UMBRAL_PARTICIPACION_MINIMA = 0.30;
+export const UMBRAL_PARTICIPACION_MINIMA = 0.50;
 
 /**
  * Quórum mínimo de estudiantes encuestados para que una calificación INSATISFACTORIO

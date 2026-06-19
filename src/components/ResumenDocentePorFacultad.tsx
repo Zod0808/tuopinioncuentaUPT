@@ -92,7 +92,7 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
         if (razones.has('sin_datos') && !razones.has('baja_participacion')) {
           motivo = 'Sin estudiantes registrados (0 encuestados y/o nota 0)';
         } else if (!razones.has('sin_datos') && razones.has('baja_participacion')) {
-          motivo = 'Baja participación: menos del 30% de la sección respondió la encuesta';
+          motivo = 'Baja participación: menos del 50% de la sección respondió la encuesta';
         } else {
           motivo = 'Combinación: cursos sin datos y/o secciones con baja participación';
         }
