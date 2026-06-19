@@ -200,7 +200,8 @@ export async function generarPDFResumenDocente(
   resumenes: ResumenData[],
   tipo: 'carrera' | 'facultad' | 'institucional',
   titulo: string,
-  nombreFiltro?: string
+  nombreFiltro?: string,
+  ciclo?: string
 ): Promise<void> {
   const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -261,60 +262,7 @@ export async function generarPDFResumenDocente(
     });
     yPosition += 8;
 
-    // Tabla 1: Reporte de Notas de la Plana Docente
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Notas de la Plana Docente', margin, yPosition);
-    yPosition += 8;
-
-    const resumenTableData = resumen.docentes.map((docente, index) => [
-      (index + 1).toString(),
-      docente.docente,
-      docente.promedioNota.toFixed(2),
-      docente.cantidadCursos.toString(),
-      docente.calificacion
-    ]);
-
-    // Agregar fila de promedio general
-    resumenTableData.push([
-      '',
-      'PROMEDIO GENERAL',
-      resumen.promedioGeneral.toFixed(2),
-      resumen.totalCursos.toString(),
-      ''
-    ]);
-
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['N°', 'Docente', 'Promedio Nota', 'Cantidad Cursos', 'Calificación']],
-      body: resumenTableData,
-      styles: { 
-        fontSize: 9,
-        cellPadding: 3,
-        lineWidth: 0.1
-      },
-      headStyles: { 
-        fillColor: [22, 40, 92], // Azul marino Universidad Privada de Tacna
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 10
-      },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: 20, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { halign: 'right', cellWidth: 35 },
-        3: { halign: 'center', cellWidth: 35 },
-        4: { halign: 'center', cellWidth: 40 }
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      }
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 15;
-
-    // Tabla 2: Detalle de Cursos
+    // Tabla de Detalle de Cursos
     if (yPosition > pageHeight - 80) {
       doc.addPage();
       yPosition = margin;
@@ -458,6 +406,20 @@ export async function generarPDFResumenDocente(
 
     yPosition = (doc as any).lastAutoTable.finalY + 15;
 
+    // Observaciones
+    if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 40, 92);
+    doc.text('Observaciones', margin, yPosition);
+    yPosition += 7;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+    const obsLines = doc.splitTextToSize(
+      'Se detallan a continuación las secciones excluidas del reporte por baja participación estudiantil y los docentes sin promedio calculable por no contar con registros válidos.',
+      pageWidth - margin * 2
+    );
+    doc.text(obsLines, margin, yPosition);
+    yPosition += obsLines.length * 5 + 8;
+
     // Tabla 3: Encuestas No Válidas
     const noValidos = resumen.cursosNoValidos ?? [];
     if (noValidos.length > 0) {
@@ -524,11 +486,17 @@ export async function generarPDFResumenDocente(
   }
 
   // Guardar PDF
-  const fechaArchivo = new Date().toISOString().split('T')[0];
   const sanitizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-  const sufijo = nombreFiltro ? sanitizar(nombreFiltro) : tipo === 'carrera' ? 'todas_las_carreras' : 'todas_las_facultades';
-  const nombreArchivo = `Resumen_Docente_${sufijo}_${fechaArchivo}.pdf`;
+    .replace(/[^a-zA-Z0-9]+/g, ' ').trim();
+  const cicloPart = ciclo ? ` ${ciclo}` : '';
+  let nombreArchivo: string;
+  if (tipo === 'facultad') {
+    const facPart = nombreFiltro ? ` ${sanitizar(nombreFiltro)}` : '';
+    nombreArchivo = `Reporte general de evaluacion por docente${facPart}${cicloPart}.pdf`;
+  } else {
+    const escuelaPart = nombreFiltro ? ` Escuela ${sanitizar(nombreFiltro)}` : '';
+    nombreArchivo = `Reporte general de evaluacion por docente${escuelaPart}${cicloPart}.pdf`;
+  }
   doc.save(nombreArchivo);
 }
 

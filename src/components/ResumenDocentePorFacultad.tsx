@@ -7,6 +7,7 @@ import { calcularCalificacion, UMBRAL_PARTICIPACION_MINIMA } from '../config/uni
 
 interface ResumenDocentePorFacultadProps {
   datos: EvaluacionData[];
+  cicloActual?: string;
 }
 
 interface DocenteResumen {
@@ -48,7 +49,7 @@ interface FacultadResumen {
   promedioGeneral: number;
 }
 
-export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFacultadProps) {
+export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: ResumenDocentePorFacultadProps) {
   const [facultadSeleccionada, setFacultadSeleccionada] = useState<string>('');
 
   if (datos.length === 0) {
@@ -122,6 +123,9 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
       const resumenesParaPDF = facultadesAMostrar.map(resumen => {
         const datosFacultad = datos.filter(d => d.facultad === resumen.facultad);
         const datosFacultadOrdenados = [...datosFacultad].sort((a, b) => a.docente.localeCompare(b.docente));
+        const cursosNoValidos = datosFacultad
+          .filter(d => getExclusionReason(d) === 'baja_participacion')
+          .sort((a, b) => a.docente.localeCompare(b.docente) || a.curso.localeCompare(b.curso));
         return {
           nombre: resumen.facultad,
           docentes: resumen.docentes.map(d => ({
@@ -132,10 +136,12 @@ export default function ResumenDocentePorFacultad({ datos }: ResumenDocentePorFa
           totalCursos: resumen.totalCursos,
           promedioGeneral: resumen.promedioGeneral,
           datosDetalle: datosFacultadOrdenados,
-          promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota]))
+          promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota])),
+          cursosNoValidos,
+          docentesExcluidos: resumen.docentesExcluidos,
         };
       });
-      await generarPDFResumenDocente(resumenesParaPDF, 'facultad', 'Reporte de Notas de la Plana Docente por Facultad');
+      await generarPDFResumenDocente(resumenesParaPDF, 'facultad', 'Reporte general de evaluación por docente', facultadSeleccionada || undefined, cicloActual);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al exportar el PDF. Por favor, intente nuevamente.');

@@ -7,6 +7,7 @@ import { calcularCalificacion, UMBRAL_PARTICIPACION_MINIMA } from '../config/uni
 
 interface ResumenDocentePorCarreraProps {
   datos: EvaluacionData[];
+  cicloActual?: string;
 }
 
 interface DocenteResumen {
@@ -48,7 +49,7 @@ interface CarreraResumen {
   promedioGeneral: number;
 }
 
-export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCarreraProps) {
+export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: ResumenDocentePorCarreraProps) {
   const [carreraSeleccionada, setCarreraSeleccionada] = useState<string>('');
 
   if (datos.length === 0) {
@@ -140,7 +141,7 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
           docentesExcluidos: resumen.docentesExcluidos,
         };
       });
-      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte de Notas de la Plana Docente por Carrera', carreraSeleccionada || undefined);
+      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte general de evaluación por docente', carreraSeleccionada || undefined, cicloActual);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al exportar el PDF. Por favor, intente nuevamente.');

@@ -1315,14 +1315,6 @@ function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Parag
       spacing: { after: 80 },
       children: [new TextRun({ text: `TU OPINIÓN CUENTA — ${ciclo}`, bold: true, size: 24, color: AZUL_HEADER })],
     }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [new TextRun({
-        text: new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        size: 24, color: '666666',
-      })],
-    }),
     salto(),
   ];
 }
@@ -1371,14 +1363,18 @@ function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Tab
           children: [new TextRun({ text: k.label, bold: true, size: 20, color: '555555' })],
         })],
       })) }),
-      new TableRow({ children: kpis.map(k => new TableCell({
-        shading: { type: ShadingType.CLEAR, fill: k.color ?? FONDO_VALOR },
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 80, after: 80 },
-          children: [new TextRun({ text: k.value, bold: true, size: 28, color: AZUL_OSCURO })],
-        })],
-      })) }),
+      new TableRow({ children: kpis.map(k => {
+        const fill = k.color ?? FONDO_VALOR;
+        const textColor = isLightFill(fill) ? AZUL_OSCURO : 'FFFFFF';
+        return new TableCell({
+          shading: { type: ShadingType.CLEAR, fill },
+          children: [new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 80, after: 80 },
+            children: [new TextRun({ text: k.value, bold: true, size: 28, color: textColor })],
+          })],
+        });
+      }) }),
     ],
   });
 }
@@ -1529,24 +1525,44 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
   ]), salto());
 
+  const carrerasArr = [...f.carreras.values()];
   const rows: TableRow[] = [
     new TableRow({ children: [
       celdaH('Carrera Profesional'),
       celdaH('% INSATISFACTORIO'), celdaH('% ACEPTABLE'),
       celdaH('% BUENO'), celdaH('% DESTACADO'),
+      celdaH('% BUENO + DESTACADO'),
       celdaH('Total Secc.'),
     ]}),
   ];
   for (const [carreraName, c] of f.carreras) {
+    const buenoDestacado = c.distribucion.BUENO.porcentaje + c.distribucion.DESTACADO.porcentaje;
     rows.push(new TableRow({ children: [
       celda(carreraName),
-      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true, false, COLOR_INSATISFACTORIO),
-      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%',       true, false, COLOR_ACEPTABLE),
+      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true, false),
+      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%',       true, false),
       celda(c.distribucion.BUENO.porcentaje.toFixed(2) + '%',           true, false, COLOR_BUENO),
-      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%',       true, true,  COLOR_DESTACADO),
+      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%',       true, false, COLOR_DESTACADO),
+      celda(buenoDestacado.toFixed(2) + '%',                            true, true,  COLOR_DESTACADO),
       celda(c.seccionesCalificadas.toString(), true, true),
     ]}));
   }
+  // Fila de promedio
+  const n = carrerasArr.length || 1;
+  const promInsatisf  = carrerasArr.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.porcentaje, 0) / n;
+  const promAceptable = carrerasArr.reduce((s, c) => s + c.distribucion.ACEPTABLE.porcentaje, 0) / n;
+  const promBueno     = carrerasArr.reduce((s, c) => s + c.distribucion.BUENO.porcentaje, 0) / n;
+  const promDestacado = carrerasArr.reduce((s, c) => s + c.distribucion.DESTACADO.porcentaje, 0) / n;
+  const promBD        = promBueno + promDestacado;
+  rows.push(new TableRow({ children: [
+    celda('PROMEDIO', false, true, GRIS_ROW),
+    celda(promInsatisf.toFixed(2)  + '%', true, true, GRIS_ROW),
+    celda(promAceptable.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(promBueno.toFixed(2)     + '%', true, true, COLOR_BUENO),
+    celda(promDestacado.toFixed(2) + '%', true, true, COLOR_DESTACADO),
+    celda(promBD.toFixed(2)        + '%', true, true, COLOR_DESTACADO),
+    celda(seccionesValidas4.toString(), true, true, GRIS_ROW),
+  ]}));
 
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
   children.push(

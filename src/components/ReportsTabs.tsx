@@ -18,6 +18,7 @@ interface ReportsTabsProps {
   onGraficoReady?: (element: HTMLElement, index: number) => void;
   esPublico?: boolean;
   matriculados?: MatriculadosEntry[];
+  cicloActual?: string;
 }
 
 type TabType = 'general' | 'facultad' | 'carrera' | 'docente-carrera' | 'docente-facultad' | 'docente-institucional' | 'calificacion-carrera' | 'calificacion-facultad' | 'calificacion-institucional' | 'exportacion';
@@ -30,7 +31,7 @@ interface Tab {
 
 const TABS_PUBLICAS: TabType[] = ['general', 'facultad'];
 
-export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, matriculados = [] }: ReportsTabsProps) {
+export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, matriculados = [], cicloActual = '' }: ReportsTabsProps) {
   const [tabActiva, setTabActiva] = useState<TabType>('general');
 
   const tabs: Tab[] = [
@@ -109,8 +110,8 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
             case 'general': return <ReporteGeneralUniversidad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
             case 'facultad': return <ReportePorFacultad datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
             case 'carrera': return <ReportePorCarrera datos={datos} onGraficoReady={onGraficoReady} matriculados={matriculados} />;
-            case 'docente-carrera': return <ResumenDocentePorCarrera datos={datos} />;
-            case 'docente-facultad': return <ResumenDocentePorFacultad datos={datos} />;
+            case 'docente-carrera': return <ResumenDocentePorCarrera datos={datos} cicloActual={cicloActual} />;
+            case 'docente-facultad': return <ResumenDocentePorFacultad datos={datos} cicloActual={cicloActual} />;
             case 'docente-institucional': return <ResumenDocenteInstitucional datos={datos} />;
             case 'calificacion-carrera': return <ReporteCalificacionPorCarrera datos={datos} />;
             case 'calificacion-facultad': return <ReporteCalificacionPorFacultad datos={datos} />;
