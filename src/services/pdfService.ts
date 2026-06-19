@@ -182,6 +182,8 @@ interface ResumenData {
   promedioGeneral: number;
   datosDetalle: EvaluacionData[];
   promediosPorDocente: Map<string, number>;
+  cursosNoValidos?: EvaluacionData[];
+  docentesExcluidos?: { docente: string; cantidadCursos: number; motivo: string }[];
 }
 
 // Mapeo de siglas de facultades a nombres completos
@@ -454,7 +456,71 @@ export async function generarPDFResumenDocente(
       tableWidth: availableWidth
     });
 
-    yPosition = (doc as any).lastAutoTable.finalY + 20;
+    yPosition = (doc as any).lastAutoTable.finalY + 15;
+
+    // Tabla 3: Encuestas No Válidas
+    const noValidos = resumen.cursosNoValidos ?? [];
+    if (noValidos.length > 0) {
+      if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
+      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 40, 92);
+      doc.text('Encuestas No Válidas (Excluidas del Reporte)', margin, yPosition);
+      yPosition += 7;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+      doc.text('Evaluaciones excluidas por baja participación (<30% de la sección respondió la encuesta).', margin, yPosition);
+      yPosition += 6;
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['N°', 'Docente', 'Curso', 'Sección', 'Encuestados', 'No Encuestados', 'Calificación', 'Nota']],
+        body: noValidos.map((d, i) => [
+          (i + 1).toString(), d.docente, d.curso, d.seccion,
+          d.encuestados.toString(), d.noEncuestados.toString(),
+          resolverCal(d), d.nota.toFixed(2),
+        ]),
+        styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+        headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        margin: { left: margin, right: margin },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' },
+          3: { cellWidth: 18, halign: 'center' },
+          4: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 30, halign: 'center' },
+          6: { cellWidth: 35, halign: 'center' },
+          7: { cellWidth: 20, halign: 'right' },
+        },
+        tableWidth: pageWidth - margin * 2,
+      });
+      yPosition = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // Tabla 4: Docentes sin promedio calculable
+    const excluidos = resumen.docentesExcluidos ?? [];
+    if (excluidos.length > 0) {
+      if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
+      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 40, 92);
+      doc.text('Docentes sin promedio calculable', margin, yPosition);
+      yPosition += 7;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+      doc.text('Docentes sin registros válidos para el cálculo de promedio, excluidos del reporte estadístico.', margin, yPosition);
+      yPosition += 6;
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['N°', 'Docente', 'Cursos Registrados', 'Motivo de Exclusión']],
+        body: excluidos.map((e, i) => [
+          (i + 1).toString(), e.docente, e.cantidadCursos.toString(), e.motivo,
+        ]),
+        styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+        headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        margin: { left: margin, right: margin },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' },
+          2: { cellWidth: 35, halign: 'center' },
+        },
+        tableWidth: pageWidth - margin * 2,
+      });
+      yPosition = (doc as any).lastAutoTable.finalY + 20;
+    }
   }
 
   // Guardar PDF
