@@ -122,6 +122,9 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
       const resumenesParaPDF = carrerasAMostrar.map(resumen => {
         const datosCarrera = datos.filter(d => d.carreraProfesional === resumen.carrera);
         const datosCarreraOrdenados = [...datosCarrera].sort((a, b) => a.docente.localeCompare(b.docente));
+        const cursosNoValidos = datosCarrera
+          .filter(d => getExclusionReason(d) === 'baja_participacion')
+          .sort((a, b) => a.docente.localeCompare(b.docente) || a.curso.localeCompare(b.curso));
         return {
           nombre: resumen.carrera,
           docentes: resumen.docentes.map(d => ({
@@ -132,7 +135,9 @@ export default function ResumenDocentePorCarrera({ datos }: ResumenDocentePorCar
           totalCursos: resumen.totalCursos,
           promedioGeneral: resumen.promedioGeneral,
           datosDetalle: datosCarreraOrdenados,
-          promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota]))
+          promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota])),
+          cursosNoValidos,
+          docentesExcluidos: resumen.docentesExcluidos,
         };
       });
       await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte de Notas de la Plana Docente por Carrera', carreraSeleccionada || undefined);
