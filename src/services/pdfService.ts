@@ -365,20 +365,9 @@ export async function generarPDFResumenDocente(
         }
       }
 
-      // Si es la primera fila del grupo y tiene más de una fila, usar objeto con rowSpan
-      // Si es una fila intermedia del grupo, poner string vacío
-      // Si no, usar el valor normal
-      let promedioCell: string | { content: string; rowSpan: number };
-      if (esPrimeraFilaDelDocente && rowSpanPromedio && rowSpanPromedio > 1 && indiceInicioGrupo === index) {
-        promedioCell = { content: promedioDocente.toFixed(2), rowSpan: rowSpanPromedio };
-      } else if (indiceInicioGrupo >= 0 && indiceInicioGrupo !== index) {
-        // Filas intermedias que están siendo combinadas - dejar vacío
-        promedioCell = '';
-      } else {
-        promedioCell = promedioDocente.toFixed(2);
-      }
+      const esFilaIntermedioGrupo = indiceInicioGrupo >= 0 && indiceInicioGrupo !== index;
 
-      return [
+      const base: (string | { content: string; rowSpan: number })[] = [
         dato.docente,
         dato.curso,
         dato.seccion,
@@ -388,10 +377,20 @@ export async function generarPDFResumenDocente(
         dato.ae03.toFixed(2),
         dato.ae04.toFixed(2),
         dato.nota.toFixed(2),
-        promedioCell,
-        dato.encuestados.toString(),
-        dato.noEncuestados.toString()
       ];
+
+      // Filas intermedias de un rowSpan: NO incluir celda Promedio (autoTable la salta
+      // automáticamente porque ya está ocupada por el rowSpan de la primera fila).
+      if (!esFilaIntermedioGrupo) {
+        if (esPrimeraFilaDelDocente && rowSpanPromedio && rowSpanPromedio > 1 && indiceInicioGrupo === index) {
+          base.push({ content: promedioDocente.toFixed(2), rowSpan: rowSpanPromedio });
+        } else {
+          base.push(promedioDocente.toFixed(2));
+        }
+      }
+
+      base.push(dato.encuestados.toString(), dato.noEncuestados.toString());
+      return base;
     });
 
     // Calcular ancho disponible y distribuir proporcionalmente
