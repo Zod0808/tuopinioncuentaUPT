@@ -404,6 +404,73 @@ export async function generarPDFResumenDocente(
       tableWidth: availableWidth
     });
 
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+    // Leyenda de calificación
+    if (yPosition > pageHeight - 50) { doc.addPage(); yPosition = margin; }
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 40, 92);
+    doc.text('Escala de calificación', margin, yPosition);
+    yPosition += 5;
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Escala de calificación', 'Juicio de valor', 'Interpretación']],
+      body: [
+        ['11 puntos a menos',  'INSATISFACTORIO', 'El docente no tiene un buen desempeño, tiene que replantear radicalmente su desempeño profesional.'],
+        ['De 12 a 14 puntos',  'ACEPTABLE',        'El docente debe examinar los resultados de su evaluación y afianzar los aspectos observados.'],
+        ['De 15 a 17 puntos',  'BUENO',            'Tiene un buen desempeño, pero puede superarlo atendiendo los aspectos que requieren mejora.'],
+        ['De 18 a 20 puntos',  'DESTACADO',        'El docente tiene excelente desempeño y merece ser reconocido.'],
+      ],
+      styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: 38, halign: 'center' },
+        1: { cellWidth: 35, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: 'auto' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const fills: Record<number, [number, number, number]> = {
+            0: [255, 255, 255],
+            1: [255, 217, 102],
+            2: [157, 195, 230],
+            3: [31, 56, 100],
+          };
+          data.cell.styles.fillColor = fills[data.row.index] ?? [255, 255, 255];
+          if (data.row.index === 3) data.cell.styles.textColor = [255, 255, 255];
+        }
+      },
+      margin: { left: margin, right: margin },
+      tableWidth: pageWidth - margin * 2,
+    });
+    yPosition = (doc as any).lastAutoTable.finalY + 8;
+
+    // Leyenda de excepciones
+    if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; }
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 40, 92);
+    doc.text('Casos especiales y excepciones', margin, yPosition);
+    yPosition += 5;
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Indicador en Calificación', 'Condición', 'Efecto en el reporte']],
+      body: [
+        ['Baja Participación', 'Menos del 50% de la sección respondió la encuesta', 'Excluida del cálculo de promedio docente'],
+        ['No Aplica',          '0 estudiantes encuestados registrados',              'Sin calificación; excluida del reporte'],
+        ['Sin Evaluar',        'Nota igual a 0 (sin calificación registrada)',        'Sin calificación; excluida del reporte'],
+        ['No válido',          'Registro marcado como "No válido" en la fuente',     'Excluida del cálculo de promedio docente'],
+        ['* (asterisco)',      'Menos de 3 encuestados en la sección',               'Resultado no estadísticamente representativo'],
+      ],
+      styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [80, 80, 80], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 45, halign: 'center', fontStyle: 'bold' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 65 },
+      },
+      margin: { left: margin, right: margin },
+      tableWidth: pageWidth - margin * 2,
+    });
     yPosition = (doc as any).lastAutoTable.finalY + 15;
 
     // Observaciones (solo si hay tablas adicionales que mostrar)
