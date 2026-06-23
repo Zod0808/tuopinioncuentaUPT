@@ -216,17 +216,7 @@ export async function generarPDFResumenDocente(
   doc.text(titulo, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 12; // Aumentar espacio después del título
 
-  // Fecha
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const fecha = new Date().toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  doc.text(`Fecha de generación: ${fecha}`, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 15;
+  yPosition += 5;
 
   // Procesar cada resumen (carrera o facultad)
   for (const resumen of resumenes) {
