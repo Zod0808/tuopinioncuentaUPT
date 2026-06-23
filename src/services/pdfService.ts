@@ -438,7 +438,7 @@ export async function generarPDFResumenDocente(
     // Leyenda de excepciones
     if (yPosition > pageHeight - 40) { doc.addPage(); yPosition = margin; }
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 40, 92);
-    doc.text('Casos especiales y excepciones', margin, yPosition);
+    doc.text('Leyenda', margin, yPosition);
     yPosition += 5;
     autoTable(doc, {
       startY: yPosition,
