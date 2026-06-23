@@ -123,9 +123,6 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
       const resumenesParaPDF = facultadesAMostrar.map(resumen => {
         const datosFacultad = datos.filter(d => d.facultad === resumen.facultad);
         const datosFacultadOrdenados = [...datosFacultad].sort((a, b) => a.docente.localeCompare(b.docente));
-        const cursosNoValidos = datosFacultad
-          .filter(d => getExclusionReason(d) === 'baja_participacion')
-          .sort((a, b) => a.docente.localeCompare(b.docente) || a.curso.localeCompare(b.curso));
         return {
           nombre: resumen.facultad,
           docentes: resumen.docentes.map(d => ({
@@ -137,8 +134,6 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
           promedioGeneral: resumen.promedioGeneral,
           datosDetalle: datosFacultadOrdenados,
           promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota])),
-          cursosNoValidos,
-          docentesExcluidos: resumen.docentesExcluidos,
         };
       });
       await generarPDFResumenDocente(resumenesParaPDF, 'facultad', 'Reporte general de evaluación por docente', facultadSeleccionada || undefined, cicloActual);

@@ -406,19 +406,22 @@ export async function generarPDFResumenDocente(
 
     yPosition = (doc as any).lastAutoTable.finalY + 15;
 
-    // Observaciones
-    if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 40, 92);
-    doc.text('Observaciones', margin, yPosition);
-    yPosition += 7;
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
-    const obsLines = doc.splitTextToSize(
-      'Se detallan a continuación las secciones excluidas del reporte por baja participación estudiantil y los docentes sin promedio calculable por no contar con registros válidos.',
-      pageWidth - margin * 2
-    );
-    doc.text(obsLines, margin, yPosition);
-    yPosition += obsLines.length * 5 + 8;
+    // Observaciones (solo si hay tablas adicionales que mostrar)
+    const hayObservaciones = (resumen.cursosNoValidos?.length ?? 0) > 0 || (resumen.docentesExcluidos?.length ?? 0) > 0;
+    if (hayObservaciones) {
+      if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
+      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 40, 92);
+      doc.text('Observaciones', margin, yPosition);
+      yPosition += 7;
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+      const obsLines = doc.splitTextToSize(
+        'Se detallan a continuación las secciones excluidas del reporte por baja participación estudiantil y los docentes sin promedio calculable por no contar con registros válidos.',
+        pageWidth - margin * 2
+      );
+      doc.text(obsLines, margin, yPosition);
+      yPosition += obsLines.length * 5 + 8;
+    }
 
     // Tabla 3: Encuestas No Válidas
     const noValidos = resumen.cursosNoValidos ?? [];
