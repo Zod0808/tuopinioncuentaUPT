@@ -270,8 +270,6 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
   const [filtroCalificacion, setFiltroCalificacion] = useState<'todos' | 'INSATISFACTORIO' | 'ACEPTABLE'>('todos');
   const [busquedaDocente, setBusquedaDocente] = useState('');
 
-  const hayApiKey = Boolean(import.meta.env.VITE_OPENAI_API_KEY);
-
   const handleGenerar = async () => {
     if (datos.length === 0) return;
     setGenerando(true);
@@ -307,16 +305,14 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
           </p>
         </div>
         <div className="ia-control-actions">
-          {hayApiKey && (
-            <label className="ia-toggle-ia">
-              <input
-                type="checkbox"
-                checked={usarIA}
-                onChange={e => setUsarIA(e.target.checked)}
-              />
-              <span>Mejorar con IA (OpenAI)</span>
-            </label>
-          )}
+          <label className="ia-toggle-ia">
+            <input
+              type="checkbox"
+              checked={usarIA}
+              onChange={e => setUsarIA(e.target.checked)}
+            />
+            <span>Mejorar con IA (OpenAI)</span>
+          </label>
           <button
             type="button"
             className="btn-primary ia-btn-generar"
@@ -338,9 +334,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
         <div className="ia-placeholder">
           <div className="ia-placeholder-icon">📊</div>
           <p>Presiona <strong>"Generar recomendaciones"</strong> para analizar los datos del ciclo {cicloActual} y obtener recomendaciones personalizadas de mejora continua a nivel de docente, carrera, facultad e institucional.</p>
-          {hayApiKey && (
-            <p className="ia-placeholder-ia">Con <strong>IA activada</strong>, el análisis institucional se enriquece con inteligencia artificial.</p>
-          )}
+          <p className="ia-placeholder-ia">Con <strong>IA activada</strong>, el análisis institucional se enriquece con inteligencia artificial (requiere <code>OPENAI_API_KEY</code> configurada en Vercel).</p>
         </div>
       )}
 

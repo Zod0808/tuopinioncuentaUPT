@@ -2,12 +2,16 @@ import { createClient, User } from '@supabase/supabase-js';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry } from './reportCalculations';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://agswvyjifhrrwclfvwur.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnc3d2eWppZmhycndjbGZ2d3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTcyMzUsImV4cCI6MjA5NDk5MzIzNX0.4T3uLC7hiADUM91fvU8qHRIUYJaPKn7rROEHYwTv4mg';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+if (!supabase && typeof window !== 'undefined') {
+  console.warn('[Supabase] VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY no configuradas. La app funcionará solo con almacenamiento local.');
+}
 
 export function isSupabaseConfigured(): boolean {
   return supabase !== null;

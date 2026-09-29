@@ -299,17 +299,15 @@ export async function generarInterpretacionIA(
     incentivo de participación estudiantil, uso de resultados para mejora continua.`
   };
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  // ⚠️ NUNCA llamar a OpenAI desde el navegador con la key.
+  // La request va a nuestro endpoint serverless /api/interpret que a su vez
+  // usa process.env.OPENAI_API_KEY (server-side, nunca expuesta al bundle).
+  const response = await fetch('/api/interpret', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'gpt-4o-mini', // económico y suficiente para interpretaciones
-      messages: [{ role: 'user', content: prompts[seccion] }],
-      temperature: 0.3, // bajo para consistencia
-      max_tokens: 500
+      seccion,
+      prompt: prompts[seccion]
     })
   });
 
@@ -530,7 +528,7 @@ npm install --save-dev @types/file-saver
 
 **Sobre la plantilla DOCX**: El texto de la introducción (secciones 1 y 2) es mayormente fijo entre ciclos, solo cambian fechas y nombres. Guárdalo como constantes en un archivo separado `src/config/informeTextoFijo.ts` y parametriza solo lo que cambia.
 
-**Sobre Vercel**: Tu deployment actual en Vercel funciona bien para una SPA. La generación DOCX ocurre 100% en el navegador (client-side), así que no necesitas backend adicional. Solo asegúrate de que la variable `VITE_OPENAI_API_KEY` esté configurada en Vercel si quieres usar IA.
+**Sobre Vercel**: Tu deployment actual en Vercel funciona bien para una SPA. La generación DOCX ocurre 100% en el navegador (client-side). Para IA, configura `OPENAI_API_KEY` (sin prefijo `VITE_`) en las variables de entorno de Vercel — así queda solo del lado servidor, disponible para las funciones serverless (`api/recommend.ts`, `api/interpret.ts`) y **fuera** del bundle público. Nunca uses `VITE_OPENAI_API_KEY`: cualquier variable `VITE_*` se embebe en el JavaScript del navegador.
 
 ---
 
