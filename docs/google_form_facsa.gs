@@ -96,7 +96,7 @@ function crearFormularioFACSA() {
           'MEDINA PINTO DANIEL ALCIDES'
         ],
         'PRIMEROS AUXILIOS': [
-          'ZEA O'PHELAN CAMPOS FREDY'
+          'ZEA O\'PHELAN CAMPOS FREDY'
         ],
         'PROCEDIMIENTOS DE ENFERMERÍA': [
           'CONDORI FERNANDEZ MARIA SUSANA',
@@ -170,7 +170,7 @@ function crearFormularioFACSA() {
           'RIVERA DE VELA REGINA RUTH',
           'TEJADA MONTES DAMASO',
           'VELASQUEZ MEZA ELEANNE RUHAYED',
-          'ZEA O'PHELAN CAMPOS FREDY'
+          'ZEA O\'PHELAN CAMPOS FREDY'
         ],
         'PEDIATRÍA I': [
           'ARANA NUÑEZ JUANA MARIA',
