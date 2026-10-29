@@ -22,425 +22,311 @@
  *           → Secciones de evaluación AE-01 a AE-04
  *             → Sección de comentarios
  *
- * CÓMO COMPLETAR LOS DATOS:
- *   La estructura es: DOCENTES[Escuela][Ciclo][Curso] = [Lista de docentes]
- *   Consulta la hoja CARGA_DOCENTE (columnas: ESCUELA, CICLO, ASIGNATURA, DOCENTE)
- *   y agrupa cada docente bajo su asignatura correspondiente.
+ * CRITERIO DE INCLUSIÓN (fuente: CARGA_DOCENTE, ESTADO=Vigente):
+ *   - Solo ciclos PARES vigentes + INTERNADO (último ciclo de cada escuela).
+ *   - Toda asignatura con ≥ 1 sección distinta de A (coordinadores excluidos).
+ *   - Los coordinadores (Sección A) son evaluados por intranet, no aparecen aquí.
  * ============================================================================
  */
 
 function crearFormularioFACSA() {
 
-  // ── DATOS: Docentes vigentes 2026-II por Escuela, Ciclo y Curso ──────────
-  // Estructura: DOCENTES[Escuela][Ciclo][Asignatura] = [Docentes]
-  // Fuente: CARGA_DOCENTE hoja DOCENTES_POR_CICLO_FACSA_2026, ESTADO=Vigente
+  // ── DATOS: docentes secciones B en adelante, ESTADO=Vigente, 2026-II ─────
+  // (Sección A = coordinador, evaluado por intranet — excluido de este form)
   const DOCENTES = {
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MEDICINA HUMANA
+    // ════════════════════════════════════════════════════════════════════════
     'Medicina Humana': {
       'II': {
         'BIOQUÍMICA': [
           'LARA LINCE PATRICIA DEL ROSARIO',
-          'MORALES DE ROCA LA BARRERA JESSICA TRUDY',
           'TORRES PILCO RENATO',
-          'ZEA GAMBOA FRANCISCO EDUARDO'
-        ],
-        'COMUNICACIÓN II': [
-          'SANTANA PILCO JUANA'
+          'ZEA GAMBOA FRANCISCO EDUARDO',
         ],
         'DESARROLLO DE COMPETENCIAS DIGITALES': [
-          'CONDORI CHAVEZ VERONICA JACQUELINE',
-          'QUISPE CACERES NATIVIDAD'
-        ],
-        'DESARROLLO PERSONAL Y LIDERAZGO': [
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO'
+          'QUISPE CACERES NATIVIDAD',
         ],
         'EMBRIOLOGÍA': [
           'ARANIBAR GUTIERREZ JENNY GIOVANNA',
-          'BARREDA QUISPE GIOVANA ROSARIO'
-        ],
-        'FILOSOFÍA': [
-          'CARDOZA RAMIREZ CARLO ANDRE'
         ],
         'HISTOLOGÍA I': [
           'GUEVARA GUISA SERGIO CARLOS',
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO',
-          'TORRES PILCO RENATO'
-        ],
-        'TERRITORIO PERUANO, DEFENSA Y SEGURIDAD NACIONAL': [
-          'RAMOS SANCHEZ HUMBERTO CARLOS'
-        ],
-      },
-      'III': {
-        'GESTIÓN DE LA INFORMACIÓN CIENTÍFICA': [
-          'MENA ORDOÑEZ SISSY SOLEDAD'
+          'TORRES PILCO RENATO',
         ],
       },
       'IV': {
         'ANATOMÍA II': [
           'BARREDA QUISPE GIOVANA ROSARIO',
           'CALIZAYA CALIZAYA RAUL',
-          'CARDENAS RUEDA PEDRO RONALD'
         ],
         'BIOESTADÍSTICA Y DEMOGRAFÍA': [
-          'ARIAS SANTANA VICTOR ALFONSO',
-          'MENA ORDOÑEZ SISSY SOLEDAD'
+          'MENA ORDOÑEZ SISSY SOLEDAD',
         ],
         'FISIOLOGÍA II': [
           'CRUZ MENDEZ PATRICIO',
           'GORDILLO MAYDANA PAULO CESAR',
-          'SANCHEZ ESQUICHE WALTER MAURICIO'
-        ],
-        'INGLÉS MÉDICO': [
-          'LAURA DE LA CRUZ KEVIN MARIO'
-        ],
-        'NUTRICIÓN': [
-          'MEDINA PINTO DANIEL ALCIDES'
-        ],
-        'PRIMEROS AUXILIOS': [
-          'ZEA O\'PHELAN CAMPOS FREDY'
         ],
         'PROCEDIMIENTOS DE ENFERMERÍA': [
-          'CONDORI FERNANDEZ MARIA SUSANA',
-          'SILVA CHAU RENEE VIOLETA'
-        ],
-        'PSICOLOGÍA': [
-          'AGUIRRE MONTESINOS LISSETT ZUNILDA'
+          'SILVA CHAU RENEE VIOLETA',
         ],
         'SALUD INTEGRAL': [
-          'ANCALLI CALIZAYA FELIX',
-          'CANEPA YZAGA JUAN MANUEL',
+          'QUIROZ CARRASCO JESSICA MARIANELLA',
           'FLORES CANO VICTOR ALFREDO',
           'GIRON DAPPINO JUAN ALBERTO',
+          'YAGUA BRICEÑO JHON HERBERT',
           'MONTESINOS SANCHEZ SERGIO JESUS',
           'NEIRA ZEGARRA RENAN ALEJANDRO',
+          'CANEPA YZAGA JUAN MANUEL',
+          'ANCALLI CALIZAYA FELIX',
           'OTAZU ZAVALETA JORGE LUIS',
-          'QUIROZ CARRASCO JESSICA MARIANELLA',
           'VALDEZ SEGALES KARINA ELIZABETH',
-          'VASQUEZ SILVA MARGGORIETT UZIELA',
-          'YAGUA BRICEÑO JHON HERBERT'
         ],
       },
       'VI': {
-        'BIOSEGURIDAD': [
-          'YAGUA BRICEÑO JHON HERBERT'
-        ],
         'INTRODUCCIÓN A LA AYUDA DIAGNÓSTICA': [
           'ERAS MERCADO ROBERTO ALEJANDRO',
-          'HUEDA ZAVALETA MIGUEL ANGEL'
         ],
         'METODOLOGÍA DE LA INVESTIGACIÓN': [
-          'ARIAS SANTANA VICTOR ALFONSO',
           'MENA ORDOÑEZ SISSY SOLEDAD',
-          'MIRANDA CHAVEZ BRAYAN RAUL'
+          'MIRANDA CHAVEZ BRAYAN RAUL',
         ],
         'PATOLOGÍA GENERAL': [
-          'AMBIA MARTINEZ JANINA NELLY',
+          'ZEA GAMBOA FRANCISCO EDUARDO',
           'TORRES PILCO RENATO',
-          'ZEA GAMBOA FRANCISCO EDUARDO'
-        ],
-        'REANIMACIÓN CARDIOPULMONAR BÁSICA Y AVANZADA': [
-          'PAREDES RAMOS JAVIER ALONSO'
         ],
         'SEMIOLOGÍA': [
-          'ALVITES MANRIQUE RICARDO ARTURO',
+          'VARGAS MOLINEROS ALDO HUGO',
           'CAPELLINO GAMBETTA ALEX RODRIGO ALBERTO',
-          'CHAVEZ NUÑEZ MARIA LUZ',
-          'CHAVEZ ZEGARRA LARISSA SVETLANA',
-          'CURASI VELASQUEZ UBALDO LUIS',
-          'DAVILA YUFRA ELIANA MAGALI',
-          'GOMEZ ORTIZ RAUL DARIO',
           'GORDILLO MAYDANA PAULO CESAR',
-          'OTAZU ZAVALETA JORGE LUIS',
+          'GOMEZ ORTIZ RAUL DARIO',
+          'ALVITES MANRIQUE RICARDO ARTURO',
+          'CHAVEZ ZEGARRA LARISSA SVETLANA',
           'PARI MAQUERA RODRIGO ADERLY',
-          'VARGAS ANAHUA ORLANDO JOSE',
-          'VARGAS MOLINEROS ALDO HUGO'
+          'CURASI VELASQUEZ UBALDO LUIS',
+          'CHAVEZ NUÑEZ MARIA LUZ',
+          'OTAZU ZAVALETA JORGE LUIS',
+          'DAVILA YUFRA ELIANA MAGALI',
         ],
       },
       'VIII': {
         'AYUDA DIAGNÓSTICA II': [
           'ERAS MERCADO ROBERTO ALEJANDRO',
-          'HUEDA ZAVALETA MIGUEL ANGEL'
         ],
         'MEDICINA II': [
-          'ANTEZANA ROMAN AUGUSTO',
-          'CONDORI VARGAS EDWIN CECILIO',
-          'GALLARDO RECAVARREN CESAR JUVENAL',
-          'LAURA MACHACA ROXANA LEIDY',
           'MENDOZA LAREDO JUAN ARTURO',
-          'MOSCOSO ARANA KARINA',
-          'RIVERA DE VELA REGINA RUTH',
+          'GALLARDO RECAVARREN CESAR JUVENAL',
+          'CONDORI VARGAS EDWIN CECILIO',
+          'ANTEZANA ROMAN AUGUSTO',
           'TEJADA MONTES DAMASO',
+          'MOSCOSO ARANA KARINA',
           'VELASQUEZ MEZA ELEANNE RUHAYED',
-          'ZEA O\'PHELAN CAMPOS FREDY'
+          'ZEA O\'PHELAN CAMPOS FREDY',
+          'LAURA MACHACA ROXANA LEIDY',
         ],
         'PEDIATRÍA I': [
-          'ARANA NUÑEZ JUANA MARIA',
           'CABALLERO CACERES CESAR ELISEO',
-          'COHAILA SILVA SANDRA GABRIELA',
+          'ARANA NUÑEZ JUANA MARIA',
           'GUTIERREZ FLORES MAYKEL FERNANDO',
-          'OJEDA LEWIS EDUARDO IVAN',
-          'PACORI ACHATA JHON',
           'SAENZ CORDOVA CARLOS ALBERTO',
+          'COHAILA SILVA SANDRA GABRIELA',
+          'VILDOSO ZEVALLOS CARLO MAURICIO',
           'VICENTE QUISPE LUIS ALBERTO',
-          'VILDOSO ZEVALLOS CARLO MAURICIO'
+          'PACORI ACHATA JHON',
         ],
       },
       'X': {
         'ATENCIÓN PRIMARIA III': [
-          'ANCALLI CALIZAYA FELIX',
-          'CANEPA YZAGA JUAN MANUEL',
-          'CHAVEZ NUÑEZ MARIA LUZ',
-          'FLORES CANO VICTOR ALFREDO',
-          'GIRON DAPPINO JUAN ALBERTO',
-          'MONTESINOS SANCHEZ SERGIO JESUS',
           'NEIRA ZEGARRA RENAN ALEJANDRO',
-          'QUIROZ CARRASCO JESSICA MARIANELLA',
+          'YAGUA BRICEÑO JHON HERBERT',
+          'CANEPA YZAGA JUAN MANUEL',
+          'MONTESINOS SANCHEZ SERGIO JESUS',
+          'FLORES CANO VICTOR ALFREDO',
           'VALDEZ SEGALES KARINA ELIZABETH',
-          'VASQUEZ SILVA MARGGORIETT UZIELA',
-          'YAGUA BRICEÑO JHON HERBERT'
+          'GIRON DAPPINO JUAN ALBERTO',
+          'QUIROZ CARRASCO JESSICA MARIANELLA',
+          'ANCALLI CALIZAYA FELIX',
+          'CHAVEZ NUÑEZ MARIA LUZ',
         ],
         'CIRUGÍA I': [
-          'AVALOS ROJO ROSA LUZ',
-          'CALLIRI MAMANI HENRY EFRAIN',
-          'CHURA PINTO FRANCISCO JESUS',
-          'FRANCO PEROCHENA PAOLA FERNANDA',
-          'LANCHIPA PICOAGA CESAR FERNANDO',
-          'MIRELES CANCINO VICTOR ARTURO',
-          'NINAJA CALIZAYA WILBER',
-          'RONDON MOSCOSO DIANA',
           'SAKUMA MIYASHIRO ISABEL',
+          'CHURA PINTO FRANCISCO JESUS',
+          'AVALOS ROJO ROSA LUZ',
+          'LANCHIPA PICOAGA CESAR FERNANDO',
           'SANCHEZ BARLETTI JUAN',
-          'VARGAS GALDOS RICARDO'
+          'RONDON MOSCOSO DIANA',
+          'VARGAS GALDOS RICARDO',
+          'NINAJA CALIZAYA WILBER',
+          'CALLIRI MAMANI HENRY EFRAIN',
+          'FRANCO PEROCHENA PAOLA FERNANDA',
         ],
         'MEDICINA IV': [
-          'ACEVEDO VELASQUEZ RAQUEL EDITH',
           'ALIAGA DIAZ ELIZABETH GARBY',
-          'FLORES CHIRE MIGUEL ANGEL',
-          'GOMEZ ZAPANA GERSON',
-          'GUZMAN OLIVERA WILSON RAUL',
-          'MANCHEGO LLERENA JORGE',
-          'MINCHON VIZCONDE DIANA JULISSA',
-          'NEYRA TARQUI HERALDY EVELIN',
-          'RAMOS PAREDES JUNIOR EDGAR',
           'URQUIZO PEREZ GREGORIO RUFINO',
-          'ÑACA BAILON YACKELINE YENNY'
+          'ACEVEDO VELASQUEZ RAQUEL EDITH',
+          'GUZMAN OLIVERA WILSON RAUL',
+          'FLORES CHIRE MIGUEL ANGEL',
+          'MINCHON VIZCONDE DIANA JULISSA',
+          'ÑACA BAILON YACKELINE YENNY',
+          'RAMOS PAREDES JUNIOR EDGAR',
+          'NEYRA TARQUI HERALDY EVELIN',
+          'MANCHEGO LLERENA JORGE',
         ],
         'TALLER DE TESIS I': [
-          'ARIAS SANTANA VICTOR ALFONSO',
           'MENA ORDOÑEZ SISSY SOLEDAD',
-          'MIRANDA CHAVEZ BRAYAN RAUL'
+          'MIRANDA CHAVEZ BRAYAN RAUL',
         ],
       },
       'XII': {
         'BIOÉTICA': [
           'CARDOZA RAMIREZ CARLO ANDRE',
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO'
         ],
         'CIRUGÍA III': [
-          'AGUILAR ROMERO TELESFORO FERNANDO',
-          'CAÑARI CHUMPITAZ ANGELA MODESTA',
-          'LOZANO MORALES LUIS ARNALDO',
           'MACHACA VALENZUELA DANIZZA LAURA',
+          'PARI YLLACUTIPA MARIA ANTONIETA',
+          'LOZANO MORALES LUIS ARNALDO',
+          'CAÑARI CHUMPITAZ ANGELA MODESTA',
+          'SANCHEZ ESQUICHE WALTER MAURICIO',
+          'AGUILAR ROMERO TELESFORO FERNANDO',
+          'RUBIN DE CELIS VIDAL MILTON ALADINO',
+          'NUÑEZ ESPINEL BENJAMIN HUMBERTO',
           'MEDINA CHACON PERCY ANIBAL',
           'MENDOZA FLORES NELLY ROSARIO',
-          'NUÑEZ ESPINEL BENJAMIN HUMBERTO',
           'PAMPA CAYO PLANIMIR',
-          'PAREDES RAMOS JAVIER ALONSO',
-          'PARI YLLACUTIPA MARIA ANTONIETA',
-          'RUBIN DE CELIS VIDAL MILTON ALADINO',
-          'SANCHEZ ESQUICHE WALTER MAURICIO'
-        ],
-        'EMERGENCIAS Y DESASTRES': [
-          'CACERES CACERES PAMELA DE LOS MILAGROS'
         ],
         'GERENCIA EN SALUD': [
-          'ANCALLI CALIZAYA FELIX',
-          'CANEPA YZAGA JUAN MANUEL',
-          'CHAVEZ NUÑEZ MARIA LUZ',
-          'FLORES CANO VICTOR ALFREDO',
-          'GIRON DAPPINO JUAN ALBERTO',
-          'MONTESINOS SANCHEZ SERGIO JESUS',
-          'NEIRA ZEGARRA RENAN ALEJANDRO',
-          'OTAZU ZAVALETA JORGE LUIS',
-          'QUIROZ CARRASCO JESSICA MARIANELLA',
           'VALDEZ SEGALES KARINA ELIZABETH',
-          'VASQUEZ SILVA MARGGORIETT UZIELA',
-          'YAGUA BRICEÑO JHON HERBERT'
-        ],
-        'MEDICINA LEGAL': [
-          'CACERES CACERES PAMELA DE LOS MILAGROS'
+          'YAGUA BRICEÑO JHON HERBERT',
+          'MONTESINOS SANCHEZ SERGIO JESUS',
+          'FLORES CANO VICTOR ALFREDO',
+          'NEIRA ZEGARRA RENAN ALEJANDRO',
+          'GIRON DAPPINO JUAN ALBERTO',
+          'QUIROZ CARRASCO JESSICA MARIANELLA',
+          'CHAVEZ NUÑEZ MARIA LUZ',
+          'ANCALLI CALIZAYA FELIX',
+          'OTAZU ZAVALETA JORGE LUIS',
+          'CANEPA YZAGA JUAN MANUEL',
         ],
         'OBSTETRICIA': [
-          'CALDERON CHATTA HEIDY YENSI',
-          'CHACHAQUE ROSA JUANA',
-          'CHAVEZ GIL JEAN ALFRED',
-          'DEL CARPIO TORRES MIGUEL ANGEL',
+          'QUISPE CALDERON FLORMIRA CLAUDIA',
           'FARFAN APAZA GALMA YANINA',
-          'FLORES NINA JAQUELINE DAYANA',
           'FLORES QUISPE GUSTAVO DHAMPIER',
           'NEYRA URQUIZA MARCO ANTONIO',
-          'QUISPE CALDERON FLORMIRA CLAUDIA',
-          'RUEDA DELGADO RUTH TARCILA',
+          'DEL CARPIO TORRES MIGUEL ANGEL',
+          'CHACHAQUE ROSA JUANA',
           'TINOCO SALAZAR AMILCAR LUIS',
-          'TINOCO SALAZAR JESUSA AURELIA'
+          'TINOCO SALAZAR JESUSA AURELIA',
+          'FLORES NINA JAQUELINE DAYANA',
+          'RUEDA DELGADO RUTH TARCILA',
+          'CHAVEZ GIL JEAN ALFRED',
         ],
       },
-      'XIII-XIV': {
+      'INTERNADO': {
         'INTERNADO ROTATORIO': [
-          'ANCALLI CALIZAYA FELIX',
-          'APAZA MEDINA ROLANDO',
+          'GOMEZ ZAPANA GERSON',
+          'CHURA PINTO FRANCISCO JESUS',
+          'SAENZ CORDOVA CARLOS ALBERTO',
           'ARIAS HUANACUNE PAOLA HEYDI',
           'ARIAS ROJAS VICTOR ALFONSO',
-          'ARIAS SANTANA VICTOR ALFONSO',
-          'BARRIENTOS MORALES LUIS',
-          'CHURA PINTO FRANCISCO JESUS',
-          'CRISPIN MERCADO JORGE MAXIMO',
-          'ESPINOZA ROSADO RIGOBERTO ADOLFO',
-          'GARCIA PEREZ ERIKA YESSENIA',
-          'GOMEZ ZAPANA GERSON',
-          'HUEDA ZAVALETA MIGUEL ANGEL',
-          'NEIRA ZEGARRA RENAN ALEJANDRO',
-          'ORTIZ LARA MELVIN',
-          'QUIROZ CARRASCO JESSICA MARIANELLA',
-          'RAMOS SAIRA ROSA MARIA',
-          'ROMERO VARGAS ELIZABETH EUGENIA',
-          'ROMERO YAÑEZ NINO JESUS',
-          'RONDON CHAVEZ ELIANA LIBERTAD',
-          'SAENZ CORDOVA CARLOS ALBERTO',
-          'SANCHEZ VELEZ CARLOS ALFONSO',
-          'SOSA SOTO VERONICA IRIS',
-          'TOTORA CALIZAYA JHON FRAY',
           'VELASQUEZ MEZA ELEANNE RUHAYED',
           'VICENTE CHOQUE EDDY RICHARD',
-          'VICENTE QUISPE LUIS ALBERTO'
-        ],
-        'TRABAJO DE INVESTIGACIÓN': [
-          'ARIAS SANTANA VICTOR ALFONSO'
+          'NEIRA ZEGARRA RENAN ALEJANDRO',
+          'VICENTE QUISPE LUIS ALBERTO',
+          'ANCALLI CALIZAYA FELIX',
+          'QUIROZ CARRASCO JESSICA MARIANELLA',
+          'ESPINOZA ROSADO RIGOBERTO ADOLFO',
+          'BARRIENTOS MORALES LUIS',
+          'HUEDA ZAVALETA MIGUEL ANGEL',
+          'SOSA SOTO VERONICA IRIS',
+          'ROMERO VARGAS ELIZABETH EUGENIA',
+          'RONDON CHAVEZ ELIANA LIBERTAD',
+          'SANCHEZ VELEZ CARLOS ALFONSO',
+          'CRISPIN MERCADO JORGE MAXIMO',
+          'GARCIA PEREZ ERIKA YESSENIA',
+          'RAMOS SAIRA ROSA MARIA',
+          'ROMERO YAÑEZ NINO JESUS',
+          'TOTORA CALIZAYA JHON FRAY',
+          'ORTIZ LARA MELVIN',
+          'APAZA MEDINA ROLANDO',
         ],
       },
     },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ODONTOLOGÍA
+    // ════════════════════════════════════════════════════════════════════════
     'Odontología': {
       'II': {
         'ANATOMÍA HUMANA': [
           'BARREDA QUISPE GIOVANA ROSARIO',
+          'PACHECO CALLIRGOS JULISSA',
           'CACERES CACERES PAMELA DE LOS MILAGROS',
-          'CARDENAS RUEDA PEDRO RONALD',
-          'PACHECO CALLIRGOS JULISSA'
         ],
         'BIOFÍSICA': [
-          'CRUZ MENDEZ PATRICIO',
-          'PAREDES RAMOS JAVIER ALONSO'
+          'PAREDES RAMOS JAVIER ALONSO',
         ],
         'BIOQUÍMICA': [
           'LARA LINCE PATRICIA DEL ROSARIO',
-          'MORALES DE ROCA LA BARRERA JESSICA TRUDY'
-        ],
-        'COMUNICACIÓN II': [
-          'VALDIVIA TAPIA YANIRA MARIA'
         ],
         'EMBRIOLOGÍA': [
           'ARANIBAR GUTIERREZ JENNY GIOVANNA',
-          'BARREDA QUISPE GIOVANA ROSARIO'
-        ],
-        'FILOSOFÍA': [
-          'RAMOS SANCHEZ HUMBERTO CARLOS'
-        ],
-        'FISIOTERAPIA BUCAL': [
-          'ESPADA SALGADO FERNANDO MAURICIO'
         ],
         'FOTOGRAFÍA': [
           'FERNANDEZ GARCIA LUIS HUMBERTO',
-          'KUONG DE DELGADO NELLY ANTONIETA B.'
-        ],
-        'TERRITORIO PERUANO, DEFENSA Y SEGURIDAD NACIONAL': [
-          'RAMOS SANCHEZ HUMBERTO CARLOS'
         ],
       },
       'IV': {
-        'CARIOLOGÍA': [
-          'LOAYZA ORTIZ SANDRA XIMENA'
-        ],
-        'FARMACOLOGÍA': [
-          'CASTRO HUARACHI ROYER LUIS'
-        ],
-        'INGLÉS TÉCNICO': [
-          'LAURA DE LA CRUZ KEVIN MARIO'
-        ],
         'MATERIALES DENTALES': [
           'FERNANDEZ GARCIA LUIS HUMBERTO',
-          'MELENDEZ CONDORI YTALA YASMIN'
         ],
         'MICROBIOLOGÍA': [
-          'GOMEZ ORTIZ RAUL DARIO',
+          'ZEA GAMBOA FRANCISCO EDUARDO',
           'LOPEZ ROLDAN CARMEN LUISA',
-          'ZEA GAMBOA FRANCISCO EDUARDO'
         ],
         'MORFOLOGÍA DEL APARATO MASTICATORIO': [
-          'ALLASI TEJADA ELISEO GUSTAVO',
-          'FERNANDEZ GARCIA LUIS HUMBERTO'
-        ],
-        'PROCEDIMIENTOS DE ENFERMERÍA': [
-          'RIVERA CHIRINOS JANET MARTHA'
+          'FERNANDEZ GARCIA LUIS HUMBERTO',
         ],
         'SEMIOLOGÍA': [
-          'BOLUARTE SILVA ZULMA GLADYS',
           'RAMOS PAREDES JUNIOR EDGAR',
+          'VELASQUEZ MEZA ELEANNE RUHAYED',
           'TEJADA MONTES DAMASO',
-          'VELASQUEZ MEZA ELEANNE RUHAYED'
         ],
       },
       'VI': {
         'CIRUGÍA BUCAL II': [
-          'ALLASI TEJADA ELISEO GUSTAVO',
           'ROMERO MAYTA RICHARD ALFONSO',
-          'ZEBALLOS ADRIAZOLA MERCEDES'
+          'ZEBALLOS ADRIAZOLA MERCEDES',
         ],
         'ENDODONCIA I': [
           'CALJARO CHAMBI SUGEY MARJHORY',
-          'PINTO TEJADA SANTOS FRANCISCO'
-        ],
-        'FARMACOTERAPIA ODONTOLÓGICA': [
-          'CASTRO HUARACHI ROYER LUIS'
         ],
         'OCLUSIÓN II': [
           'MONTOYA PORTUGAL JORGE EFRAIN',
-          'RAMOS GOMEZ FREDERICK'
         ],
         'OPERATORIA DENTAL II': [
           'CALJARO CHAMBI SUGEY MARJHORY',
           'CONDORI SALINAS YESICA EULALIA',
           'ESPADA SALGADO FERNANDO MAURICIO',
-          'FERNANDEZ GARCIA LUIS HUMBERTO',
           'JUAREZ VIZCARRA CESAR',
-          'KUONG DE DELGADO NELLY ANTONIETA B.',
           'LOAYZA ORTIZ SANDRA XIMENA',
           'MUÑOA ALVARADO JULIANA ESTHER',
           'PINTO TEJADA SANTOS FRANCISCO',
           'RAMOS GOMEZ FREDERICK',
           'SANCHEZ MACCHIAVELLO ALONSO',
-          'TOZO BURGOS JOSE GIANCARLO'
+          'TOZO BURGOS JOSE GIANCARLO',
+          'FERNANDEZ GARCIA LUIS HUMBERTO',
         ],
         'PERIODONCIA I': [
-          'AQUIZE DIAZ ANGELA MARIA',
-          'PORTUGAL MOTOCANCHE GLADYS KARINA'
+          'PORTUGAL MOTOCANCHE GLADYS KARINA',
         ],
         'PRÓTESIS FIJA I': [
-          'MELENDEZ CONDORI YTALA YASMIN',
           'MONTOYA PORTUGAL JORGE EFRAIN',
-          'RAMOS GOMEZ FREDERICK'
-        ],
-        'PRÓTESIS REMOVIBLE II': [
-          'MAQUE GUERRA JUAN WALTHER'
+          'RAMOS GOMEZ FREDERICK',
         ],
       },
       'VIII': {
-        'ADMINISTRACIÓN Y GESTIÓN EN SALUD': [
-          'ESPADA SALGADO FERNANDO MAURICIO'
-        ],
-        'BIOÉTICA': [
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO'
-        ],
         'ESTOMATOLOGÍA INTEGRAL II': [
-          'ANDIA MARTINEZ FIORELLA',
           'AQUIZE DIAZ ANGELA MARIA',
           'CALJARO CHAMBI SUGEY MARJHORY',
           'CONDORI SALINAS YESICA EULALIA',
@@ -452,287 +338,141 @@ function crearFormularioFACSA() {
           'PINTO TEJADA SANTOS FRANCISCO',
           'PORTUGAL MOTOCANCHE GLADYS KARINA',
           'RAMOS GOMEZ FREDERICK',
+        ],
+        'ESTOMATOLOGÍA INTEGRAL II - RADIOLOGÍA': [
           'ROMERO MAYTA RICHARD ALFONSO',
+        ],
+        'ESTOMATOLOGÍA INTEGRAL II - ENDODONCIA': [
           'SANCHEZ MACCHIAVELLO ALONSO',
-          'ZEBALLOS ADRIAZOLA MERCEDES'
         ],
-        'FLUJO DIGITAL EN ODONTOLOGÍA': [
-          'MELENDEZ CONDORI YTALA YASMIN'
-        ],
-        'MEDICINA ESTOMATOLÓGICA': [
-          'PORTUGAL MOTOCANCHE GLADYS KARINA'
+        'ESTOMATOLOGÍA INTEGRAL II - DIAGNÓSTICO': [
+          'ZEBALLOS ADRIAZOLA MERCEDES',
         ],
         'METODOLOGÍA DE LA INVESTIGACIÓN': [
-          'SANCHEZ TITO MARCO ANTONIO',
-          'TOZO BURGOS JOSE GIANCARLO'
-        ],
-        'ODONTOLOGÍA ESPECIAL': [
-          'ANDIA MARTINEZ FIORELLA'
+          'TOZO BURGOS JOSE GIANCARLO',
         ],
         'ODONTOPEDIATRÍA II': [
-          'ANDIA MARTINEZ FIORELLA',
           'CASTILLO GUILLEN CLAUDIA MARIA',
-          'PANGO PALZA DANTE OSWALDO'
+          'ANDIA MARTINEZ FIORELLA',
         ],
         'ORTODONCIA II': [
           'SANCHEZ TITO MARCO ANTONIO',
-          'SIMAUCHI TEJADA MARIO ALEJANDRO'
-        ],
-        'PATOLOGÍA BUCAL': [
-          'KUONG DE DELGADO NELLY ANTONIETA B.'
         ],
       },
-      'X': {
+      'INTERNADO': {
         'PRÁCTICA PRE PROFESIONAL EN ESTOMATOLOGÍA': [
           'CONDORI SALINAS YESICA EULALIA',
-          'ELGUERA VARGAS HENRY WILLIAMS',
           'FLORES TIPACTI ROBERTO',
+          'ELGUERA VARGAS HENRY WILLIAMS',
           'JIRON RAFAEL CARLOS IVAN',
-          'KUONG DE DELGADO NELLY ANTONIETA B.',
-          'NALVARTE ESTRADA MARIA TERESA FRANCISCA'
+          'NALVARTE ESTRADA MARIA TERESA FRANCISCA',
         ],
         'SEMINARIOS EXPOSITIVOS': [
-          'CASTILLO GUILLEN CLAUDIA MARIA',
           'KUONG DE DELGADO NELLY ANTONIETA B.',
-          'PORTUGAL MOTOCANCHE GLADYS KARINA'
+          'CASTILLO GUILLEN CLAUDIA MARIA',
         ],
         'TRABAJO DE INVESTIGACIÓN': [
-          'JUAREZ VIZCARRA CESAR',
           'SANCHEZ TITO MARCO ANTONIO',
-          'TOZO BURGOS JOSE GIANCARLO'
+          'TOZO BURGOS JOSE GIANCARLO',
         ],
       },
     },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // T.M. LABORATORIO CLÍNICO Y ANATOMÍA PATOLÓGICA
+    // ════════════════════════════════════════════════════════════════════════
     'T.M. Laboratorio Clínico y Anatomía Patológica': {
       'II': {
         'ANATOMÍA': [
           'BARREDA QUISPE GIOVANA ROSARIO',
-          'CARDENAS RUEDA PEDRO RONALD',
-          'PACHECO CALLIRGOS JULISSA'
-        ],
-        'BIOFÍSICA': [
-          'OLVEA ZAPANA VANESSA GUIZELLY'
+          'PACHECO CALLIRGOS JULISSA',
         ],
         'BIOLOGÍA': [
           'LARA LINCE PATRICIA DEL ROSARIO',
-          'MORALES DE ROCA LA BARRERA JESSICA TRUDY'
-        ],
-        'COMUNICACIÓN II': [
-          'ARVORCO AGUILAR SUSANA'
-        ],
-        'FILOSOFÍA': [
-          'CARDOZA RAMIREZ CARLO ANDRE'
         ],
         'GESTIÓN DE LA INFORMACIÓN CIENTÍFICA': [
-          'CONDORI CHAVEZ VERONICA JACQUELINE',
-          'MENA ORDOÑEZ SISSY SOLEDAD'
-        ],
-        'QUÍMICA ORGÁNICA': [
-          'CATARI CUTIPA MARITZA MARLENI'
-        ],
-        'TERRITORIO PERUANO, DEFENSA Y SEGURIDAD NACIONAL': [
-          'CARDOZA RAMIREZ CARLO ANDRE'
+          'MENA ORDOÑEZ SISSY SOLEDAD',
         ],
       },
       'IV': {
         'BIOQUÍMICA CLÍNICA I': [
-          'HUAMAN CARDENAS VICTOR RAUL',
-          'PAREDES FERNANDEZ ORLANDO GABRIEL'
-        ],
-        'EPIDEMIOLOGÍA Y SALUD PÚBLICA': [
-          'CURASI VELASQUEZ UBALDO LUIS'
-        ],
-        'GENÉTICA Y BIOLOGÍA MOLECULAR': [
-          'NINAJA ZEGARRA FREDDY EDDINSON'
-        ],
-        'MATEMÁTICA APLICADA AL LABORATORIO': [
-          'OLVEA ZAPANA VANESSA GUIZELLY'
-        ],
-        'PARASITOLOGÍA': [
-          'RAMOS ROJAS MADY CANELU'
-        ],
-        'PROCEDIMIENTOS DE ENFERMERÍA': [
-          'RIVERA CHIRINOS JANET MARTHA'
-        ],
-        'PSICOLOGÍA': [
-          'AGUIRRE MONTESINOS LISSETT ZUNILDA'
-        ],
-      },
-      'IX-X': {
-        'INTERNADO': [
-          'CERVANTES GOMEZ FOSTER GONZALO MIGUEL ENRIQUE',
-          'GOMEZ CCORAHUA MARIA MAGDALENA',
-          'JOVE ZERPA MIRIAM ZENAIDA',
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
-        ],
-        'TRABAJO DE INVESTIGACIÓN': [
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
+          'PAREDES FERNANDEZ ORLANDO GABRIEL',
         ],
       },
       'VI': {
         'CITOLOGÍA I': [
           'CARRILLO TICONA IRMA ANDREA',
-          'MEREJILDO VERA MERCY CAROLINA'
         ],
         'HEMATOLOGÍA CLÍNICA': [
           'CARRILLO TICONA IRMA ANDREA',
-          'HUAMAN CARDENAS VICTOR RAUL'
         ],
         'INMUNOLOGÍA CLÍNICA Y VACUNAS': [
-          'HUAMAN CARDENAS VICTOR RAUL',
-          'PAREDES FERNANDEZ ORLANDO GABRIEL'
-        ],
-        'METODOLOGÍA DE LA INVESTIGACIÓN': [
-          'TOZO BURGOS JOSE GIANCARLO'
-        ],
-        'MICOLOGÍA': [
-          'RAMOS ROJAS MADY CANELU'
+          'PAREDES FERNANDEZ ORLANDO GABRIEL',
         ],
         'UROANÁLISIS Y LÍQUIDOS BIOLÓGICOS': [
           'CARRILLO TICONA IRMA ANDREA',
-          'MEREJILDO VERA MERCY CAROLINA'
         ],
       },
       'VIII': {
-        'BIOÉTICA': [
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO'
-        ],
-        'CONTROL DE CALIDAD EN LABORATORIO': [
-          'RAMOS ROJAS MADY CANELU'
-        ],
-        'GESTIÓN EMPRESARIAL EN SALUD': [
-          'ESPINOZA VIDAURRE SAM MICHAEL'
-        ],
-        'LEGISLACIÓN EN SALUD': [
-          'PARIHUANA TRAVEZAÑO EDGAR GONZALO'
-        ],
         'SALUD COMUNITARIA': [
           'CARRILLO TICONA IRMA ANDREA',
-          'HUAMAN CARDENAS VICTOR RAUL'
         ],
-        'TALLER DE TESIS II': [
-          'MEREJILDO VERA MERCY CAROLINA'
-        ],
-        'TOXICOLOGÍA Y BIOQUÍMICA LEGAL': [
-          'CASTRO HUARACHI ROYER LUIS'
+      },
+      'INTERNADO': {
+        'INTERNADO': [
+          'CERVANTES GOMEZ FOSTER GONZALO MIGUEL ENRIQUE',
+          'JOVE ZERPA MIRIAM ZENAIDA',
+          'GOMEZ CCORAHUA MARIA MAGDALENA',
         ],
       },
     },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // T.M. TERAPIA FÍSICA Y REHABILITACIÓN
+    // ════════════════════════════════════════════════════════════════════════
     'T.M. Terapia Física y Rehabilitación': {
       'II': {
         'ANATOMÍA': [
           'BARREDA QUISPE GIOVANA ROSARIO',
-          'CARDENAS RUEDA PEDRO RONALD',
-          'PACHECO CALLIRGOS JULISSA'
-        ],
-        'CIENCIAS SOCIALES APLICADAS A LA SALUD': [
-          'CHUMPITAZ CHAVEZ FLOR DE MARIA'
-        ],
-        'COMUNICACIÓN II': [
-          'ARVORCO AGUILAR SUSANA'
-        ],
-        'FILOSOFÍA': [
-          'CARDOZA RAMIREZ CARLO ANDRE'
-        ],
-        'FISIOLOGÍA': [
-          'CRUZ MENDEZ PATRICIO'
+          'PACHECO CALLIRGOS JULISSA',
         ],
         'GESTIÓN DE LA INFORMACIÓN CIENTÍFICA': [
-          'CONDORI CHAVEZ VERONICA JACQUELINE',
-          'MENA ORDOÑEZ SISSY SOLEDAD'
-        ],
-        'INTRODUCCIÓN A LA TERAPIA FÍSICA Y REHABILITACIÓN': [
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
-        ],
-        'PRIMEROS AUXILIOS': [
-          'RIVERA CHIRINOS JANET MARTHA'
-        ],
-        'TERRITORIO PERUANO, DEFENSA Y SEGURIDAD NACIONAL': [
-          'CARDOZA RAMIREZ CARLO ANDRE'
+          'MENA ORDOÑEZ SISSY SOLEDAD',
         ],
       },
       'IV': {
         'AGENTES FÍSICOS': [
-          'EFFIO PAJUELO OSCAR EUGENIO',
-          'FERNANDEZ DAVILA MOLINA ALEJANDRO ARCADIO'
-        ],
-        'BASES BIOMECÁNICAS Y KINESIOLÓGICAS DEL MOVIMIENTO HUMANO': [
-          'BARRIGA PASTEN MARCELO ADRIAN'
-        ],
-        'EVALUACIÓN FISIOTERAPÉUTICA': [
-          'CORRALES HUAMAN LUCERO'
-        ],
-        'FARMACOLOGÍA APLICADA A LA FISIOTERAPIA': [
-          'CASTRO HUARACHI ROYER LUIS'
-        ],
-        'FISIOPATOLOGÍA GENERAL': [
-          'GORDILLO MAYDANA PAULO CESAR'
+          'FERNANDEZ DAVILA MOLINA ALEJANDRO ARCADIO',
         ],
         'NEURODESARROLLO Y AFECCIONES PEDIÁTRICAS': [
-          'CHUMPITAZ CHAVEZ FLOR DE MARIA',
+          'PAREDES CALDERON SOLANGE SUSANA',
           'CUTIPA LARICO ARACELI YAJHAIRA',
-          'PAREDES CALDERON SOLANGE SUSANA'
-        ],
-      },
-      'IX-X': {
-        'INTERNADO': [
-          'CHUMO ESPINOZA MANUEL ENRIQUE',
-          'EFFIO PAJUELO OSCAR EUGENIO',
-          'IZQUIERDO LLERENA MAURA',
-          'MONTESINOS VALENCIA CECILIA CLAUDIA',
-          'SANTISTEBAN HUARINGA OSCAR'
-        ],
-        'TRABAJO DE INVESTIGACIÓN': [
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
         ],
       },
       'VI': {
-        'AYUDAS BIOMECÁNICAS': [
-          'CHUMPITAZ CHAVEZ FLOR DE MARIA'
-        ],
-        'FISIOTERAPIA CARDIORESPIRATORIA II': [
-          'BARRIGA PASTEN MARCELO ADRIAN'
-        ],
-        'FISIOTERAPIA EN REUMATOLOGÍA': [
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
-        ],
-        'FISIOTERAPIA EN TRAUMATOLOGÍA Y ORTOPEDIA': [
-          'FERNANDEZ DAVILA MOLINA ALEJANDRO ARCADIO'
-        ],
-        'METODOLOGÍA DE LA INVESTIGACIÓN': [
-          'TOZO BURGOS JOSE GIANCARLO'
-        ],
         'MÉTODOS DE REEDUCACIÓN NEUROLÓGICA EN ADULTOS I': [
-          'ALFARO ACOSTA JHOAN MARCIE',
           'BLANCO ALAVE STEPHANIE',
-          'CHUMPITAZ CHAVEZ FLOR DE MARIA'
-        ],
-        'RAZONAMIENTO CLÍNICO EN FISIOTERAPIA': [
-          'DEL AGUILA ARTEAGA ANGELA DEL ROSARIO'
+          'ALFARO ACOSTA JHOAN MARCIE',
         ],
       },
       'VIII': {
-        'BIOÉTICA': [
-          'RIVAROLA HIDALGO MARCO CARLOS ALEJANDRO'
-        ],
-        'FISIOTERAPIA DEPORTIVA Y DEPORTES ADAPTADOS': [
-          'BARRIGA PASTEN MARCELO ADRIAN'
-        ],
         'FISIOTERAPIA EN COMUNIDAD': [
           'CONTRERAS MEDINA SHIANDY',
-          'CORRALES HUAMAN LUCERO'
         ],
         'PROGRAMAS DE INTERVENCIÓN FISIOTERAPÉUTICA II': [
           'BLANCO ALAVE STEPHANIE',
-          'MONTESINOS VALENCIA CECILIA CLAUDIA',
-          'PAULLO QUIÑONES LUCAS LEONARDO'
-        ],
-        'PROGRAMAS ESTADÍSTICOS': [
-          'ESPINOZA VIDAURRE SAM MICHAEL'
+          'PAULLO QUIÑONES LUCAS LEONARDO',
         ],
         'TALLER DE TESIS II': [
           'ESPINOZA VIDAURRE SAM MICHAEL',
-          'MONTESINOS VALENCIA CECILIA CLAUDIA'
+        ],
+      },
+      'INTERNADO': {
+        'INTERNADO': [
+          'EFFIO PAJUELO OSCAR EUGENIO',
+          'CHUMO ESPINOZA MANUEL ENRIQUE',
+          'SANTISTEBAN HUARINGA OSCAR',
+          'IZQUIERDO LLERENA MAURA',
         ],
       },
     },
@@ -758,6 +498,11 @@ function crearFormularioFACSA() {
     .setLimitOneResponsePerUser(false)
     .setAllowResponseEdits(false)
     .setShowLinkToRespondAgain(true);
+
+  // Helper: etiqueta legible para el ciclo (INTERNADO no lleva el prefijo "Ciclo")
+  function cicloLabel(ciclo) {
+    return ciclo === 'INTERNADO' ? 'INTERNADO' : 'Ciclo ' + ciclo;
+  }
 
   // Helper: ítem de escala Likert 1-5
   function addEscala(titulo, ayuda) {
@@ -794,8 +539,8 @@ function crearFormularioFACSA() {
 
   // ── SECCIONES DE CICLO: una por escuela ──────────────────────────────────
   const escuelas = Object.keys(DOCENTES);
-  const pbCiclo    = {}; // pbCiclo[esc]         = PageBreakItem
-  const cicloItems = {}; // cicloItems[esc]       = MultipleChoiceItem
+  const pbCiclo    = {};
+  const cicloItems = {};
 
   for (const esc of escuelas) {
     pbCiclo[esc] = form.addPageBreakItem()
@@ -807,15 +552,15 @@ function crearFormularioFACSA() {
   }
 
   // ── SECCIONES DE CURSO: una por combinación escuela × ciclo ──────────────
-  const pbCurso    = {}; // pbCurso[esc][ciclo]   = PageBreakItem
-  const cursoItems = {}; // cursoItems[esc][ciclo] = MultipleChoiceItem
+  const pbCurso    = {};
+  const cursoItems = {};
 
   for (const esc of escuelas) {
     pbCurso[esc]    = {};
     cursoItems[esc] = {};
     for (const ciclo of Object.keys(DOCENTES[esc])) {
       pbCurso[esc][ciclo] = form.addPageBreakItem()
-        .setTitle('Asignatura — ' + esc + ' · Ciclo ' + ciclo)
+        .setTitle('Asignatura — ' + esc + ' · ' + cicloLabel(ciclo))
         .setHelpText('Selecciona la asignatura cuyo docente deseas evaluar en esta encuesta.');
 
       cursoItems[esc][ciclo] = form.addMultipleChoiceItem()
@@ -825,7 +570,7 @@ function crearFormularioFACSA() {
   }
 
   // ── SECCIONES DE DOCENTE: una por combinación escuela × ciclo × curso ────
-  const pbDoc = {}; // pbDoc[esc][ciclo][curso] = PageBreakItem
+  const pbDoc = {};
 
   for (const esc of escuelas) {
     pbDoc[esc] = {};
@@ -834,11 +579,11 @@ function crearFormularioFACSA() {
       for (const curso of Object.keys(DOCENTES[esc][ciclo])) {
         pbDoc[esc][ciclo][curso] = form.addPageBreakItem()
           .setTitle('Docente a evaluar — ' + curso)
-          .setHelpText('Ciclo ' + ciclo + ' · ' + esc);
+          .setHelpText(cicloLabel(ciclo) + ' · ' + esc);
 
         form.addTextItem()
           .setTitle('Sección')
-          .setHelpText('Ej.: A, B, 01. Déjalo en blanco si no aplica.')
+          .setHelpText('Ej.: B, C, D. La sección A es evaluada por intranet.')
           .setRequired(false);
 
         form.addListItem()
@@ -912,7 +657,7 @@ function crearFormularioFACSA() {
   for (const esc of escuelas) {
     const ciclos = Object.keys(DOCENTES[esc]);
     cicloItems[esc].setChoices(
-      ciclos.map(ciclo => cicloItems[esc].createChoice('Ciclo ' + ciclo, pbCurso[esc][ciclo]))
+      ciclos.map(ciclo => cicloItems[esc].createChoice(cicloLabel(ciclo), pbCurso[esc][ciclo]))
     );
   }
 

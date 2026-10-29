@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { FileText, Calendar, Download, Trash2, Eye, BarChart3, TrendingUp } from 'lucide-react';
+import { FileText, Calendar, Download, Trash2, Eye, BarChart3, TrendingUp, Info } from 'lucide-react';
 import { ReporteData, EvaluacionData } from '../types';
 import { MatriculadosEntry } from '../services/reportCalculations';
+import { getCicloFromDate } from '../config/universityStructure';
 import ReportsTabs from './ReportsTabs';
 import ComparativaCiclos from './ComparativaCiclos';
 
@@ -98,6 +99,19 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady, esPubl
             Mostrando datos del ciclo: <strong>{cicloActual}</strong>
             {datos.length > 0 && <span className="ciclo-badge-count">{datos.length} registros</span>}
           </div>
+          {esPublico && (() => {
+            const cicloEnCurso = getCicloFromDate();
+            if (cicloEnCurso !== cicloActual) {
+              return (
+                <div className="ciclo-aviso-publico">
+                  <Info size={16} />
+                  El ciclo <strong>{cicloEnCurso}</strong> está actualmente en curso — la encuesta aún no ha finalizado.
+                  Se muestran los resultados del ciclo <strong>{cicloActual}</strong>.
+                </div>
+              );
+            }
+            return null;
+          })()}
           {datos.length === 0 ? (
             <div className="no-data-container">
               <BarChart3 size={64} />

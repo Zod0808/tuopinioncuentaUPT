@@ -21,9 +21,10 @@ import {
   loadPublicReport,
   getPublicCiclos,
 } from './services/supabaseService';
+import { getCicloFromDate } from './config/universityStructure';
 import './App.css';
 
-const CICLO_DEFAULT = '2025-II';
+const CICLO_DEFAULT = getCicloFromDate();
 const LS_KEY = (ciclo: string) => `evaluacionDatos_${ciclo}`;
 
 function App() {
@@ -47,16 +48,19 @@ function App() {
   async function loadPublicDataForAnon(ciclo: string) {
     if (!isSupabaseConfigured()) return;
     setLoadingData(true);
+    // Elimina datos personales antes de exponer al público
+    const anonimizar = (d: EvaluacionData): EvaluacionData => ({ ...d, docente: '' });
     try {
       const [ciclos, report] = await Promise.all([getPublicCiclos(), loadPublicReport(ciclo)]);
       setCiclosPublicos(ciclos);
       if (report) {
-        setDatos(report.datos);
+        setDatos(report.datos.map(anonimizar));
         setMatriculados(report.matriculados);
       } else if (ciclos.length > 0 && ciclos[0] !== ciclo) {
+        // El ciclo actual no tiene encuesta publicada aún: mostrar el más reciente disponible
         const fallback = await loadPublicReport(ciclos[0]);
         setCicloActual(ciclos[0]);
-        setDatos(fallback?.datos ?? []);
+        setDatos((fallback?.datos ?? []).map(anonimizar));
         setMatriculados(fallback?.matriculados ?? []);
       } else {
         setDatos([]);

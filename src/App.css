@@ -343,18 +343,28 @@
   text-transform: uppercase;
 }
 
-.badge-destacado {
-  background: #4caf50;
+.badge-excelente {
+  background: #276749;
   color: white;
 }
 
-.badge-bueno {
-  background: #2196f3;
+.badge-muy-satisfactorio {
+  background: #2f855a;
   color: white;
 }
 
-.badge-aceptable {
-  background: #ff9800;
+.badge-satisfactorio {
+  background: #2b6cb0;
+  color: white;
+}
+
+.badge-insatisfactorio {
+  background: #c05621;
+  color: white;
+}
+
+.badge-muy-insatisfactorio {
+  background: #c53030;
   color: white;
 }
 
@@ -365,11 +375,6 @@
 
 .badge-deficiente {
   background: #f44336;
-  color: white;
-}
-
-.badge-insatisfactorio {
-  background: #d32f2f;
   color: white;
 }
 
@@ -775,11 +780,6 @@
   font-size: 1.2rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid #e0e0e0;
-}
-
-.badge-insatisfactorio {
-  background: #f44336;
-  color: white;
 }
 
 .badge-success {
@@ -2024,6 +2024,31 @@
   color: #2196f3;
 }
 
+/*
+ * Escala 2026 (Res. 245-2026) — 5 niveles. Coexisten con los 4 anteriores
+ * para que reportes de ciclos previos conserven su presentación. Los colores
+ * se alinean con ESCALA_CALIFICACION en universityStructure.ts.
+ */
+.stat-excelente {
+  background: rgba(39, 103, 73, 0.1);
+  color: #276749;
+}
+
+.stat-muy-satisfactorio {
+  background: rgba(47, 133, 90, 0.1);
+  color: #2f855a;
+}
+
+.stat-satisfactorio {
+  background: rgba(43, 108, 176, 0.1);
+  color: #2b6cb0;
+}
+
+.stat-muy-insatisfactorio {
+  background: rgba(197, 48, 48, 0.1);
+  color: #c53030;
+}
+
 .calificacion-charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -2571,6 +2596,19 @@
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.ciclo-aviso-publico {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  color: #92400e;
+  margin-bottom: 0.5rem;
 }
 
 /* ─── Import confirm box ─────────────────────────────────────────────────── */
