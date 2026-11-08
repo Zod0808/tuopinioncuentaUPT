@@ -38,6 +38,7 @@ function App() {
   const [ciclosDisponibles, setCiclosDisponibles] = useState<string[]>([]);
   const [ciclosPublicos, setCiclosPublicos] = useState<string[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register' | 'reset'>('login');
   const [loadingData, setLoadingData] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
 
@@ -82,9 +83,13 @@ function App() {
     }
 
     const unsubscribe = onAuthStateChange(async (user, event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthInitialMode('reset');
+        setShowAuthModal(true);
+        return;
+      }
       if (user) {
         setCurrentUser(user);
-        // Solo cargar datos en eventos de sesión nueva, no en token refresh
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           await loadUserData(user, cicloRef.current);
         }
@@ -372,8 +377,9 @@ function App() {
 
       {showAuthModal && (
         <AuthModal
-          onClose={() => setShowAuthModal(false)}
+          onClose={() => { setShowAuthModal(false); setAuthInitialMode('login'); }}
           onSuccess={handleAuthSuccess}
+          initialMode={authInitialMode}
         />
       )}
     </div>

@@ -2536,6 +2536,59 @@
   line-height: 1.5;
 }
 
+.auth-forgot-link {
+  background: none;
+  border: none;
+  color: #003087;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  margin-top: -0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.auth-forgot-link:hover {
+  color: #0052cc;
+}
+
+.auth-back-link {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.75rem;
+  text-align: center;
+  width: 100%;
+  display: block;
+}
+
+.auth-back-link:hover {
+  color: #333;
+}
+
+.auth-section-subtitle {
+  font-size: 0.88rem;
+  color: #666;
+  margin: 0 0 0.25rem;
+  line-height: 1.5;
+}
+
+.auth-reset-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #003087;
+  padding: 0.75rem 0 0.25rem;
+  border-bottom: 2px solid #e8f0fe;
+  margin-bottom: 0.5rem;
+}
+
 /* ─── Spinner pequeño ────────────────────────────────────────────────────── */
 .spinner-small {
   display: inline-block;
