@@ -351,7 +351,142 @@ El proyecto incluye `vercel.json` y el endpoint serverless `api/recommend.ts`. B
 
 ---
 
-## 8. Historial de versiones (destacadas)
+## 8. Flujo de datos para ciclos nuevos
+
+Cada ciclo académico requiere cargar dos tipos de datos independientes:
+
+| Tipo | Archivo | Origen |
+|------|---------|--------|
+| Evaluaciones | `data/imports/TOC_YYYY-X_import.xlsx` | Excel transformado de las encuestas |
+| Matriculados | `data/imports/MATRICULADOS_YYYY-X.xlsx` | Sistema académico UPT |
+
+> **Por qué son archivos separados:** el Excel de evaluaciones cuenta encuestados *por sección/curso*, no por alumno. Un alumno que lleva 3 materias aparece 3 veces. El archivo de matriculados corrige eso con el conteo real de alumnos únicos obtenido del sistema académico.
+
+---
+
+### 8.1 Paso 1 — Preparar el Excel de evaluaciones
+
+Nombre: `data/imports/TOC_YYYY-X_import.xlsx`
+
+El archivo debe tener exactamente estas columnas (ver sección 6.2 para detalles):
+
+```
+FACULTAD | CARRERA PROFESIONAL | DOCENTE | CURSO | SECCIÓN |
+NOTA | CALIFICACIÓN | AE-01 | AE-02 | AE-03 | AE-04 |
+ENCUESTADOS | NO ENCUESTADOS | VALIDEZ
+```
+
+### 8.2 Paso 2 — Preparar el Excel de matriculados
+
+Copia el archivo plantilla y renómbralo:
+
+```
+data/imports/MATRICULADOS_2026-II.xlsx  →  data/imports/MATRICULADOS_YYYY-X.xlsx
+```
+
+Edita solo las columnas `MATRICULADOS` y `ENCUESTADOS` con los valores del nuevo ciclo:
+
+| Columna | Descripción |
+|---------|-------------|
+| `FACULTAD` | Sigla: FADE · FAEDCOH · FAING · FACEM · FAU · FACSA |
+| `CARRERA` | Nombre exacto igual al que muestra la app |
+| `MATRICULADOS` | Total alumnos matriculados (encuestados + no encuestados únicos) |
+| `ENCUESTADOS` | Alumnos únicos que respondieron la encuesta |
+
+Los valores se obtienen del sistema académico de la UPT (no del Excel de evaluaciones).
+
+Para regenerar el archivo plantilla desde cero:
+
+```bash
+node generar-matriculados-xlsx.mjs
+```
+
+### 8.3 Paso 3 — Importar evaluaciones desde la app
+
+1. Entra a la app con tu cuenta → **Entrada de Datos** → tab **Importar Excel**
+2. Arrastra el archivo `TOC_YYYY-X_import.xlsx`
+3. Confirma que el ciclo sea correcto en el selector
+4. Clic en **Importar al ciclo YYYY-X**
+
+### 8.4 Paso 4 — Importar matriculados desde terminal
+
+```bash
+node import-matriculados-2026II.mjs
+```
+
+El script pregunta interactivamente:
+
+```
+📅 Ciclo (ej. 2026-II): 2027-I
+📧 Correo: tu@correo.com
+🔑 Contraseña: ****
+✅ 23 carreras leídas del Excel
+✅ Autenticado como tu@correo.com
+✅ Matriculados del ciclo 2027-I guardados correctamente
+   23 carreras | 5.942 matriculados | 5.900 encuestados
+```
+
+Lee el archivo `data/imports/MATRICULADOS_<CICLO>.xlsx` y sube los datos a Supabase bajo tu `user_id`.
+
+### 8.5 Paso 5 — Publicar el ciclo (opcional)
+
+Desde la app → **Gestión de Datos** → botón **Publicar ciclo** para que los datos sean visibles públicamente sin autenticación.
+
+---
+
+### Estructura de archivos `data/imports/`
+
+```
+data/imports/
+├── TOC_2025-II_import.xlsx          # evaluaciones 2025-II ✓ importado
+├── TOC_2026-I_import.xlsx           # evaluaciones 2026-I  ✓ importado
+├── TOC_2026-II_import.xlsx          # evaluaciones 2026-II ✓ importado
+├── MATRICULADOS_2026-II.xlsx        # matriculados 2026-II ✓ importado (plantilla)
+└── MATRICULADOS_YYYY-X.xlsx         # futuros ciclos
+```
+
+### Scripts de utilidad
+
+| Script | Descripción |
+|--------|-------------|
+| `node import-matriculados-2026II.mjs` | Importa matriculados de cualquier ciclo desde Excel |
+| `node generar-matriculados-xlsx.mjs` | Regenera el Excel plantilla con los datos de 2026-II |
+
+---
+
+## 9. Deploy y configuración de producción
+
+**URL de producción:** https://tuopinioncuenta-upt-wvxe.vercel.app
+
+El deploy es automático en cada push a `main` vía integración GitHub–Vercel.
+
+Para redesplegar manualmente:
+
+```bash
+vercel --prod
+```
+
+### Variables de entorno en Vercel
+
+Configurar en **Vercel → Settings → Environment Variables** con tipo **Config** (no Secret):
+
+| Variable | Valor |
+|----------|-------|
+| `VITE_SUPABASE_URL` | URL del proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Anon key (pública por diseño, tipo Config) |
+| `OPENAI_API_KEY` | API key de OpenAI (sin prefijo VITE_, solo backend) |
+
+### Supabase — URL de redirección para recuperar contraseña
+
+En **Supabase → Authentication → URL Configuration → Redirect URLs** agregar:
+
+```
+https://tuopinioncuenta-upt-wvxe.vercel.app
+```
+
+---
+
+## 10. Historial de versiones (destacadas)
 
 | Versión | Hito |
 |---------|------|
