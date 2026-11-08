@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, Calendar, Download, Trash2, Eye, BarChart3, TrendingUp, Info } from 'lucide-react';
 import { ReporteData, EvaluacionData } from '../types';
 import { MatriculadosEntry } from '../services/reportCalculations';
-import { getCicloFromDate } from '../config/universityStructure';
+import { getCicloFromDate, esNuevoReglamento } from '../config/universityStructure';
 import ReportsTabs from './ReportsTabs';
 import ComparativaCiclos from './ComparativaCiclos';
 
@@ -59,6 +59,30 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady, esPubl
   const formatearFecha = (fechaISO: string) =>
     new Date(fechaISO).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const heroStats = useMemo(() => {
+    const totalMat = matriculados.reduce((s, m) => s + m.totalMatriculados, 0);
+    const totalEnc = matriculados.reduce((s, m) => s + (m.totalEncuestados ?? 0), 0);
+    const pct = totalMat > 0 ? (totalEnc / totalMat) * 100 : 0;
+    const promedio = datos.length > 0 ? datos.reduce((s, d) => s + d.nota, 0) / datos.length : 0;
+    return { totalMat, totalEnc, pct, promedio };
+  }, [datos, matriculados]);
+
+  const escalaActual = useMemo(() => {
+    if (!esNuevoReglamento(cicloActual)) return [
+      { label: 'Destacado', rango: '≥ 17.1', color: '#276749' },
+      { label: 'Bueno', rango: '≥ 15.1', color: '#2e7d32' },
+      { label: 'Aceptable', rango: '≥ 11.0', color: '#f57c00' },
+      { label: 'Insatisfactorio', rango: '< 11.0', color: '#c62828' },
+    ];
+    return [
+      { label: 'Excelente', rango: '≥ 18.0', color: '#276749' },
+      { label: 'Muy satisfactorio', rango: '≥ 15.0', color: '#388e3c' },
+      { label: 'Satisfactorio', rango: '≥ 12.0', color: '#f57c00' },
+      { label: 'Insatisfactorio', rango: '≥ 8.0', color: '#c62828' },
+      { label: 'Muy insatisfactorio', rango: '< 8.0', color: '#7f0000' },
+    ];
+  }, [cicloActual]);
+
   return (
     <div className="reports-view">
       <div className="reports-view-header">
@@ -94,30 +118,66 @@ export default function ReportsView({ datos, cicloActual, onGraficoReady, esPubl
       {/* ── Reportes del ciclo actual ── */}
       {vistaReportes === 'interactivos' && (
         <div className="reports-interactive">
-          <div className="ciclo-badge-header">
-            <Calendar size={16} />
-            Mostrando datos del ciclo: <strong>{cicloActual}</strong>
-            {datos.length > 0 && <span className="ciclo-badge-count">{datos.length} registros</span>}
-          </div>
-          {esPublico && (() => {
-            const cicloEnCurso = getCicloFromDate();
-            if (cicloEnCurso !== cicloActual) {
-              return (
-                <div className="ciclo-aviso-publico">
-                  <Info size={16} />
-                  El ciclo <strong>{cicloEnCurso}</strong> está actualmente en curso — la encuesta aún no ha finalizado.
-                  Se muestran los resultados del ciclo <strong>{cicloActual}</strong>.
+          {esPublico ? (
+            <div className="public-hero">
+              <div className="public-hero-text">
+                <p className="public-hero-label">Encuesta de Satisfacción Estudiantil</p>
+                <h1 className="public-hero-ciclo">Ciclo {cicloActual}</h1>
+                <p className="public-hero-desc">
+                  Resultados de la evaluación que los estudiantes realizaron sobre el desempeño de sus docentes durante este ciclo académico.
+                </p>
+              </div>
+              {heroStats.totalMat > 0 && (
+                <div className="public-hero-stats">
+                  <div className="public-hero-stat">
+                    <span className="public-hero-num">{heroStats.totalMat.toLocaleString('es-PE')}</span>
+                    <span className="public-hero-stat-label">Matriculados</span>
+                  </div>
+                  <div className="public-hero-divider" />
+                  <div className="public-hero-stat">
+                    <span className="public-hero-num">{heroStats.pct.toFixed(1)}%</span>
+                    <span className="public-hero-stat-label">Participación</span>
+                  </div>
+                  <div className="public-hero-divider" />
+                  <div className="public-hero-stat">
+                    <span className="public-hero-num">{heroStats.promedio.toFixed(2)}</span>
+                    <span className="public-hero-stat-label">Promedio / 20</span>
+                  </div>
                 </div>
-              );
-            }
-            return null;
-          })()}
+              )}
+              <div className="public-scale-legend">
+                <span className="public-scale-legend-title">Escala de calificación:</span>
+                {escalaActual.map(e => (
+                  <span key={e.label} className="public-scale-pill">
+                    <span className="public-scale-dot" style={{ background: e.color }} />
+                    {e.label} <span className="public-scale-rango">({e.rango})</span>
+                  </span>
+                ))}
+              </div>
+              {(() => {
+                const cicloEnCurso = getCicloFromDate();
+                if (cicloEnCurso !== cicloActual) return (
+                  <div className="public-hero-notice">
+                    <Info size={14} />
+                    El ciclo {cicloEnCurso} está en curso — se muestran los resultados del ciclo {cicloActual}.
+                  </div>
+                );
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="ciclo-badge-header">
+              <Calendar size={16} />
+              Mostrando datos del ciclo: <strong>{cicloActual}</strong>
+              {datos.length > 0 && <span className="ciclo-badge-count">{datos.length} registros</span>}
+            </div>
+          )}
           {datos.length === 0 ? (
             <div className="no-data-container">
               <BarChart3 size={64} />
               <p className="no-data">No hay datos para el ciclo {cicloActual}.</p>
               {esPublico
-                ? <p className="hint">Los resultados de este ciclo aún no han sido publicados.</p>
+                ? <p className="hint">Los resultados de este ciclo aún no están disponibles. Vuelve a consultar cuando finalice el período de encuestas.</p>
                 : <p className="hint">Importa un Excel desde "Ingreso de Datos" y selecciona el ciclo correcto.</p>
               }
             </div>

@@ -2363,6 +2363,231 @@
   background: #fff5f5;
 }
 
+/* ─── Vista pública: hero ────────────────────────────────────────────────── */
+.public-hero {
+  background: linear-gradient(135deg, #003087 0%, #1B4FBF 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 2rem 2.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.public-hero-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.7);
+  margin: 0;
+  font-weight: 500;
+}
+
+.public-hero-ciclo {
+  font-size: 2.1rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.public-hero-desc {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.8);
+  margin: 0;
+  max-width: 56ch;
+  line-height: 1.6;
+}
+
+.public-hero-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  width: fit-content;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.public-hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1.5rem;
+}
+
+.public-hero-divider {
+  width: 1px;
+  height: 2.5rem;
+  background: rgba(255,255,255,0.25);
+}
+
+.public-hero-num {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.public-hero-stat-label {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.65);
+  margin-top: 0.2rem;
+  white-space: nowrap;
+}
+
+.public-scale-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-size: 0.78rem;
+}
+
+.public-scale-legend-title {
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.public-scale-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: rgba(255,255,255,0.85);
+}
+
+.public-scale-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.public-scale-rango {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.72rem;
+}
+
+.public-hero-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  width: fit-content;
+}
+
+/* ─── Tarjetas de facultad ───────────────────────────────────────────────── */
+.faculty-cards-section {
+  margin-bottom: 1.75rem;
+}
+
+.faculty-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.faculty-card {
+  background: #fff;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  position: relative;
+}
+
+.faculty-card:hover {
+  border-color: #003087;
+  background: #f0f4ff;
+  transform: translateY(-1px);
+}
+
+.faculty-card.selected {
+  border-color: #003087;
+  background: #003087;
+}
+
+.faculty-card-acronym {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #003087;
+  line-height: 1;
+}
+
+.faculty-card.selected .faculty-card-acronym {
+  color: #fff;
+}
+
+.faculty-card-name {
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.3;
+  max-width: 130px;
+}
+
+.faculty-card.selected .faculty-card-name {
+  color: rgba(255,255,255,0.75);
+}
+
+.faculty-card-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1c2b4a;
+  margin-top: 0.4rem;
+  line-height: 1;
+}
+
+.faculty-card.selected .faculty-card-score {
+  color: #fff;
+}
+
+.faculty-card-pct {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.faculty-card.selected .faculty-card-pct {
+  color: rgba(255,255,255,0.65);
+}
+
+@media (max-width: 600px) {
+  .public-hero {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+  .public-hero-ciclo {
+    font-size: 1.6rem;
+  }
+  .public-hero-stats {
+    padding: 0.75rem 1rem;
+    width: 100%;
+  }
+  .public-hero-stat {
+    padding: 0 0.75rem;
+  }
+  .public-hero-num {
+    font-size: 1.4rem;
+  }
+  .faculty-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ─── Auth modal ─────────────────────────────────────────────────────────── */
 .auth-overlay {
   position: fixed;

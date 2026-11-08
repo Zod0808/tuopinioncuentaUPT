@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -62,6 +62,18 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   // Obtener facultades disponibles
   const facultades = [...new Set(datos.map(d => d.facultad))].sort();
 
+  // Resumen por facultad para las tarjetas de selección
+  const facultadesSummary = useMemo(() => facultades.map(key => {
+    const datosFac = datos.filter(d => d.facultad === key);
+    const avg = datosFac.length > 0 ? datosFac.reduce((s, d) => s + d.nota, 0) / datosFac.length : 0;
+    const matFac = matriculados.filter(m => m.facultad === key);
+    const totalMat = matFac.reduce((s, m) => s + m.totalMatriculados, 0);
+    const totalEnc = matFac.reduce((s, m) => s + (m.totalEncuestados ?? 0), 0);
+    const pct = totalMat > 0 ? (totalEnc / totalMat) * 100 : 0;
+    const nombre = FACULTADES[key]?.nombre ?? key;
+    return { key, nombre, avg, pct };
+  }), [facultades, datos, matriculados]);
+
   // Si no hay facultad seleccionada, seleccionar la primera por defecto
   useEffect(() => {
     if (!facultadSeleccionada && facultades.length > 0) {
@@ -83,14 +95,25 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   if (datosFacultad.length === 0) {
     return (
       <div className="reporte-facultad">
-        <div className="faculty-selector">
-          <label htmlFor="facultad-select">Seleccionar Facultad:</label>
-          <select
-            id="facultad-select"
-            value={facultadSeleccionada}
-            onChange={(e) => setFacultadSeleccionada(e.target.value)}
-            className="faculty-select"
-          >
+        <div className="faculty-cards-section">
+          <div className="faculty-cards">
+            {facultadesSummary.map(f => (
+              <button
+                key={f.key}
+                className={`faculty-card ${facultadSeleccionada === f.key ? 'selected' : ''}`}
+                onClick={() => setFacultadSeleccionada(f.key)}
+              >
+                <span className="faculty-card-acronym">{f.key}</span>
+                <span className="faculty-card-name">{f.nombre}</span>
+                {f.avg > 0 && <span className="faculty-card-score">{f.avg.toFixed(2)}</span>}
+                {f.pct > 0 && <span className="faculty-card-pct">{f.pct.toFixed(0)}% part.</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* selector oculto mantenido por compatibilidad */}
+        <div style={{ display: 'none' }}>
+          <select value={facultadSeleccionada} onChange={(e) => setFacultadSeleccionada(e.target.value)}>
             {facultades.map(facultad => (
               <option key={facultad} value={facultad}>
                 {facultad}
@@ -254,21 +277,27 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   return (
     <div className="reporte-facultad">
       <div className="report-header">
-        <div className="faculty-selector">
-          <label htmlFor="facultad-select">
-            <GraduationCap size={20} />
-            Seleccionar Facultad:
-          </label>
-          <select
-            id="facultad-select"
-            value={facultadSeleccionada}
-            onChange={(e) => setFacultadSeleccionada(e.target.value)}
-            className="faculty-select"
-          >
+        <div className="faculty-cards-section">
+          <div className="faculty-cards">
+            {facultadesSummary.map(f => (
+              <button
+                key={f.key}
+                className={`faculty-card ${facultadSeleccionada === f.key ? 'selected' : ''}`}
+                onClick={() => setFacultadSeleccionada(f.key)}
+              >
+                <span className="faculty-card-acronym">{f.key}</span>
+                <span className="faculty-card-name">{f.nombre}</span>
+                {f.avg > 0 && <span className="faculty-card-score">{f.avg.toFixed(2)}</span>}
+                {f.pct > 0 && <span className="faculty-card-pct">{f.pct.toFixed(0)}% part.</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* select oculto para compatibilidad interna */}
+        <div style={{ display: 'none' }}>
+          <select value={facultadSeleccionada} onChange={(e) => setFacultadSeleccionada(e.target.value)}>
             {facultades.map(facultad => (
-              <option key={facultad} value={facultad}>
-                {facultad}
-              </option>
+              <option key={facultad} value={facultad}>{facultad}</option>
             ))}
           </select>
         </div>
