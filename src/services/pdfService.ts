@@ -406,9 +406,9 @@ export async function generarPDFResumenDocente(
       head: [['Escala de calificación', 'Juicio de valor', 'Interpretación']],
       body: [
         ['11 puntos a menos',  'INSATISFACTORIO', 'El docente no tiene un buen desempeño, tiene que replantear radicalmente su desempeño profesional.'],
-        ['De 12 a 14 puntos',  'ACEPTABLE',        'El docente debe examinar los resultados de su evaluación y afianzar los aspectos observados.'],
-        ['De 15 a 17 puntos',  'BUENO',            'Tiene un buen desempeño, pero puede superarlo atendiendo los aspectos que requieren mejora.'],
-        ['De 18 a 20 puntos',  'DESTACADO',        'El docente tiene excelente desempeño y merece ser reconocido.'],
+        ['De 12 a 14 puntos',  'SATISFACTORIO',        'El docente debe examinar los resultados de su evaluación y afianzar los aspectos observados.'],
+        ['De 15 a 17 puntos',  'MUY_SATISFACTORIO',            'Tiene un buen desempeño, pero puede superarlo atendiendo los aspectos que requieren mejora.'],
+        ['De 18 a 20 puntos',  'EXCELENTE',        'El docente tiene excelente desempeño y merece ser reconocido.'],
       ],
       styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
       headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
@@ -564,7 +564,7 @@ export async function generarPDFResumenDocente(
 // Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, UMBRAL_PARTICIPACION_MINIMA, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
+import { calcularCalificacion, Calificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, umbralParticipacionPorSeccion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 
 const AZUL_UPT: [number, number, number] = [22, 40, 92];
 const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
@@ -607,9 +607,18 @@ function resolverCal(d: EvaluacionData): string {
   if (d.encuestados === 0) return 'No Aplica';
   if (d.nota === 0) return 'Sin Evaluar';
   const total = d.encuestados + d.noEncuestados;
-  if (total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'Baja Participación';
-  const map: Record<string, string> = { DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable', INSATISFACTORIO: 'Insatisfactorio' };
-  return map[calcularCalificacion(d.nota)];
+  if (total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total)) return 'Baja Participación';
+  // El template PDF usa labels compactos tipo legacy ("Destacado/Bueno/..."),
+  // así que mapeamos cada calificación (de ambas escalas) a su equivalente
+  // legacy. Para la escala 2026 esto implica que `EXCELENTE` y `DESTACADO`
+  // comparten etiqueta "Destacado", lo cual es consistente con la intención
+  // de preservar el formato histórico del informe.
+  const map: Record<Calificacion, string> = {
+    EXCELENTE: 'Destacado', MUY_SATISFACTORIO: 'Bueno', SATISFACTORIO: 'Aceptable',
+    INSATISFACTORIO: 'Insatisfactorio', MUY_INSATISFACTORIO: 'Insatisfactorio',
+    DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable',
+  };
+  return map[calcularCalificacion(d.nota, d.ciclo)];
 }
 
 function colorPorCalificacion(calStr: string): [number, number, number] {
@@ -735,7 +744,7 @@ export async function generarPDFReporteI(
   const validosKpiI = filtrados.filter(d => {
     if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
     const t = d.encuestados + d.noEncuestados;
-    return t === 0 || d.encuestados / t >= UMBRAL_PARTICIPACION_MINIMA;
+    return t === 0 || d.encuestados / t >= umbralParticipacionPorSeccion(t);
   });
   const nDocentesI = new Set(filtrados.map(d => d.docente)).size;
   const promedioGenI = validosKpiI.length ? avg(validosKpiI.map(d => d.nota)) : 0;
@@ -804,7 +813,7 @@ export async function generarPDFReporteII(
     .filter(d => {
       if (d.nota <= 0 || d.nota > 10.9 || d.validez !== 'Válido' || d.encuestados === 0) return false;
       const total = d.encuestados + d.noEncuestados;
-      return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+      return total === 0 || d.encuestados / total >= umbralParticipacionPorSeccion(total);
     })
     .sort((a, b) => a.carreraProfesional.localeCompare(b.carreraProfesional) || a.nota - b.nota);
 
@@ -916,7 +925,7 @@ export async function generarPDFReporteIII(
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '').filter(d => {
     if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
     const total = d.encuestados + d.noEncuestados;
-    return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+    return total === 0 || d.encuestados / total >= umbralParticipacionPorSeccion(total);
   });
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
@@ -971,7 +980,7 @@ export async function generarPDFReporteIV(
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '').filter(d => {
     if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
     const total = d.encuestados + d.noEncuestados;
-    return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+    return total === 0 || d.encuestados / total >= umbralParticipacionPorSeccion(total);
   });
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
   if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
@@ -984,11 +993,21 @@ export async function generarPDFReporteIV(
   const body = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
     const total = regs.length;
-    const p = (cal: string) => {
-      const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
+    // Para preservar el formato legacy del PDF (4 columnas: Destacado/Bueno/
+    // Aceptable/Insatisfactorio), usamos rangos de nota en vez de nombres de
+    // nivel. Así, datos de ambos reglamentos caen consistentemente en las
+    // mismas 4 columnas visuales.
+    const pRango = (min: number, max: number) => {
+      const n = regs.filter(d => d.nota >= min && d.nota <= max).length;
       return total > 0 ? `${(n / total * 100).toFixed(1)}% (${n})` : '—';
     };
-    return [c, total.toString(), p('DESTACADO'), p('BUENO'), p('ACEPTABLE'), p('INSATISFACTORIO')];
+    return [
+      c, total.toString(),
+      pRango(17.1, 20.0),  // Destacado / Excelente+DestacadoSuperior
+      pRango(15.0, 17.09), // Bueno / Muy Satisfactorio
+      pRango(11.0, 14.99), // Aceptable / Satisfactorio-mitad
+      pRango(0, 10.99),    // Insatisfactorio
+    ];
   });
 
   autoTable(doc, {

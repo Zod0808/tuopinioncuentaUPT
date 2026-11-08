@@ -11,7 +11,7 @@ import {
   interpretarInstitucionAE, generarConclusion1, generarRecomendacion1,
   esValidoParaReporte,
 } from './reportCalculations';
-import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS, Calificacion } from '../config/universityStructure';
 import { EvaluacionData } from '../types';
 
 // ── Configuración del informe (provista por el usuario) ───────────────────────
@@ -312,11 +312,11 @@ async function canvasBarToUint8(
   } catch { return null; }
 }
 
-// Categoría a partir de la nota según la escala visible en el DOCX (18-20=DESTACADO, 15-17=BUENO)
+// Categoría a partir de la nota según la escala visible en el DOCX (18-20=EXCELENTE, 15-17=MUY_SATISFACTORIO)
 function categoriaPromedio(nota: number): string {
-  if (nota >= 18) return 'DESTACADO';
-  if (nota >= 15) return 'BUENO';
-  if (nota >= 12) return 'ACEPTABLE';
+  if (nota >= 18) return 'EXCELENTE';
+  if (nota >= 15) return 'MUY_SATISFACTORIO';
+  if (nota >= 12) return 'SATISFACTORIO';
   return 'INSATISFACTORIO';
 }
 
@@ -369,8 +369,8 @@ function celdaN(value: number, decimals = 2, bold = false): TableCell {
 /** Devuelve el color de fondo para una calificación (para semaforización). */
 function colorCalif(calif: string): string | undefined {
   const map: Record<string, string> = {
-    DESTACADO: COLOR_DESTACADO, BUENO: COLOR_BUENO,
-    ACEPTABLE: COLOR_ACEPTABLE, INSATISFACTORIO: COLOR_INSATISFACTORIO,
+    EXCELENTE: COLOR_DESTACADO, MUY_SATISFACTORIO: COLOR_BUENO,
+    SATISFACTORIO: COLOR_ACEPTABLE, INSATISFACTORIO: COLOR_INSATISFACTORIO,
   };
   return map[calif];
 }
@@ -430,9 +430,9 @@ function tablaEscalaCalificacion(): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
     new TableRow({ children: [celdaH('Escala de calificación'), celdaH('Juicio de valor'), celdaH('Interpretación')] }),
     new TableRow({ children: [celda('11 puntos a menos', true, true), celda('INSATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.INSATISFACTORIO.interpretacion)] }),
-    new TableRow({ children: [celda('De 12 a 14 puntos', true, true), celda('ACEPTABLE', true, true), celda(ESCALA_CALIFICACION.ACEPTABLE.interpretacion)] }),
-    new TableRow({ children: [celda('De 15 a 17 puntos', true, true), celda('BUENO', true, true), celda(ESCALA_CALIFICACION.BUENO.interpretacion)] }),
-    new TableRow({ children: [celda('De 18 a 20 puntos', true, true), celda('DESTACADO', true, true), celda(ESCALA_CALIFICACION.DESTACADO.interpretacion)] }),
+    new TableRow({ children: [celda('De 12 a 14 puntos', true, true), celda('SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.SATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('De 15 a 17 puntos', true, true), celda('MUY_SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.MUY_SATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('De 18 a 20 puntos', true, true), celda('EXCELENTE', true, true), celda(ESCALA_CALIFICACION.EXCELENTE.interpretacion)] }),
   ]});
 }
 
@@ -562,7 +562,7 @@ function tablaAEPorCarrera(cod: string, f: DatosFacultad): Table {
 }
 
 function tablaDistribucion(c: DatosCarrera): Table {
-  const califs = ['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const;
+  const califs = ['EXCELENTE','MUY_SATISFACTORIO','SATISFACTORIO','INSATISFACTORIO'] as const;
   const rows: TableRow[] = [
     new TableRow({ children: [celdaH('Juicio de valor'), celdaH('N° secciones calificadas'), celdaH('%')] }),
   ];
@@ -586,22 +586,22 @@ function tablaDistribucion(c: DatosCarrera): Table {
 function tablaIndicador(resumen: ResumenInstitucional): Table {
   const rows: TableRow[] = [
     new TableRow({ children: [celdaHOscura('UNIVERSIDAD PRIVADA DE TACNA', 4)] }),
-    new TableRow({ children: [celdaH('FACULTAD'), celdaH('% BUENO'), celdaH('% DESTACADO'), celdaH('TOTAL')] }),
+    new TableRow({ children: [celdaH('FACULTAD'), celdaH('% MUY_SATISFACTORIO'), celdaH('% EXCELENTE'), celdaH('TOTAL')] }),
   ];
   for (const cod of ORDEN_FACULTADES) {
     const f = resumen.facultades.get(cod);
     if (!f) continue;
     rows.push(new TableRow({ children: [
       celda(FACULTADES[cod]?.nombre ?? cod, false, true),
-      celda(f.porcBueno.toFixed(2) + '%', true),
-      celda(f.porcDestacado.toFixed(2) + '%', true),
+      celda(f.porcMuySatisfactorio.toFixed(2) + '%', true),
+      celda(f.porcExcelente.toFixed(2) + '%', true),
       celda(f.indicadorPlanEstrategico.toFixed(2) + '%', true, true),
     ]}));
   }
   rows.push(new TableRow({ children: [
     celda('TOTAL', false, true, GRIS_ROW),
-    celda(resumen.porcBueno.toFixed(2) + '%', true, true, GRIS_ROW),
-    celda(resumen.porcDestacado.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(resumen.porcMuySatisfactorio.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(resumen.porcExcelente.toFixed(2) + '%', true, true, GRIS_ROW),
     celda(resumen.indicadorPlanEstrategico.toFixed(2) + '%', true, true, GRIS_ROW),
   ]}));
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows });
@@ -769,8 +769,8 @@ export async function generarInformeFinalDocx(
   // Colores participación: navy + dorado (coincide con el original)
   const coloresParticipacion = ['#2B3A67', '#C4A35A'];
   const etiqParticipacion    = ['Encuestados', 'No Encuestados'];
-  // Colores calificación: igual al original PDF (INSATISFACTORIO primero → DESTACADO último)
-  const etiqDistrib   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
+  // Colores calificación: igual al original PDF (INSATISFACTORIO primero → EXCELENTE último)
+  const etiqDistrib   = ['INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
   const coloresDistrib = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Pie institucional (3.1)
@@ -797,7 +797,7 @@ export async function generarInformeFinalDocx(
     );
   });
 
-  // Pies de calificación por carrera (3.3.2) — orden: INSATISFACTORIO→ACEPTABLE→BUENO→DESTACADO
+  // Pies de calificación por carrera (3.3.2) — orden: INSATISFACTORIO→SATISFACTORIO→MUY_SATISFACTORIO→EXCELENTE
   const todasLasCarreras: { cod: string; carrera: DatosCarrera }[] = [];
   for (const cod of ORDEN_FACULTADES) {
     const f = resumen.facultades.get(cod);
@@ -824,7 +824,7 @@ export async function generarInformeFinalDocx(
   const barIndicadorPromise = canvasBarToUint8(
     activeFacs.map(cod => FACULTADES[cod]?.nombre ?? cod),
     activeFacs.map(cod => resumen.facultades.get(cod)!.indicadorPlanEstrategico),
-    { title: '% EVALUADOS CON CALIFICACIÓN BUENO Y DESTACADO POR FACULTAD', maxValue: 100, unit: '%' },
+    { title: '% EVALUADOS CON CALIFICACIÓN MUY_SATISFACTORIO Y EXCELENTE POR FACULTAD', maxValue: 100, unit: '%' },
   );
 
   // Esperar todas en paralelo
@@ -1047,14 +1047,14 @@ export async function generarInformeFinalDocx(
     salto(),
     tablaPlanEstrategico(ciclo),
     salto(),
-    titulo('4.1 Reporte del porcentaje de estudiantes que consideran como "BUENO Y DESTACADO" (Indicador del Plan Estratégico institucional) por Facultad.', HeadingLevel.HEADING_2),
+    titulo('4.1 Reporte del porcentaje de estudiantes que consideran como "MUY_SATISFACTORIO Y EXCELENTE" (Indicador del Plan Estratégico institucional) por Facultad.', HeadingLevel.HEADING_2),
     salto(),
     tablaIndicador(resumen),
     salto(),
   );
   if (barIndicadorImg) children.push(imagenCentrada(barIndicadorImg, 500, Math.round(500 * (94 + activeFacs.length * 56) / 800)), salto());
   children.push(
-    parrafo(`El indicador del Plan Estratégico Institucional para el ciclo ${ciclo} es del ${resumen.indicadorPlanEstrategico.toFixed(2)}%, representando la proporción de secciones evaluadas con calificación BUENO o DESTACADO.`),
+    parrafo(`El indicador del Plan Estratégico Institucional para el ciclo ${ciclo} es del ${resumen.indicadorPlanEstrategico.toFixed(2)}%, representando la proporción de secciones evaluadas con calificación MUY_SATISFACTORIO o EXCELENTE.`),
     salto(),
   );
 
@@ -1150,7 +1150,7 @@ export async function generarInformeFacultadDocx(
   const carreras = [...f.carreras.values()];
   const esSimple = carreras.length === 1;
 
-  const etiqDistribFac   = ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const;
+  const etiqDistribFac   = ['INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
   const coloresDistribFac = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Generar gráficos
@@ -1226,11 +1226,11 @@ export async function generarInformeFacultadDocx(
   // Indicador
   children.push(titulo('Indicador del Plan Estratégico', HeadingLevel.HEADING_1), salto());
   const rowsInd: TableRow[] = [
-    new TableRow({ children: [celdaH('Carrera Profesional'), celdaH('% BUENO'), celdaH('% DESTACADO'), celdaH('TOTAL')] }),
+    new TableRow({ children: [celdaH('Carrera Profesional'), celdaH('% MUY_SATISFACTORIO'), celdaH('% EXCELENTE'), celdaH('TOTAL')] }),
   ];
   for (const c of carreras) {
-    const pB = c.distribucion.BUENO.porcentaje;
-    const pD = c.distribucion.DESTACADO.porcentaje;
+    const pB = c.distribucion.MUY_SATISFACTORIO.porcentaje;
+    const pD = c.distribucion.EXCELENTE.porcentaje;
     rowsInd.push(new TableRow({ children: [
       celda(c.carrera), celda(pB.toFixed(2) + '%', true), celda(pD.toFixed(2) + '%', true),
       celda((pB + pD).toFixed(2) + '%', true, true),
@@ -1238,8 +1238,8 @@ export async function generarInformeFacultadDocx(
   }
   rowsInd.push(new TableRow({ children: [
     celda('TOTAL', false, true, GRIS_ROW),
-    celda(f.porcBueno.toFixed(2) + '%', true, true, GRIS_ROW),
-    celda(f.porcDestacado.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(f.porcMuySatisfactorio.toFixed(2) + '%', true, true, GRIS_ROW),
+    celda(f.porcExcelente.toFixed(2) + '%', true, true, GRIS_ROW),
     celda(f.indicadorPlanEstrategico.toFixed(2) + '%', true, true, GRIS_ROW),
   ]}));
   children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: rowsInd }), salto());
@@ -1285,11 +1285,15 @@ export async function generarInformeFacultadDocx(
 // ═════════════════════════════════════════════════════════════════════════════
 
 /** Calificación efectiva de un registro (prioriza el campo calificacion del Excel) */
-function getCalifReg(r: EvaluacionData): 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO' {
-  if (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'].includes(r.calificacion)) {
-    return r.calificacion as 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+function getCalifReg(r: EvaluacionData): Calificacion {
+  const valid: Calificacion[] = [
+    'EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO', 'MUY_INSATISFACTORIO',
+    'DESTACADO', 'BUENO', 'ACEPTABLE',
+  ];
+  if (valid.includes(r.calificacion as Calificacion)) {
+    return r.calificacion as Calificacion;
   }
-  return calcularCalificacion(r.nota);
+  return calcularCalificacion(r.nota, r.ciclo);
 }
 
 /** Encabezado estándar para los 5 reportes de facultad */
@@ -1521,7 +1525,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
   ];
   children.push(tablaKPI([
     { label: 'Secciones Válidas', value: seccionesValidas4.toString() },
-    { label: '% BUENO + DESTACADO', value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
+    { label: '% MUY_SATISFACTORIO + EXCELENTE', value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
     { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
   ]), salto());
 
@@ -1529,20 +1533,20 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
   const rows: TableRow[] = [
     new TableRow({ children: [
       celdaH('Carrera Profesional'),
-      celdaH('% INSATISFACTORIO'), celdaH('% ACEPTABLE'),
-      celdaH('% BUENO'), celdaH('% DESTACADO'),
-      celdaH('% BUENO + DESTACADO'),
+      celdaH('% INSATISFACTORIO'), celdaH('% SATISFACTORIO'),
+      celdaH('% MUY_SATISFACTORIO'), celdaH('% EXCELENTE'),
+      celdaH('% MUY_SATISFACTORIO + EXCELENTE'),
       celdaH('Total Secc.'),
     ]}),
   ];
   for (const [carreraName, c] of f.carreras) {
-    const buenoDestacado = c.distribucion.BUENO.porcentaje + c.distribucion.DESTACADO.porcentaje;
+    const buenoDestacado = c.distribucion.MUY_SATISFACTORIO.porcentaje + c.distribucion.EXCELENTE.porcentaje;
     rows.push(new TableRow({ children: [
       celda(carreraName),
       celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true, false),
-      celda(c.distribucion.ACEPTABLE.porcentaje.toFixed(2) + '%',       true, false),
-      celda(c.distribucion.BUENO.porcentaje.toFixed(2) + '%',           true, false, COLOR_BUENO),
-      celda(c.distribucion.DESTACADO.porcentaje.toFixed(2) + '%',       true, false, COLOR_DESTACADO),
+      celda(c.distribucion.SATISFACTORIO.porcentaje.toFixed(2) + '%',       true, false),
+      celda(c.distribucion.MUY_SATISFACTORIO.porcentaje.toFixed(2) + '%',           true, false, COLOR_BUENO),
+      celda(c.distribucion.EXCELENTE.porcentaje.toFixed(2) + '%',       true, false, COLOR_DESTACADO),
       celda(buenoDestacado.toFixed(2) + '%',                            true, true,  COLOR_DESTACADO),
       celda(c.seccionesCalificadas.toString(), true, true),
     ]}));
@@ -1550,9 +1554,9 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
   // Fila de promedio — ponderada por secciones reales (igual que el KPI)
   const totalSecc     = seccionesValidas4 || 1;
   const totalInsatisf  = carrerasArr.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.cantidad, 0);
-  const totalAceptable = carrerasArr.reduce((s, c) => s + c.distribucion.ACEPTABLE.cantidad, 0);
-  const totalBueno     = carrerasArr.reduce((s, c) => s + c.distribucion.BUENO.cantidad, 0);
-  const totalDestacado = carrerasArr.reduce((s, c) => s + c.distribucion.DESTACADO.cantidad, 0);
+  const totalAceptable = carrerasArr.reduce((s, c) => s + c.distribucion.SATISFACTORIO.cantidad, 0);
+  const totalBueno     = carrerasArr.reduce((s, c) => s + c.distribucion.MUY_SATISFACTORIO.cantidad, 0);
+  const totalDestacado = carrerasArr.reduce((s, c) => s + c.distribucion.EXCELENTE.cantidad, 0);
   const promInsatisf  = totalInsatisf  / totalSecc * 100;
   const promAceptable = totalAceptable / totalSecc * 100;
   const promBueno     = totalBueno     / totalSecc * 100;

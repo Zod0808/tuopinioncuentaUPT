@@ -1,11 +1,26 @@
+import type { Calificacion } from '../config/universityStructure';
+
 export interface EvaluacionData {
   id?: string;
+  /**
+   * Ciclo académico del registro (ej. '2025-II', '2026-I', '2026-II'). Define
+   * cuál reglamento aplica para clasificar la nota: ciclos ≤ 2026-I usan la
+   * escala legacy (Res. 200-2019, 4 niveles); desde 2026-II la nueva
+   * (Res. 245-2026, 5 niveles). Opcional por compatibilidad con cargas
+   * previas; si falta, se asume `PERIODO_ACADEMICO` global.
+   */
+  ciclo?: string;
   facultad: string;
   carreraProfesional: string;
   docente: string;
   curso: string;
   seccion: string;
-  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+  /**
+   * Clasificación textual del docente, calculada a partir de la nota y el
+   * ciclo del registro. Puede ser cualquier label válido en el union
+   * `Calificacion` (legacy o 2026).
+   */
+  calificacion: Calificacion;
   ae01: number;
   ae02: number;
   ae03: number;

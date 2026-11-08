@@ -194,7 +194,7 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   };
 
   // Gráfico 4: Distribución de calificaciones
-  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+  const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
   const distribucionCalificaciones = calificaciones.map(cal => ({
     calificacion: cal,
     cantidad: datosFacultad.filter(d => d.calificacion === cal).length

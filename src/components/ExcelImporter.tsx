@@ -121,9 +121,11 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
           const ae03 = parseNumber(row[columnIndices.ae03]);
           const ae04 = parseNumber(row[columnIndices.ae04]);
           const nota = parseNumber(row[columnIndices.nota]) || (ae01 + ae02 + ae03 + ae04) / 4;
-          const calificacionRaw = String(row[columnIndices.calificacion] || '').trim().toUpperCase();
-          const calificacion = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(calificacionRaw as any)
-            ? calificacionRaw as EvaluacionData['calificacion'] : calcularCalificacion(nota);
+          // Clasificamos según el reglamento vigente en el ciclo del archivo
+          // Usamos cicloSeleccionado (UI) para que el usuario pueda importar
+          // históricos con la escala correcta. Ciclos ≤ 2026-I conservan la
+          // escala legacy de 4 niveles; desde 2026-II se aplica la de 5.
+          const calificacion = calcularCalificacion(nota, cicloSeleccionado);
           const validezRaw = String(row[columnIndices.validez] || '').trim();
           const validezUpper = validezRaw.toUpperCase();
           const validez = (validezUpper === 'VÁLIDO' || validezUpper === 'VALIDO')
@@ -131,6 +133,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
 
           importedData.push({
             id: `${Date.now()}-${i}`,
+            ciclo: cicloSeleccionado,
             facultad,
             carreraProfesional: String(row[columnIndices.carreraProfesional] || '').trim() || 'No especificada',
             docente, curso, seccion, calificacion, ae01, ae02, ae03, ae04, nota,
@@ -286,7 +289,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
           <li><strong>Docente</strong></li>
           <li><strong>Curso</strong></li>
           <li><strong>Sección</strong></li>
-          <li><strong>Calificación</strong> — DESTACADO, BUENO, ACEPTABLE, INSATISFACTORIO</li>
+          <li><strong>Calificación</strong> — EXCELENTE, MUY_SATISFACTORIO, SATISFACTORIO, INSATISFACTORIO</li>
           <li><strong>AE-01 al AE-04</strong> — aspectos evaluados (0-20)</li>
           <li><strong>Nota</strong> — promedio (se calcula automáticamente si está vacío)</li>
           <li><strong>Encuestados / No Encuestados</strong></li>

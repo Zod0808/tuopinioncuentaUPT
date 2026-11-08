@@ -5,7 +5,7 @@ import {
 } from 'chart.js';
 import { Download, FileSpreadsheet, FileText, Filter, AlertTriangle } from 'lucide-react';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, umbralParticipacionPorSeccion } from '../config/universityStructure';
 import { esValidoParaReporte } from '../services/reportCalculations';
 import {
   exportarReporteI, exportarReporteII, exportarReporteIII,
@@ -23,7 +23,7 @@ interface Props { datos: EvaluacionData[] }
 
 const COLORES_CAL = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
 const LABELS_CAL = ['Destacado', 'Bueno', 'Aceptable', 'Insatisfactorio'];
-const CAL_KEYS = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+const CAL_KEYS = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
 
 type TipoReporte = 'BD' | 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
 type Formato = 'pdf' | 'excel';
@@ -100,7 +100,7 @@ export default function ExportacionReportes({ datos }: Props) {
     const validos = base.filter(d => {
       if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
       const t = d.encuestados + d.noEncuestados;
-      return t === 0 || d.encuestados / t >= UMBRAL_PARTICIPACION_MINIMA;
+      return t === 0 || d.encuestados / t >= umbralParticipacionPorSeccion(t);
     });
     const promedioGeneral = validos.length
       ? validos.reduce((s, d) => s + d.nota, 0) / validos.length
@@ -108,7 +108,7 @@ export default function ExportacionReportes({ datos }: Props) {
     const nInsatisfactorios = validos.filter(d => d.nota <= 10.9).length;
     const nBajaParticipacion = base.filter(d => {
       const t = d.encuestados + d.noEncuestados;
-      return t > 0 && d.encuestados / t < UMBRAL_PARTICIPACION_MINIMA;
+      return t > 0 && d.encuestados / t < umbralParticipacionPorSeccion(t);
     }).length;
 
     return { porcPartic, promedioGeneral, nInsatisfactorios, nBajaParticipacion, seccionesValidas: validos.length };
@@ -142,7 +142,7 @@ export default function ExportacionReportes({ datos }: Props) {
       data: carrerasParaGrafico.map(c => {
         const regs = base.filter(d => d.carreraProfesional === c && esValidoParaReporte(d));
         if (!regs.length) return 0;
-        const n = regs.filter(d => calcularCalificacion(d.nota) === cal).length;
+        const n = regs.filter(d => calcularCalificacion(d.nota, d.ciclo) === cal).length;
         return +(n / regs.length * 100).toFixed(1);
       }),
       backgroundColor: COLORES_CAL[idx],
@@ -366,7 +366,7 @@ export default function ExportacionReportes({ datos }: Props) {
                 {metricas.nBajaParticipacion}
               </span>
               {metricas.nBajaParticipacion > 0 && (
-                <span className="metrica-hint">&lt;{UMBRAL_PARTICIPACION_MINIMA * 100}% Part.</span>
+                <span className="metrica-hint">&lt; umbral participación (70/50/40% según tamaño)</span>
               )}
             </div>
           </div>

@@ -137,7 +137,7 @@ function generarRecomendacionDocente(r: EvaluacionData): RecomendacionDocente {
     ? [`Integrar la mejora de ${aes.map(a => a.codigo).join(', ')} en un plan de desarrollo profesional semestral con revisión mensual.`]
     : [];
 
-  const calificacion = r.nota <= 11 ? 'INSATISFACTORIO' : 'ACEPTABLE';
+  const calificacion = r.nota <= 11 ? 'INSATISFACTORIO' : 'SATISFACTORIO';
   const diagnostico = calificacion === 'INSATISFACTORIO'
     ? `El docente ${r.docente} requiere intervención urgente. Con una nota de ${r.nota.toFixed(2)}/20 en la asignatura "${r.curso}" (sección ${r.seccion}), los estudiantes reportaron deficiencias significativas que comprometen la calidad del aprendizaje.`
     : `El docente ${r.docente} presenta un desempeño aceptable (${r.nota.toFixed(2)}/20) en la asignatura "${r.curso}" (sección ${r.seccion}), con oportunidades claras de mejora que deben atenderse en el siguiente ciclo académico.`;
@@ -160,14 +160,14 @@ function generarRecomendacionDocente(r: EvaluacionData): RecomendacionDocente {
 }
 
 function generarRecomendacionCarrera(c: DatosCarrera): RecomendacionCarrera {
-  const porcProblemas = c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.ACEPTABLE.porcentaje;
+  const porcProblemas = c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.SATISFACTORIO.porcentaje;
   const peorAE = criterioMasDebil(c.promedioAE01, c.promedioAE02, c.promedioAE03, c.promedioAE04);
-  const indicadorActual = c.distribucion.BUENO.porcentaje + c.distribucion.DESTACADO.porcentaje;
+  const indicadorActual = c.distribucion.MUY_SATISFACTORIO.porcentaje + c.distribucion.EXCELENTE.porcentaje;
 
   const estrategias: string[] = [
     `Implementar un Programa de Acompañamiento Docente (PAD) focalizado en ${ASPECTOS_EVALUADOS[peorAE]}, con sesiones mensuales de retroalimentación y buenas prácticas.`,
     `Organizar círculos de aprendizaje entre docentes de la carrera para compartir metodologías exitosas y co-diseñar estrategias de mejora.`,
-    `Establecer un sistema de seguimiento semestral con el coordinador de carrera para monitorear el avance de los docentes con calificación ACEPTABLE o INSATISFACTORIO.`,
+    `Establecer un sistema de seguimiento semestral con el coordinador de carrera para monitorear el avance de los docentes con calificación SATISFACTORIO o INSATISFACTORIO.`,
     `Diseñar e implementar un banco de recursos pedagógicos digitales compartidos entre los docentes de la carrera.`,
     `Incorporar observaciones de aula (con consentimiento) para identificar buenas prácticas e implementar mejoras en contexto real.`,
   ];
@@ -181,7 +181,7 @@ function generarRecomendacionCarrera(c: DatosCarrera): RecomendacionCarrera {
   ];
 
   const diagnostico = porcProblemas > 20
-    ? `La carrera de ${c.carrera} presenta el ${porcProblemas.toFixed(1)}% de secciones con calificación INSATISFACTORIO o ACEPTABLE. El criterio más crítico es ${peorAE} (${ASPECTOS_EVALUADOS[peorAE]}) con promedio de ${[c.promedioAE01, c.promedioAE02, c.promedioAE03, c.promedioAE04][[0,1,2,3].find(i => ['AE-01','AE-02','AE-03','AE-04'][i] === peorAE) ?? 0].toFixed(2)}/20. Se requiere intervención estructurada.`
+    ? `La carrera de ${c.carrera} presenta el ${porcProblemas.toFixed(1)}% de secciones con calificación INSATISFACTORIO o SATISFACTORIO. El criterio más crítico es ${peorAE} (${ASPECTOS_EVALUADOS[peorAE]}) con promedio de ${[c.promedioAE01, c.promedioAE02, c.promedioAE03, c.promedioAE04][[0,1,2,3].find(i => ['AE-01','AE-02','AE-03','AE-04'][i] === peorAE) ?? 0].toFixed(2)}/20. Se requiere intervención estructurada.`
     : `La carrera de ${c.carrera} muestra un desempeño general con ${porcProblemas.toFixed(1)}% de secciones que requieren atención. El criterio ${peorAE} es el de menor rendimiento y debe priorizarse en el plan de mejora.`;
 
   return {
@@ -190,9 +190,9 @@ function generarRecomendacionCarrera(c: DatosCarrera): RecomendacionCarrera {
     promedioGeneral: c.promedioGeneral,
     ae01: c.promedioAE01, ae02: c.promedioAE02, ae03: c.promedioAE03, ae04: c.promedioAE04,
     porcInsatisfactorio: c.distribucion.INSATISFACTORIO.porcentaje,
-    porcAceptable: c.distribucion.ACEPTABLE.porcentaje,
+    porcAceptable: c.distribucion.SATISFACTORIO.porcentaje,
     seccionesTotal: c.seccionesCalificadas,
-    seccionesCriticas: c.distribucion.INSATISFACTORIO.cantidad + c.distribucion.ACEPTABLE.cantidad,
+    seccionesCriticas: c.distribucion.INSATISFACTORIO.cantidad + c.distribucion.SATISFACTORIO.cantidad,
     criterioMasDebil: peorAE,
     diagnostico,
     estrategias,
@@ -207,18 +207,18 @@ function generarRecomendacionFacultad(cod: string, f: DatosFacultad): Recomendac
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
 
   const carrerasCriticas = [...f.carreras.values()]
-    .filter(c => (c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.ACEPTABLE.porcentaje) > 15)
+    .filter(c => (c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.SATISFACTORIO.porcentaje) > 15)
     .map(c => c.carrera);
 
   const planesAccion = [
     `Implementar un "Plan de Mejora Continua Docente" a nivel de facultad, con seguimiento mensual por parte de la Dirección de ${nombreFac}.`,
     `Crear un Comité de Calidad Académica de la facultad que revise trimestralmente los indicadores de evaluación docente.`,
-    `Organizar un ciclo de conferencias y talleres pedagógicos por semestre, con asistencia obligatoria para docentes con calificación ACEPTABLE o INSATISFACTORIO.`,
+    `Organizar un ciclo de conferencias y talleres pedagógicos por semestre, con asistencia obligatoria para docentes con calificación SATISFACTORIO o INSATISFACTORIO.`,
     `Establecer alianzas con universidades referentes para el intercambio de buenas prácticas docentes y metodologías innovadoras.`,
     carrerasCriticas.length > 0
       ? `Priorizar el acompañamiento en las carreras con mayor proporción de secciones críticas: ${carrerasCriticas.join(', ')}.`
       : `Mantener los programas de fortalecimiento docente para sostener el alto nivel de desempeño alcanzado.`,
-    `Documentar y difundir las prácticas docentes exitosas (calificación DESTACADO) como modelos de referencia para la facultad.`,
+    `Documentar y difundir las prácticas docentes exitosas (calificación EXCELENTE) como modelos de referencia para la facultad.`,
   ];
 
   const diagnostico = carrerasCriticas.length > 0
@@ -245,9 +245,9 @@ function generarRecomendacionInstitucional(resumen: ResumenInstitucional): Recom
   const todasLasCarreras = [...resumen.facultades.values()].flatMap(f => [...f.carreras.values()]);
   const totalSecciones = todasLasCarreras.reduce((s, c) => s + c.seccionesCalificadas, 0);
   const totalInsatisfactorio = todasLasCarreras.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.cantidad, 0);
-  const totalAceptable = todasLasCarreras.reduce((s, c) => s + c.distribucion.ACEPTABLE.cantidad, 0);
-  const totalBueno = todasLasCarreras.reduce((s, c) => s + c.distribucion.BUENO.cantidad, 0);
-  const totalDestacado = todasLasCarreras.reduce((s, c) => s + c.distribucion.DESTACADO.cantidad, 0);
+  const totalAceptable = todasLasCarreras.reduce((s, c) => s + c.distribucion.SATISFACTORIO.cantidad, 0);
+  const totalBueno = todasLasCarreras.reduce((s, c) => s + c.distribucion.MUY_SATISFACTORIO.cantidad, 0);
+  const totalDestacado = todasLasCarreras.reduce((s, c) => s + c.distribucion.EXCELENTE.cantidad, 0);
 
   const pInsatisfactorio = totalSecciones > 0 ? (totalInsatisfactorio / totalSecciones) * 100 : 0;
   const pAceptable = totalSecciones > 0 ? (totalAceptable / totalSecciones) * 100 : 0;
@@ -256,13 +256,13 @@ function generarRecomendacionInstitucional(resumen: ResumenInstitucional): Recom
 
   const indicesMejora: IndiceMejora[] = [
     {
-      nombre: 'Indicador de Calidad Docente (BUENO + DESTACADO)',
-      descripcion: 'Porcentaje de secciones con calificación BUENO o DESTACADO según el Plan Estratégico UPT',
+      nombre: 'Indicador de Calidad Docente (MUY_SATISFACTORIO + EXCELENTE)',
+      descripcion: 'Porcentaje de secciones con calificación MUY_SATISFACTORIO o EXCELENTE según el Plan Estratégico UPT',
       valorActual: resumen.indicadorPlanEstrategico,
       valorMeta: Math.min(resumen.indicadorPlanEstrategico + 5, 98),
       unidad: '%',
       brecha: Math.max(0, Math.min(resumen.indicadorPlanEstrategico + 5, 98) - resumen.indicadorPlanEstrategico),
-      estrategia: 'Programa de acompañamiento docente focalizado en secciones con INSATISFACTORIO y ACEPTABLE',
+      estrategia: 'Programa de acompañamiento docente focalizado en secciones con INSATISFACTORIO y SATISFACTORIO',
       acciones: [
         'Identificar y asignar mentores docentes para los profesores con calificación crítica',
         'Diseñar talleres pedagógicos semestrales con asistencia certificada',
@@ -316,16 +316,16 @@ function generarRecomendacionInstitucional(resumen: ResumenInstitucional): Recom
       ],
     },
     {
-      nombre: 'Índice de Docentes con Desempeño DESTACADO',
-      descripcion: 'Porcentaje de secciones con calificación DESTACADO (18-20 puntos)',
+      nombre: 'Índice de Docentes con Desempeño EXCELENTE',
+      descripcion: 'Porcentaje de secciones con calificación EXCELENTE (18-20 puntos)',
       valorActual: pDestacado,
       valorMeta: Math.min(pDestacado + 3, 95),
       unidad: '%',
       brecha: 3,
       estrategia: 'Reconocimiento y difusión de buenas prácticas docentes',
       acciones: [
-        'Crear programa de reconocimiento público para docentes con calificación DESTACADO',
-        'Documentar y compartir metodologías de docentes DESTACADO como recursos institucionales',
+        'Crear programa de reconocimiento público para docentes con calificación EXCELENTE',
+        'Documentar y compartir metodologías de docentes EXCELENTE como recursos institucionales',
         'Incorporar a los mejores docentes como facilitadores de talleres de formación pedagógica',
       ],
     },
@@ -340,15 +340,15 @@ function generarRecomendacionInstitucional(resumen: ResumenInstitucional): Recom
     'Diseñar un sistema de incentivos vinculado al desempeño docente (bonificaciones, becas de posgrado, reconocimientos públicos) para motivar la mejora continua.',
   ];
 
-  const resumenEjecutivo = `En el ciclo evaluado, la UPT alcanzó un promedio institucional de ${resumen.promedioGeneral.toFixed(2)}/20 con un indicador del Plan Estratégico de ${resumen.indicadorPlanEstrategico.toFixed(1)}% de docentes con calificación BUENO o DESTACADO. El criterio con mayor área de oportunidad es ${peorAE} (${ASPECTOS_EVALUADOS[peorAE]}), con un promedio de ${[resumen.promedioAE01, resumen.promedioAE02, resumen.promedioAE03, resumen.promedioAE04][['AE-01','AE-02','AE-03','AE-04'].indexOf(peorAE)].toFixed(2)}/20. Se identificaron ${totalInsatisfactorio} secciones con calificación INSATISFACTORIO y ${totalAceptable} con ACEPTABLE que requieren atención prioritaria.`;
+  const resumenEjecutivo = `En el ciclo evaluado, la UPT alcanzó un promedio institucional de ${resumen.promedioGeneral.toFixed(2)}/20 con un indicador del Plan Estratégico de ${resumen.indicadorPlanEstrategico.toFixed(1)}% de docentes en niveles altos (Muy satisfactorio o Excelente, según Anexo 05 de la Res. 245-2026). El criterio con mayor área de oportunidad es ${peorAE} (${ASPECTOS_EVALUADOS[peorAE]}), con un promedio de ${[resumen.promedioAE01, resumen.promedioAE02, resumen.promedioAE03, resumen.promedioAE04][['AE-01','AE-02','AE-03','AE-04'].indexOf(peorAE)].toFixed(2)}/20. Se identificaron ${totalInsatisfactorio} secciones con desempeño insatisfactorio y ${totalAceptable} en nivel satisfactorio que requieren atención prioritaria.`;
 
   return {
     promedioGeneral: resumen.promedioGeneral,
     indicadorActual: resumen.indicadorPlanEstrategico,
     porcInsatisfactorio: pInsatisfactorio,
     porcAceptable: pAceptable,
-    porcBueno: pBueno,
-    porcDestacado: pDestacado,
+    porcMuySatisfactorio: pBueno,
+    porcExcelente: pDestacado,
     criterioMasDebil: peorAE,
     diagnostico: resumenEjecutivo,
     indicesMejora,
@@ -408,7 +408,7 @@ export async function generarRecomendaciones(
   ciclo: string,
   usarIA = false,
 ): Promise<ResultadosIA> {
-  // ── Nivel docente: filtrar INSATISFACTORIO y ACEPTABLE ──
+  // ── Nivel docente: filtrar INSATISFACTORIO y SATISFACTORIO ──
   const registrosCriticos = datos.filter(
     r => r.nota <= 14 && r.validez === 'Válido',
   );
@@ -418,7 +418,7 @@ export async function generarRecomendaciones(
   const carrerasRec: RecomendacionCarrera[] = [];
   for (const f of resumen.facultades.values()) {
     for (const c of f.carreras.values()) {
-      const pProblemas = c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.ACEPTABLE.porcentaje;
+      const pProblemas = c.distribucion.INSATISFACTORIO.porcentaje + c.distribucion.SATISFACTORIO.porcentaje;
       if (pProblemas > 0 || c.promedioGeneral < 17) {
         carrerasRec.push(generarRecomendacionCarrera(c));
       }

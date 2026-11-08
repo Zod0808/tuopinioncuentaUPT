@@ -581,11 +581,6 @@ function crearFormularioFACSA() {
           .setTitle('Docente a evaluar — ' + curso)
           .setHelpText(cicloLabel(ciclo) + ' · ' + esc);
 
-        form.addTextItem()
-          .setTitle('Sección')
-          .setHelpText('Ej.: B, C, D. La sección A es evaluada por intranet.')
-          .setRequired(false);
-
         form.addListItem()
           .setTitle('Selecciona el docente que deseas evaluar')
           .setChoiceValues(

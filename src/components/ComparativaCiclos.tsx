@@ -7,13 +7,45 @@ import { Bar, Line } from 'react-chartjs-2';
 import { TrendingUp, Users, Award, BookOpen, AlertCircle } from 'lucide-react';
 import { EvaluacionData } from '../types';
 import { loadAllCyclesData, isSupabaseConfigured } from '../services/supabaseService';
+import {
+  esNuevoReglamento, CICLO_INICIO_REGLAMENTO_2026,
+} from '../config/universityStructure';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
 
-const CALIFICACIONES = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'] as const;
-const COLORES_CALIFICACION: Record<string, string> = {
-  DESTACADO: '#4472C4', BUENO: '#ED7D31', ACEPTABLE: '#A5A5A5', INSATISFACTORIO: '#FFC000',
-};
+/**
+ * Buckets por rango de nota vigesimal — único eje realmente comparable entre
+ * Res. 200-2019 y Res. 245-2026. Los nombres de los niveles cambian entre
+ * reglamentos (BUENO ≠ MUY_SATISFACTORIO en umbral y semántica), pero la nota
+ * en escala 0–20 significa lo mismo en ambos.
+ *
+ * Los rangos corresponden a los cortes clave que coinciden en ambas escalas:
+ *   nota ≥ 17.1  → tier superior (Destacado legacy / Excelente+ 2026)
+ *   15.0–17.09   → tier medio-alto (Bueno legacy / MuySatisfactorio 2026)
+ *   11.0–14.99   → tier medio (Aceptable legacy / Satisfactorio 2026)
+ *   nota < 11.0  → tier bajo (Insatisfactorio en ambos)
+ */
+interface RangoNota {
+  key: 'tierSuperior' | 'tierMedioAlto' | 'tierMedio' | 'tierBajo';
+  etiqueta: string;
+  min: number;
+  max: number;  // exclusivo del siguiente rango
+  color: string;
+}
+
+const RANGOS: readonly RangoNota[] = [
+  { key: 'tierSuperior',   etiqueta: 'Nota ≥ 17.1',   min: 17.1,         max: 20.01, color: '#276749' },
+  { key: 'tierMedioAlto',  etiqueta: 'Nota 15.0–17.09', min: 15.0,       max: 17.1,  color: '#2b6cb0' },
+  { key: 'tierMedio',      etiqueta: 'Nota 11.0–14.99', min: 11.0,       max: 15.0,  color: '#c05621' },
+  { key: 'tierBajo',       etiqueta: 'Nota < 11.0',   min: -Infinity,    max: 11.0,  color: '#c53030' },
+] as const;
+
+function clasificarPorRango(nota: number): RangoNota['key'] {
+  for (const r of RANGOS) {
+    if (nota >= r.min && nota < r.max) return r.key;
+  }
+  return 'tierBajo';
+}
 
 function sortCiclos(ciclos: string[]): string[] {
   return [...ciclos].sort((a, b) => {
@@ -38,6 +70,20 @@ interface ComparativaCiclosProps {
   datosCicloActual: EvaluacionData[];
 }
 
+interface MetricaCiclo {
+  ciclo: string;
+  total: number;
+  notaPromedio: number;
+  ae01: number;
+  ae02: number;
+  ae03: number;
+  ae04: number;
+  totalEncuestados: number;
+  docentesUnicos: number;
+  rangos: Record<RangoNota['key'], number>;
+  reglamentoNuevo: boolean;
+}
+
 export default function ComparativaCiclos({ cicloActual, datosCicloActual }: ComparativaCiclosProps) {
   const [allData, setAllData] = useState<Record<string, EvaluacionData[]>>({});
   const [loading, setLoading] = useState(true);
@@ -49,7 +95,6 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
       try {
         if (!isSupabaseConfigured()) { setError('Inicia sesión para ver la comparativa entre ciclos.'); return; }
         const data = await loadAllCyclesData();
-        // Incluir el ciclo actual (puede tener datos no guardados aún)
         if (datosCicloActual.length > 0) data[cicloActual] = datosCicloActual;
         setAllData(data);
       } catch {
@@ -73,8 +118,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     </div>
   );
 
-  // ── Métricas por ciclo ───────────────────────────────────────────────────
-  const metrics = ciclos.map(ciclo => {
+  const metrics: MetricaCiclo[] = ciclos.map(ciclo => {
     const d = allData[ciclo] || [];
     const notaPromedio = d.length ? d.reduce((s, x) => s + x.nota, 0) / d.length : 0;
     const ae01 = d.length ? d.reduce((s, x) => s + x.ae01, 0) / d.length : 0;
@@ -83,12 +127,19 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     const ae04 = d.length ? d.reduce((s, x) => s + x.ae04, 0) / d.length : 0;
     const totalEncuestados = d.reduce((s, x) => s + x.encuestados, 0);
     const docentesUnicos = new Set(d.map(x => x.docente)).size;
-    const califs: Record<string, number> = {};
-    CALIFICACIONES.forEach(c => { califs[c] = d.filter(x => x.calificacion === c).length; });
-    return { ciclo, total: d.length, notaPromedio, ae01, ae02, ae03, ae04, totalEncuestados, docentesUnicos, califs };
+
+    const rangos: Record<RangoNota['key'], number> = {
+      tierSuperior: 0, tierMedioAlto: 0, tierMedio: 0, tierBajo: 0,
+    };
+    for (const x of d) rangos[clasificarPorRango(x.nota)]++;
+
+    return {
+      ciclo, total: d.length, notaPromedio, ae01, ae02, ae03, ae04,
+      totalEncuestados, docentesUnicos, rangos,
+      reglamentoNuevo: esNuevoReglamento(ciclo),
+    };
   });
 
-  // ── Gráfico 1: Nota promedio por ciclo ───────────────────────────────────
   const notaPromChart = {
     labels: ciclos,
     datasets: [{
@@ -101,7 +152,6 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     }],
   };
 
-  // ── Gráfico 2: Línea de tendencia nota promedio ──────────────────────────
   const notaTendChart = {
     labels: ciclos,
     datasets: [{
@@ -116,7 +166,6 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     }],
   };
 
-  // ── Gráfico 3: Docentes evaluados por ciclo ──────────────────────────────
   const docentesChart = {
     labels: ciclos,
     datasets: [{
@@ -129,19 +178,20 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     }],
   };
 
-  // ── Gráfico 4: Distribución de calificaciones por ciclo ──────────────────
-  const califDistChart = {
+  // Distribución apilada por rango de nota — cada barra = ciclo; segmentos
+  // comparables entre reglamentos porque están definidos por nota, no por
+  // nombre de nivel.
+  const rangosDistChart = {
     labels: ciclos,
-    datasets: CALIFICACIONES.map(cal => ({
-      label: cal,
-      data: metrics.map(m => m.califs[cal] || 0),
-      backgroundColor: COLORES_CALIFICACION[cal] + 'cc',
-      borderColor: COLORES_CALIFICACION[cal],
+    datasets: RANGOS.map(r => ({
+      label: r.etiqueta,
+      data: metrics.map(m => m.rangos[r.key]),
+      backgroundColor: r.color + 'cc',
+      borderColor: r.color,
       borderWidth: 1,
     })),
   };
 
-  // ── Gráfico 5: Aspectos evaluados (AE01-04) por ciclo ───────────────────
   const aspectosChart = {
     labels: ciclos,
     datasets: [
@@ -153,9 +203,11 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
   };
 
   const stackedOpts = {
-    ...chartOptions('Distribución de Calificaciones por Ciclo'),
+    ...chartOptions('Distribución de Notas por Rango — ciclos comparables'),
     scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
   };
+
+  const hayCambioReglamento = metrics.some(m => m.reglamentoNuevo) && metrics.some(m => !m.reglamentoNuevo);
 
   return (
     <div className="comparativa-ciclos">
@@ -167,7 +219,16 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
         </div>
       </div>
 
-      {/* Tarjetas resumen rápido */}
+      {hayCambioReglamento && (
+        <div className="comp-aviso-reglamento">
+          <AlertCircle size={18} />
+          <span>
+            Los ciclos muestran datos de dos reglamentos (cambio en <strong>{CICLO_INICIO_REGLAMENTO_2026}</strong>, Res. 245-2026).
+            La distribución se agrupa por <strong>rangos de nota</strong> en lugar de nombres de nivel para que las series sean comparables.
+          </span>
+        </div>
+      )}
+
       <div className="comparativa-summary-cards">
         <div className="comp-card">
           <BookOpen size={22} color="#003087" />
@@ -198,7 +259,6 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
         </div>
       </div>
 
-      {/* Gráficos */}
       <div className="comparativa-charts-grid">
         <div className="comp-chart-card comp-chart-wide">
           <div className="chart-wrapper" style={{ height: 300 }}>
@@ -220,7 +280,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
 
         <div className="comp-chart-card comp-chart-wide">
           <div className="chart-wrapper" style={{ height: 320 }}>
-            <Bar data={califDistChart} options={stackedOpts} />
+            <Bar data={rangosDistChart} options={stackedOpts} />
           </div>
         </div>
 
@@ -231,7 +291,6 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
         </div>
       </div>
 
-      {/* Tabla resumen */}
       <div className="comparativa-table-section">
         <h3>Resumen por Ciclo</h3>
         <div className="comparativa-table-wrapper">
@@ -239,6 +298,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
             <thead>
               <tr>
                 <th>Ciclo</th>
+                <th>Reg.</th>
                 <th>Registros</th>
                 <th>Docentes</th>
                 <th>Encuestados</th>
@@ -247,16 +307,16 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
                 <th>AE-02</th>
                 <th>AE-03</th>
                 <th>AE-04</th>
-                <th>Destacado</th>
-                <th>Bueno</th>
-                <th>Aceptable</th>
-                <th>Insatisfactorio</th>
+                {RANGOS.map(r => <th key={r.key} title={r.etiqueta}>{r.etiqueta}</th>)}
               </tr>
             </thead>
             <tbody>
               {metrics.map(m => (
                 <tr key={m.ciclo} className={m.ciclo === cicloActual ? 'comp-row-actual' : ''}>
                   <td><strong>{m.ciclo}</strong>{m.ciclo === cicloActual && <span className="comp-badge-actual"> actual</span>}</td>
+                  <td className="text-center" title={m.reglamentoNuevo ? 'Res. 245-2026 (5 niveles)' : 'Res. 200-2019 (4 niveles)'}>
+                    {m.reglamentoNuevo ? '2026' : '2019'}
+                  </td>
                   <td className="text-right">{m.total}</td>
                   <td className="text-right">{m.docentesUnicos}</td>
                   <td className="text-right">{m.totalEncuestados.toLocaleString()}</td>
@@ -265,10 +325,11 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
                   <td className="text-right">{m.ae02.toFixed(2)}</td>
                   <td className="text-right">{m.ae03.toFixed(2)}</td>
                   <td className="text-right">{m.ae04.toFixed(2)}</td>
-                  <td className="text-right text-blue">{m.califs.DESTACADO || 0}</td>
-                  <td className="text-right text-green">{m.califs.BUENO || 0}</td>
-                  <td className="text-right text-orange">{m.califs.ACEPTABLE || 0}</td>
-                  <td className="text-right text-orange">{m.califs.INSATISFACTORIO || 0}</td>
+                  {RANGOS.map(r => (
+                    <td key={r.key} className="text-right" style={{ color: r.color, fontWeight: 500 }}>
+                      {m.rangos[r.key]}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

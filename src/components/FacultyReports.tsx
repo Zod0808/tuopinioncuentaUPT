@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { GraduationCap, Users, BookOpen } from 'lucide-react';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, Calificacion } from '../config/universityStructure';
 
 interface FacultyReportsProps {
   datos: EvaluacionData[];
@@ -11,7 +11,7 @@ interface DocenteResumen {
   docente: string;
   promedioNota: number;
   cantidadCursos: number;
-  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+  calificacion: Calificacion;
 }
 
 interface CarreraResumen {
@@ -63,7 +63,10 @@ export default function FacultyReports({ datos }: FacultyReportsProps) {
         promedioNota = cursos.reduce((sum, curso) => sum + curso.nota, 0) / cantidadCursos;
       }
 
-      const calificacion = calcularCalificacion(promedioNota);
+      // Clasificar con el ciclo del docente. Todos sus cursos comparten ciclo
+      // (un docente dicta en un período académico), así que basta mirar el
+      // primer registro.
+      const calificacion = calcularCalificacion(promedioNota, cursos[0]?.ciclo);
 
       return {
         docente,

@@ -34,7 +34,7 @@ export default function ReportGenerator({ datos, graficosElements }: ReportGener
 
     // Interpretación para gráfico 2: Distribución de calificaciones
     if (datos.length > 0) {
-      const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+      const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
       const distribucion = calificaciones.map(cal => 
         datos.filter(d => d.calificacion === cal).length
       );

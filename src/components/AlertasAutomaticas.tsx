@@ -39,10 +39,14 @@ export default function AlertasAutomaticas({ datos, matriculados, cicloActual }:
   // Solo se alertan secciones que: (a) son válidas para reporte y (b) superan el quórum mínimo.
   // Las que tienen muestra insuficiente se reportan como informativas, no como alerta de riesgo.
   const esInsatisfactorio = (r: typeof datos[0]) => {
-    const c = (['DESTACADO','BUENO','ACEPTABLE','INSATISFACTORIO'] as const).includes(r.calificacion as Calificacion)
+    const validValues: Calificacion[] = [
+      'EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO', 'MUY_INSATISFACTORIO',
+      'DESTACADO', 'BUENO', 'ACEPTABLE',
+    ];
+    const c = validValues.includes(r.calificacion as Calificacion)
       ? r.calificacion as Calificacion
-      : calcularCalificacion(r.nota);
-    return c === 'INSATISFACTORIO';
+      : calcularCalificacion(r.nota, r.ciclo);
+    return c === 'INSATISFACTORIO' || c === 'MUY_INSATISFACTORIO';
   };
 
   const insatisfactorios = datos.filter(r =>
@@ -90,7 +94,7 @@ export default function AlertasAutomaticas({ datos, matriculados, cicloActual }:
     if (val < 12) {
       alertas.push({
         tipo: 'danger',
-        titulo: `${label} por debajo de ACEPTABLE`,
+        titulo: `${label} por debajo de SATISFACTORIO`,
         detalle: `Promedio institucional: ${val.toFixed(2)} (mínimo aceptable: 12.00).`,
       });
     } else if (val < resumen.promedioGeneral - 1) {
@@ -107,7 +111,7 @@ export default function AlertasAutomaticas({ datos, matriculados, cicloActual }:
     alertas.push({
       tipo: 'warning',
       titulo: 'Indicador de Plan Estratégico bajo',
-      detalle: `${resumen.indicadorPlanEstrategico.toFixed(1)}% de secciones con calificación BUENO o DESTACADO (meta: 70%).`,
+      detalle: `${resumen.indicadorPlanEstrategico.toFixed(1)}% de secciones con calificación MUY_SATISFACTORIO o EXCELENTE (meta: 70%).`,
     });
   }
 

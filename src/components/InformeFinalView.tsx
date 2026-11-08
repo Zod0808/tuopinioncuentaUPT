@@ -5,7 +5,7 @@ import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
 import { generarInformeFinalDocx, generarInformesFacultadDocx, ConfigInforme } from '../services/docxReportService';
 import { exportarBaseDatos } from '../services/excelService';
-import { FACULTADES, ORDEN_FACULTADES, ESCALA_CALIFICACION, ASPECTOS_EVALUADOS } from '../config/universityStructure';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, calificacionesPorCiclo, escalaMetadata } from '../config/universityStructure';
 import type { Calificacion } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
 
@@ -17,7 +17,7 @@ interface InformeFinalViewProps {
   cicloActual: string;
 }
 
-const CALIFICACIONES: Calificacion[] = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+const CALIFICACIONES: Calificacion[] = calificacionesPorCiclo(PERIODO_ACADEMICO);
 const COLORES = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000'];
 
 function PieParticipacion({ enc, total }: { enc: number; total: number }) {
@@ -525,7 +525,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                               {CALIFICACIONES.map(cal => (
                                 <tr key={cal}>
                                   <td>
-                                    <span className="cal-badge" style={{ backgroundColor: ESCALA_CALIFICACION[cal].color, color: '#fff' }}>
+                                    <span className="cal-badge" style={{ backgroundColor: escalaMetadata(cal).color, color: '#fff' }}>
                                       {cal}
                                     </span>
                                   </td>
@@ -591,9 +591,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
               <thead>
                 <tr>
                   <th>Facultad</th>
-                  <th>% BUENO</th>
-                  <th>% DESTACADO</th>
-                  <th>Indicador (BUENO + DESTACADO)</th>
+                  <th>% MUY_SATISFACTORIO</th>
+                  <th>% EXCELENTE</th>
+                  <th>Indicador (MUY_SATISFACTORIO + EXCELENTE)</th>
                 </tr>
               </thead>
               <tbody>
@@ -603,8 +603,8 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   return (
                     <tr key={cod}>
                       <td>{FACULTADES[cod]?.nombre ?? cod}</td>
-                      <td className="text-right">{f.porcBueno.toFixed(2)}%</td>
-                      <td className="text-right">{f.porcDestacado.toFixed(2)}%</td>
+                      <td className="text-right">{f.porcMuySatisfactorio.toFixed(2)}%</td>
+                      <td className="text-right">{f.porcExcelente.toFixed(2)}%</td>
                       <td className={`text-right ${f.indicadorPlanEstrategico >= 70 ? 'text-ok' : 'text-warning'}`}>
                         <strong>{f.indicadorPlanEstrategico.toFixed(2)}%</strong>
                       </td>
@@ -615,8 +615,8 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
               <tfoot>
                 <tr className="total-row">
                   <td><strong>PROMEDIO INSTITUCIONAL</strong></td>
-                  <td className="text-right"><strong>{resumen.porcBueno.toFixed(2)}%</strong></td>
-                  <td className="text-right"><strong>{resumen.porcDestacado.toFixed(2)}%</strong></td>
+                  <td className="text-right"><strong>{resumen.porcMuySatisfactorio.toFixed(2)}%</strong></td>
+                  <td className="text-right"><strong>{resumen.porcExcelente.toFixed(2)}%</strong></td>
                   <td className={`text-right ${resumen.indicadorPlanEstrategico >= 70 ? 'text-ok' : 'text-warning'}`}>
                     <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>
                   </td>
@@ -625,7 +625,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
             </table>
             <p className="informe-interpretacion">
               El indicador del plan estratégico institucional para el ciclo {cicloActual} es del{' '}
-              <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>, que representa la proporción de secciones con calificación BUENO o DESTACADO.
+              <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>, que representa la proporción de secciones con calificación MUY_SATISFACTORIO o EXCELENTE.
               {resumen.indicadorPlanEstrategico >= 70
                 ? ' Se alcanza la meta institucional del 70%.'
                 : ' No se alcanza aún la meta institucional del 70%.'}
@@ -653,14 +653,14 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 <p>
                   El promedio general institucional del desempeño docente para el ciclo {cicloActual} es de{' '}
                   <strong>{resumen.promedioGeneral.toFixed(2)}</strong>, lo que corresponde a la categoría{' '}
-                  <strong>{resumen.promedioGeneral > 17 ? 'DESTACADO' : resumen.promedioGeneral > 14 ? 'BUENO' : resumen.promedioGeneral > 11 ? 'ACEPTABLE' : 'INSATISFACTORIO'}</strong>{' '}
+                  <strong>{resumen.promedioGeneral > 17 ? 'EXCELENTE' : resumen.promedioGeneral > 14 ? 'MUY_SATISFACTORIO' : resumen.promedioGeneral > 11 ? 'SATISFACTORIO' : 'INSATISFACTORIO'}</strong>{' '}
                   según la escala de calificación institucional.
                 </p>
               </div>
               <div className="informe-conclusion-item">
                 <span className="informe-conclusion-num">3.</span>
                 <p>
-                  El indicador del Plan Estratégico Institucional (secciones calificadas como BUENO o DESTACADO) alcanzó el{' '}
+                  El indicador del Plan Estratégico Institucional (secciones calificadas como MUY_SATISFACTORIO o EXCELENTE) alcanzó el{' '}
                   <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>
                   {resumen.indicadorPlanEstrategico >= 70
                     ? ', superando la meta institucional del 70%.'
@@ -680,7 +680,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   <span className="informe-conclusion-num">2.</span>
                   <p>
                     Se recomienda realizar un seguimiento focalizado en las carreras y secciones con calificación{' '}
-                    ACEPTABLE o INSATISFACTORIO, priorizando planes de mejora individualizados que contribuyan al{' '}
+                    SATISFACTORIO o INSATISFACTORIO, priorizando planes de mejora individualizados que contribuyan al{' '}
                     incremento del indicador estratégico institucional.
                   </p>
                 </div>

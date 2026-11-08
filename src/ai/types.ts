@@ -18,7 +18,7 @@ export interface RecomendacionDocente {
   ae02: number;
   ae03: number;
   ae04: number;
-  calificacion: 'INSATISFACTORIO' | 'ACEPTABLE';
+  calificacion: 'INSATISFACTORIO' | 'SATISFACTORIO';
   diagnostico: string;
   areasMejora: AreaMejora[];
   accionesSugeridas: string[];
@@ -75,8 +75,8 @@ export interface RecomendacionInstitucional {
   indicadorActual: number;
   porcInsatisfactorio: number;
   porcAceptable: number;
-  porcBueno: number;
-  porcDestacado: number;
+  porcMuySatisfactorio: number;
+  porcExcelente: number;
   criterioMasDebil: string;
   diagnostico: string;
   indicesMejora: IndiceMejora[];

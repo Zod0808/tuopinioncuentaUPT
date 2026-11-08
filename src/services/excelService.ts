@@ -1,12 +1,22 @@
 import * as XLSX from 'xlsx';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, ORDEN_FACULTADES, UMBRAL_PARTICIPACION_MINIMA, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, ORDEN_FACULTADES, umbralParticipacionPorSeccion, QUORUM_MINIMO_ENCUESTADOS, escalaMetadata, Calificacion } from '../config/universityStructure';
 
-const CALIFICACION_LABELS: Record<string, string> = {
-  DESTACADO: 'Destacado',
-  BUENO: 'Bueno',
-  ACEPTABLE: 'Aceptable',
-  INSATISFACTORIO: 'Insatisfactorio',
+/**
+ * Etiqueta legible por calificación. Resuelve ambas escalas (2026 y legacy):
+ * INSATISFACTORIO existe en las dos con texto distinto — para esos casos
+ * `etiquetaCalificacion(c, ciclo)` da la resolución correcta. Esta tabla
+ * usa la etiqueta 2026 por defecto para el label compartido.
+ */
+const CALIFICACION_LABELS: Record<Calificacion, string> = {
+  EXCELENTE: escalaMetadata('EXCELENTE').etiqueta,
+  MUY_SATISFACTORIO: escalaMetadata('MUY_SATISFACTORIO').etiqueta,
+  SATISFACTORIO: escalaMetadata('SATISFACTORIO').etiqueta,
+  INSATISFACTORIO: escalaMetadata('INSATISFACTORIO').etiqueta,
+  MUY_INSATISFACTORIO: escalaMetadata('MUY_INSATISFACTORIO').etiqueta,
+  DESTACADO: escalaMetadata('DESTACADO').etiqueta,
+  BUENO: escalaMetadata('BUENO').etiqueta,
+  ACEPTABLE: escalaMetadata('ACEPTABLE').etiqueta,
 };
 
 function normalizar(s: string): string {
@@ -49,15 +59,15 @@ function resolverCalificacion(d: EvaluacionData): string {
   if (d.encuestados === 0) return 'No Aplica';
   if (d.nota === 0) return 'Sin Evaluar';
   const total = d.encuestados + d.noEncuestados;
-  if (total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'Baja Participación';
-  return CALIFICACION_LABELS[calcularCalificacion(d.nota)];
+  if (total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total)) return 'Baja Participación';
+  return CALIFICACION_LABELS[calcularCalificacion(d.nota, d.ciclo)];
 }
 
 /** Devuelve true si el registro puede incluirse en promedios y distribuciones. */
 function esValidoParaCalculo(d: EvaluacionData): boolean {
   if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
   const total = d.encuestados + d.noEncuestados;
-  return total === 0 || d.encuestados / total >= UMBRAL_PARTICIPACION_MINIMA;
+  return total === 0 || d.encuestados / total >= umbralParticipacionPorSeccion(total);
 }
 
 function aplicarEstiloCalificacion(ws: XLSX.WorkSheet, rowIndex: number, colIndex: number, calificacion: string) {
@@ -79,15 +89,23 @@ function aplicarEstiloCalificacion(ws: XLSX.WorkSheet, rowIndex: number, colInde
     };
     return;
   }
+  // Mapeo por prefijo de etiqueta (Anexo 05 Res. 245-2026).
+  const first = calificacion.split(' ')[0];
   const colorMap: Record<string, string> = {
-    Destacado: '276749', Bueno: '2b6cb0', Aceptable: 'c05621', Insatisfactorio: 'c53030',
+    Excelente: '276749',
+    Muy: calificacion.startsWith('Muy insatisfactorio') ? '9b2c2c' : '2f855a',
+    Satisfactorio: '2b6cb0',
+    Insatisfactorio: 'c05621',
   };
   const bgMap: Record<string, string> = {
-    Destacado: 'C6EFCE', Bueno: 'BDD7EE', Aceptable: 'FFEB9C', Insatisfactorio: 'FFC7CE',
+    Excelente: 'C6EFCE',
+    Muy: calificacion.startsWith('Muy insatisfactorio') ? 'FED7D7' : 'BDD7EE',
+    Satisfactorio: 'BEE3F8',
+    Insatisfactorio: 'FEEBC8',
   };
   ws[cell].s = {
-    font: { bold: true, color: { rgb: colorMap[calificacion] ?? '000000' } },
-    fill: { patternType: 'solid', fgColor: { rgb: bgMap[calificacion] ?? 'FFFFFF' } },
+    font: { bold: true, color: { rgb: colorMap[first] ?? '000000' } },
+    fill: { patternType: 'solid', fgColor: { rgb: bgMap[first] ?? 'FFFFFF' } },
     alignment: { horizontal: 'center' },
   };
 }
@@ -133,16 +151,18 @@ function avg(arr: number[]): number {
 const KPI_OFFSET = 3;
 
 const BG_ROW_LIGHT: Record<string, string> = {
-  Insatisfactorio: 'FFF2F2', Destacado: 'F0FFF4', Bueno: 'EBF8FF', Aceptable: 'FFFDE7',
+  MUY_INSATISFACTORIO: 'FFF2F2', INSATISFACTORIO: 'FFF5EB',
+  SATISFACTORIO: 'EBF8FF', MUY_SATISFACTORIO: 'F0FFF4', EXCELENTE: 'E6FFFA',
 };
 
 interface KpiItem { label: string; valor: string | number; bgRGB: string }
 
 function kpiPromedioColor(nota: number): string {
   if (nota <= 0) return '718096';
-  if (nota >= 17.1) return '276749';
-  if (nota >= 15.1) return '2b6cb0';
-  if (nota >= 11.0) return 'c05621';
+  if (nota >= 18.0) return '276749';
+  if (nota >= 15.0) return '2f855a';
+  if (nota >= 12.0) return '2b6cb0';
+  if (nota >= 8.0) return 'c05621';
   return 'c53030';
 }
 
@@ -332,9 +352,15 @@ export function exportarReporteI(datos: EvaluacionData[], facultad: string, carr
     aplicarEstiloCalificacion(ws, row, 5, cal);
     if (!sinDatos) {
       const notaCell = XLSX.utils.encode_cell({ r: row, c: 4 });
-      const bgMap: Record<string, string> = {
-        DESTACADO: 'C6EFCE', BUENO: 'BDD7EE', ACEPTABLE: 'FFEB9C', INSATISFACTORIO: 'FFC7CE',
+      const bgMap: Record<Calificacion, string> = {
+        EXCELENTE: 'C6EFCE', MUY_SATISFACTORIO: 'A9D08E', SATISFACTORIO: 'BDD7EE',
+        INSATISFACTORIO: 'FFEB9C', MUY_INSATISFACTORIO: 'FFC7CE',
+        DESTACADO: 'C6EFCE', BUENO: 'BDD7EE', ACEPTABLE: 'FFEB9C',
       };
+      // Nota: la fila es un tuple sin acceso al registro, así que no podemos
+      // pasar ciclo per-record aquí. Usa PERIODO_ACADEMICO (default) — correcto
+      // para exportes de un solo ciclo. Para exportes multi-ciclo pasar ciclo
+      // explícito como columna adicional del tuple.
       if (ws[notaCell]) ws[notaCell].s = {
         fill: { patternType: 'solid', fgColor: { rgb: bgMap[calcularCalificacion(fila[4] as number)] } },
         alignment: { horizontal: 'right' },
@@ -474,20 +500,24 @@ export function exportarReporteIV(datos: EvaluacionData[], facultad: string, car
 
   const encabezados = [
     'Programa Académico', 'Secciones Válidas',
-    'N° Destacado', '% Destacado', 'N° Bueno', '% Bueno',
-    'N° Aceptable', '% Aceptable', 'N° Insatisfactorio', '% Insatisfactorio',
+    'N° Excelente', '% Excelente',
+    'N° Muy Satisfactorio', '% Muy Satisfactorio',
+    'N° Satisfactorio', '% Satisfactorio',
+    'N° Insatisfactorio', '% Insatisfactorio',
+    'N° Muy Insatisfactorio', '% Muy Insatisfactorio',
   ];
   const filas: (string | number)[][] = carreras.map(c => {
     const regs = filtrados.filter(d => d.carreraProfesional === c);
     const total = regs.length;
-    const n = (cal: string) => regs.filter(d => calcularCalificacion(d.nota) === cal).length;
+    const n = (cal: Calificacion) => regs.filter(d => calcularCalificacion(d.nota, d.ciclo) === cal).length;
     const p = (x: number) => total > 0 ? +(x / total * 100).toFixed(2) : 0;
-    const dest = n('DESTACADO'); const buen = n('BUENO');
-    const acep = n('ACEPTABLE'); const insa = n('INSATISFACTORIO');
-    return [c, total, dest, p(dest), buen, p(buen), acep, p(acep), insa, p(insa)];
+    const nEx = n('EXCELENTE'); const nMs = n('MUY_SATISFACTORIO');
+    const nSa = n('SATISFACTORIO'); const nIn = n('INSATISFACTORIO');
+    const nMi = n('MUY_INSATISFACTORIO');
+    return [c, total, nEx, p(nEx), nMs, p(nMs), nSa, p(nSa), nIn, p(nIn), nMi, p(nMi)];
   });
 
-  const ws = crearHoja(encabezados, filas, [40, 18, 14, 14, 12, 12, 14, 14, 18, 18]);
+  const ws = crearHoja(encabezados, filas, [40, 18, 14, 14, 18, 18, 14, 14, 18, 18, 22, 22]);
   const wb = XLSX.utils.book_new();
   hojaInfo(wb, facultad, carrera);
   XLSX.utils.book_append_sheet(wb, ws, '% Calificación');
@@ -629,7 +659,9 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
     aplicarEstiloCalificacion(ws, ri + 1, 11, fila[11] as string);
     const porc = fila[14] as number;
     if (typeof porc === 'number') {
-      const umbralPorc = UMBRAL_PARTICIPACION_MINIMA * 100;
+      // Umbral variable por tamaño de sección (Art. 23 Res. 245-2026)
+      const totalSecc = (fila[12] as number) + (fila[13] as number);
+      const umbralPorc = umbralParticipacionPorSeccion(totalSecc) * 100;
       const bg = porc < umbralPorc ? 'FFC7CE' : porc < 70 ? 'FFEB9C' : 'C6EFCE';
       const fg = porc < umbralPorc ? 'C53030' : porc < 70 ? 'C05621' : '276749';
       const cell = XLSX.utils.encode_cell({ r: ri + 1, c: 14 });
@@ -668,7 +700,7 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
         carrera: d.carreraProfesional,
         totalSec: 0, secValidas: 0, secBajaPartic: 0,
         notasV: [], ae01V: [], ae02V: [], ae03V: [], ae04V: [],
-        dist: { Destacado: 0, Bueno: 0, Aceptable: 0, Insatisfactorio: 0 },
+        dist: { EXCELENTE: 0, MUY_SATISFACTORIO: 0, SATISFACTORIO: 0, INSATISFACTORIO: 0, MUY_INSATISFACTORIO: 0 },
         totalEnc: 0, totalNoEnc: 0,
       });
     }
@@ -677,15 +709,15 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
     r.totalEnc += d.encuestados;
     r.totalNoEnc += d.noEncuestados;
     const total = d.encuestados + d.noEncuestados;
-    const esBP = total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA;
+    const esBP = total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total);
     if (esBP) {
       r.secBajaPartic++;
     } else if (d.encuestados > 0 && d.nota > 0 && d.validez === 'Válido') {
       r.secValidas++;
       r.notasV.push(d.nota);
       r.ae01V.push(d.ae01); r.ae02V.push(d.ae02); r.ae03V.push(d.ae03); r.ae04V.push(d.ae04);
-      const label = CALIFICACION_LABELS[calcularCalificacion(d.nota)];
-      if (label in r.dist) r.dist[label]++;
+      const cal = calcularCalificacion(d.nota, d.ciclo);
+      r.dist[cal] = (r.dist[cal] ?? 0) + 1;
     }
   }
   const avgArr = (a: number[]) => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : 0;
@@ -695,7 +727,7 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
     'ID_Facultad', 'Facultad', 'Carrera',
     'Total Secc.', 'Secc. Válidas', 'Baja Part.',
     'Prom. General', 'AE-01', 'AE-02', 'AE-03', 'AE-04',
-    '% Destacado', '% Bueno', '% Aceptable', '% Insatisfactorio',
+    '% Excelente', '% Muy satisfactorio', '% Satisfactorio', '% Insatisfactorio', '% Muy insatisfactorio',
     'Enc. Total', 'No Enc. Total', '% Participación',
   ];
   const resFilas: (string | number)[][] = [];
@@ -711,17 +743,18 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
       r.idFac, r.facNombre, r.carrera,
       r.totalSec, sv, r.secBajaPartic,
       avgArr(r.notasV), avgArr(r.ae01V), avgArr(r.ae02V), avgArr(r.ae03V), avgArr(r.ae04V),
-      pct(r.dist.Destacado, sv), pct(r.dist.Bueno, sv), pct(r.dist.Aceptable, sv), pct(r.dist.Insatisfactorio, sv),
+      pct(r.dist.EXCELENTE, sv), pct(r.dist.MUY_SATISFACTORIO, sv), pct(r.dist.SATISFACTORIO, sv),
+      pct(r.dist.INSATISFACTORIO, sv), pct(r.dist.MUY_INSATISFACTORIO, sv),
       r.totalEnc, r.totalNoEnc, pct(r.totalEnc, totEncNoEnc),
     ]);
   }
-  const wsRes = crearHoja(resHdrs, resFilas, [12, 42, 40, 10, 12, 10, 12, 8, 8, 8, 8, 12, 10, 12, 16, 10, 12, 14]);
+  const wsRes = crearHoja(resHdrs, resFilas, [12, 42, 40, 10, 12, 10, 12, 8, 8, 8, 8, 12, 14, 12, 14, 16, 10, 12, 14]);
   wsRes['!freeze'] = { xSplit: 0, ySplit: 1 } as any;
   wsRes['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(resHdrs.length - 1)}1` };
-  // Semáforo en % Participación (col 17)
+  // Semáforo en % Participación (col 18, tras el nuevo % Muy insatisfactorio)
   resFilas.forEach((fila, ri) => {
-    const porc = fila[17] as number;
-    if (typeof porc === 'number') aplicarSemaforoCell(wsRes, ri + 1, 17, porc);
+    const porc = fila[18] as number;
+    if (typeof porc === 'number') aplicarSemaforoCell(wsRes, ri + 1, 18, porc);
   });
 
   // ── Workbook: Info → Base de Datos → Insatisfactorios → Resumen por Carrera ──
@@ -736,18 +769,23 @@ export function exportarBaseDatos(datos: EvaluacionData[]): void {
     ['Código AE', 'Descripción del Aspecto Evaluado'],
     ...Object.entries(ASPECTOS_EVALUADOS).map(([k, v]) => [k, v] as [string, string]),
     [],
-    ['Regla de participación', `Umbral mínimo = ${UMBRAL_PARTICIPACION_MINIMA * 100}% (Enc / (Enc + No Enc))`],
-    ['', `Secciones por debajo del umbral → "Baja Participación" — excluidas de promedios`],
+    ['Regla de participación (Art. 23 Res. 245-2026-UPT-CU)', 'Umbral variable por tamaño de sección'],
+    ['  1–10 estudiantes', '≥ 70% de participación'],
+    ['  11–30 estudiantes', '≥ 50% de participación'],
+    ['  31+ estudiantes', '≥ 40% de participación'],
+    ['', 'Secciones por debajo del umbral → "Baja Participación" — excluidas de promedios'],
+    [`Quórum estadístico (salvaguarda)`, `Encuestados ≥ ${QUORUM_MINIMO_ENCUESTADOS} → "Sub-Quórum" si no cumple`],
     [],
-    ['Reglas de Calificación (columna "Calificación")', ''],
+    ['Reglas de Calificación (Anexo 05 - Res. 245-2026)', ''],
     ['Sin Evaluar', 'Nota = 0.00 — sin datos de evaluación (no distorsiona promedios)'],
     ['No Aplica', 'Encuestados = 0 — sección sin participación'],
     ['N/A', 'Validez ≠ Válido'],
-    ['Baja Participación', `Enc/(Enc+NoEnc) < ${UMBRAL_PARTICIPACION_MINIMA * 100}% — excluida de promedios`],
-    ['Insatisfactorio', 'Nota 0.01–10.9'],
-    ['Aceptable', 'Nota 11.0–15.0'],
-    ['Bueno', 'Nota 15.1–17.0'],
-    ['Destacado', 'Nota 17.1–20.0'],
+    ['Baja Participación', 'Bajo el umbral variable — excluida de promedios'],
+    [escalaMetadata('MUY_INSATISFACTORIO').etiqueta, 'Nota 0.00 – 7.99 (20 – 39.99% de logro)'],
+    [escalaMetadata('INSATISFACTORIO').etiqueta,     'Nota 8.00 – 11.99 (40 – 59.99% de logro)'],
+    [escalaMetadata('SATISFACTORIO').etiqueta,       'Nota 12.00 – 14.99 (60 – 74.99% de logro)'],
+    [escalaMetadata('MUY_SATISFACTORIO').etiqueta,   'Nota 15.00 – 17.99 (75 – 89.99% de logro)'],
+    [escalaMetadata('EXCELENTE').etiqueta,           'Nota 18.00 – 20.00 (90 – 100% de logro)'],
   ]);
   wsInfo['!cols'] = [{ wch: 36 }, { wch: 72 }];
   const hdrS = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: '16285C' } } };

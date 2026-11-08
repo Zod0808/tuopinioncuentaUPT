@@ -53,7 +53,7 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
     docente: '',
     curso: '',
     seccion: '',
-    calificacion: 'BUENO',
+    calificacion: 'MUY_SATISFACTORIO',
     ae01: 0,
     ae02: 0,
     ae03: 0,
@@ -102,7 +102,7 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
       docente: '',
       curso: '',
       seccion: '',
-      calificacion: 'BUENO',
+      calificacion: 'MUY_SATISFACTORIO',
       ae01: 0,
       ae02: 0,
       ae03: 0,
@@ -207,9 +207,9 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
                 onChange={handleChange}
                 required
               >
-                <option value="DESTACADO">DESTACADO</option>
-                <option value="BUENO">BUENO</option>
-                <option value="ACEPTABLE">ACEPTABLE</option>
+                <option value="EXCELENTE">EXCELENTE</option>
+                <option value="MUY_SATISFACTORIO">MUY_SATISFACTORIO</option>
+                <option value="SATISFACTORIO">SATISFACTORIO</option>
                 <option value="INSATISFACTORIO">INSATISFACTORIO</option>
               </select>
             </div>

@@ -2,7 +2,7 @@ import { EvaluacionData } from '../types';
 import { Building2, Users, BookOpen, Download } from 'lucide-react';
 import { generarPDFResumenDocente } from '../services/pdfService';
 import { esValidoParaReporte, getExclusionReason } from '../services/reportCalculations';
-import { calcularCalificacion, UMBRAL_PARTICIPACION_MINIMA } from '../config/universityStructure';
+import { calcularCalificacion, umbralParticipacionPorSeccion, Calificacion } from '../config/universityStructure';
 
 interface ResumenDocenteInstitucionalProps {
   datos: EvaluacionData[];
@@ -12,14 +12,15 @@ function resolverCalDisplay(d: EvaluacionData): string {
   if (d.encuestados === 0) return 'No Aplica';
   if (d.nota === 0) return 'Sin Evaluar';
   const total = d.encuestados + d.noEncuestados;
-  if (total > 0 && d.encuestados / total < UMBRAL_PARTICIPACION_MINIMA) return 'Baja Participación';
-  return calcularCalificacion(d.nota);
+  if (total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total)) return 'Baja Participación';
+  return calcularCalificacion(d.nota, d.ciclo);
 }
 
 function badgeClaseCal(cal: string): string {
   const map: Record<string, string> = {
-    DESTACADO: 'badge-destacado', BUENO: 'badge-bueno',
-    ACEPTABLE: 'badge-aceptable', INSATISFACTORIO: 'badge-insatisfactorio',
+    EXCELENTE: 'badge-destacado', MUY_SATISFACTORIO: 'badge-bueno',
+    SATISFACTORIO: 'badge-aceptable', INSATISFACTORIO: 'badge-insatisfactorio', MUY_INSATISFACTORIO: 'badge-insatisfactorio',
+    DESTACADO: 'badge-destacado', BUENO: 'badge-bueno', ACEPTABLE: 'badge-aceptable',
     'Baja Participación': 'badge-baja-participacion',
   };
   return map[cal] ?? 'badge-warning';
@@ -29,7 +30,7 @@ interface DocenteResumen {
   docente: string;
   promedioNota: number;
   cantidadCursos: number;
-  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+  calificacion: Calificacion;
 }
 
 export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteInstitucionalProps) {
@@ -64,7 +65,7 @@ export default function ResumenDocenteInstitucional({ datos }: ResumenDocenteIns
       promedioNota = cursos.reduce((sum, curso) => sum + curso.nota, 0) / cantidadCursos;
     }
 
-    const calificacion = calcularCalificacion(promedioNota);
+    const calificacion = calcularCalificacion(promedioNota, cursos[0]?.ciclo);
 
     return {
       docente,

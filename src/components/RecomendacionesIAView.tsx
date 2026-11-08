@@ -16,9 +16,9 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const CAL_COLOR: Record<string, string> = {
   INSATISFACTORIO: '#c53030',
-  ACEPTABLE: '#c05621',
-  BUENO: '#2b6cb0',
-  DESTACADO: '#276749',
+  SATISFACTORIO: '#c05621',
+  MUY_SATISFACTORIO: '#2b6cb0',
+  EXCELENTE: '#276749',
 };
 
 const AE_LABELS: Record<string, string> = {
@@ -170,7 +170,7 @@ function CarreraCard({ c }: { c: RecomendacionCarrera }) {
         </div>
         <div className="ia-card-header-right">
           <span className="ia-mini-stat ia-mini-red">{c.porcInsatisfactorio.toFixed(1)}% Insatisf.</span>
-          <span className="ia-mini-stat ia-mini-orange">{c.porcAceptable.toFixed(1)}% Aceptable</span>
+          <span className="ia-mini-stat ia-mini-orange">{c.porcAceptable.toFixed(1)}% Satisfact.</span>
           <ScoreBadge valor={c.promedioGeneral} />
           <span className="ia-chevron">{open ? '▲' : '▼'}</span>
         </div>
@@ -267,7 +267,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
   const [resultado, setResultado] = useState<ResultadosIA | null>(null);
   const [generando, setGenerando] = useState(false);
   const [usarIA, setUsarIA] = useState(false);
-  const [filtroCalificacion, setFiltroCalificacion] = useState<'todos' | 'INSATISFACTORIO' | 'ACEPTABLE'>('todos');
+  const [filtroCalificacion, setFiltroCalificacion] = useState<'todos' | 'INSATISFACTORIO' | 'SATISFACTORIO'>('todos');
   const [busquedaDocente, setBusquedaDocente] = useState('');
 
   const handleGenerar = async () => {
@@ -301,7 +301,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
         <div className="ia-control-info">
           <h2 className="ia-titulo">Recomendaciones de Mejora Continua</h2>
           <p className="ia-subtitulo">
-            Ciclo <strong>{cicloActual}</strong> · {datos.length} registros · {registrosCriticos} secciones con calificación ACEPTABLE o INSATISFACTORIO
+            Ciclo <strong>{cicloActual}</strong> · {datos.length} registros · {registrosCriticos} secciones con calificación SATISFACTORIO o INSATISFACTORIO
           </p>
         </div>
         <div className="ia-control-actions">
@@ -347,7 +347,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
               <span className="ia-stat-label">Secciones Insatisfactorias</span>
             </div>
             <div className="ia-stat-card ia-stat-orange">
-              <span className="ia-stat-num">{resultado.docentes.filter(d => d.calificacion === 'ACEPTABLE').length}</span>
+              <span className="ia-stat-num">{resultado.docentes.filter(d => d.calificacion === 'SATISFACTORIO').length}</span>
               <span className="ia-stat-label">Secciones Aceptables</span>
             </div>
             <div className="ia-stat-card ia-stat-blue">
@@ -443,7 +443,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
                     onChange={e => setBusquedaDocente(e.target.value)}
                   />
                   <div className="ia-filtro-buttons">
-                    {(['todos', 'INSATISFACTORIO', 'ACEPTABLE'] as const).map(f => (
+                    {(['todos', 'INSATISFACTORIO', 'SATISFACTORIO'] as const).map(f => (
                       <button
                         key={f}
                         type="button"

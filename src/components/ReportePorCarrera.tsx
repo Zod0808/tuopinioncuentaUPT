@@ -175,7 +175,7 @@ export default function ReportePorCarrera({ datos, onGraficoReady, matriculados 
   };
 
   // Gráfico 3: Distribución de calificaciones
-  const calificaciones = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
+  const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
   const distribucionCalificaciones = calificaciones.map(cal => ({
     calificacion: cal,
     cantidad: datosCarrera.filter(d => d.calificacion === cal).length

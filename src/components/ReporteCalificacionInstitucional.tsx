@@ -1,5 +1,8 @@
 import { EvaluacionData } from '../types';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, Calificacion, CalificacionStats, crearStatsVacios, calificacionesPorCiclo, escalaMetadata, PERIODO_ACADEMICO, claseCssCalificacion } from '../config/universityStructure';
+
+/** Calificaciones a renderizar, ordenadas peor → mejor (orden visual del informe). */
+const CALS_RENDER: Calificacion[] = [...calificacionesPorCiclo(PERIODO_ACADEMICO)].reverse();
 import { esValidoParaReporte } from '../services/reportCalculations';
 import { Building2, PieChart, BarChart3 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -32,15 +35,9 @@ interface DocenteResumen {
   docente: string;
   promedioNota: number;
   cantidadCursos: number;
-  calificacion: 'DESTACADO' | 'BUENO' | 'ACEPTABLE' | 'INSATISFACTORIO';
+  calificacion: Calificacion;
 }
 
-interface CalificacionStats {
-  INSATISFACTORIO: number;
-  ACEPTABLE: number;
-  BUENO: number;
-  DESTACADO: number;
-}
 
 export default function ReporteCalificacionInstitucional({ datos }: ReporteCalificacionInstitucionalProps) {
   if (datos.length === 0) {
@@ -72,7 +69,7 @@ export default function ReporteCalificacionInstitucional({ datos }: ReporteCalif
       promedioNota = cursos.reduce((sum, curso) => sum + curso.nota, 0) / cantidadCursos;
     }
 
-    const calificacion = calcularCalificacion(promedioNota);
+    const calificacion = calcularCalificacion(promedioNota, cursos[0]?.ciclo);
 
     return {
       docente,
@@ -82,82 +79,42 @@ export default function ReporteCalificacionInstitucional({ datos }: ReporteCalif
     };
   });
 
-  // Contar docentes por calificación
-  const stats: CalificacionStats = {
-    INSATISFACTORIO: 0,
-    ACEPTABLE: 0,
-    BUENO: 0,
-    DESTACADO: 0
-  };
+  // Contar docentes por calificación (bucket completo de 8 keys; las que no
+  // apliquen al reglamento del ciclo quedan en 0).
+  const stats: CalificacionStats = crearStatsVacios();
 
   docentesResumen.forEach(docente => {
     stats[docente.calificacion]++;
   });
 
   const totalDocentes = docentesResumen.length;
-  const porcentajes = {
-    INSATISFACTORIO: totalDocentes > 0 ? (stats.INSATISFACTORIO / totalDocentes * 100).toFixed(1) : '0.0',
-    ACEPTABLE: totalDocentes > 0 ? (stats.ACEPTABLE / totalDocentes * 100).toFixed(1) : '0.0',
-    BUENO: totalDocentes > 0 ? (stats.BUENO / totalDocentes * 100).toFixed(1) : '0.0',
-    DESTACADO: totalDocentes > 0 ? (stats.DESTACADO / totalDocentes * 100).toFixed(1) : '0.0'
-  };
+  const porcentaje = (c: Calificacion): string =>
+    totalDocentes > 0 ? (stats[c] / totalDocentes * 100).toFixed(1) : '0.0';
 
-  // Datos para gráfico de pastel
+  const chartLabels = CALS_RENDER.map(c => escalaMetadata(c).etiqueta);
+  const chartData = CALS_RENDER.map(c => stats[c]);
+  const chartColors = CALS_RENDER.map(c => escalaMetadata(c).color);
+
   const pieData = {
-    labels: ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'],
-    datasets: [
-      {
-        label: 'Docentes',
-        data: [
-          stats.INSATISFACTORIO,
-          stats.ACEPTABLE,
-          stats.BUENO,
-          stats.DESTACADO
-        ],
-        backgroundColor: [
-          'rgba(244, 67, 54, 0.8)',   // Rojo para INSATISFACTORIO
-          'rgba(255, 152, 0, 0.8)',   // Naranja para ACEPTABLE
-          'rgba(76, 175, 80, 0.8)',   // Verde para BUENO
-          'rgba(33, 150, 243, 0.8)'   // Azul para DESTACADO
-        ],
-        borderColor: [
-          'rgba(244, 67, 54, 1)',
-          'rgba(255, 152, 0, 1)',
-          'rgba(76, 175, 80, 1)',
-          'rgba(33, 150, 243, 1)'
-        ],
-        borderWidth: 2
-      }
-    ]
+    labels: chartLabels,
+    datasets: [{
+      label: 'Docentes',
+      data: chartData,
+      backgroundColor: chartColors.map(c => c + 'cc'),
+      borderColor: chartColors,
+      borderWidth: 2,
+    }],
   };
 
-  // Datos para gráfico de barras
   const barData = {
-    labels: ['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'],
-    datasets: [
-      {
-        label: 'Cantidad de Docentes',
-        data: [
-          stats.INSATISFACTORIO,
-          stats.ACEPTABLE,
-          stats.BUENO,
-          stats.DESTACADO
-        ],
-        backgroundColor: [
-          'rgba(244, 67, 54, 0.8)',
-          'rgba(255, 152, 0, 0.8)',
-          'rgba(76, 175, 80, 0.8)',
-          'rgba(33, 150, 243, 0.8)'
-        ],
-        borderColor: [
-          'rgba(244, 67, 54, 1)',
-          'rgba(255, 152, 0, 1)',
-          'rgba(76, 175, 80, 1)',
-          'rgba(33, 150, 243, 1)'
-        ],
-        borderWidth: 2
-      }
-    ]
+    labels: chartLabels,
+    datasets: [{
+      label: 'Cantidad de Docentes',
+      data: chartData,
+      backgroundColor: chartColors.map(c => c + 'cc'),
+      borderColor: chartColors,
+      borderWidth: 2,
+    }],
   };
 
   const pieOptions = {
@@ -226,34 +183,18 @@ export default function ReporteCalificacionInstitucional({ datos }: ReporteCalif
         </div>
 
         <div className="calificacion-stats">
-          <div className="calificacion-stat-card">
-            <div className="stat-badge stat-insatisfactorio">
-              <span className="stat-label">INSATISFACTORIO</span>
-              <span className="stat-value">{stats.INSATISFACTORIO}</span>
-              <span className="stat-percentage">{porcentajes.INSATISFACTORIO}%</span>
+          {CALS_RENDER.map(cal => (
+            <div className="calificacion-stat-card" key={cal}>
+              <div
+                className={`stat-badge stat-${claseCssCalificacion(cal)}`}
+                style={{ backgroundColor: escalaMetadata(cal).color, color: '#fff' }}
+              >
+                <span className="stat-label">{escalaMetadata(cal).etiqueta}</span>
+                <span className="stat-value">{stats[cal]}</span>
+                <span className="stat-percentage">{porcentaje(cal)}%</span>
+              </div>
             </div>
-          </div>
-          <div className="calificacion-stat-card">
-            <div className="stat-badge stat-aceptable">
-              <span className="stat-label">ACEPTABLE</span>
-              <span className="stat-value">{stats.ACEPTABLE}</span>
-              <span className="stat-percentage">{porcentajes.ACEPTABLE}%</span>
-            </div>
-          </div>
-          <div className="calificacion-stat-card">
-            <div className="stat-badge stat-bueno">
-              <span className="stat-label">BUENO</span>
-              <span className="stat-value">{stats.BUENO}</span>
-              <span className="stat-percentage">{porcentajes.BUENO}%</span>
-            </div>
-          </div>
-          <div className="calificacion-stat-card">
-            <div className="stat-badge stat-destacado">
-              <span className="stat-label">DESTACADO</span>
-              <span className="stat-value">{stats.DESTACADO}</span>
-              <span className="stat-percentage">{porcentajes.DESTACADO}%</span>
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="calificacion-charts">
