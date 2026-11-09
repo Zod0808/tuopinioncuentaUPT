@@ -83,8 +83,6 @@ export interface ResumenInstitucional {
   facultades: Map<string, DatosFacultad>;
 }
 
-/** Lista de calificaciones aplicables al ciclo global de la sesión. */
-const CALIFICACIONES: Calificacion[] = calificacionesPorCiclo(PERIODO_ACADEMICO);
 
 /** Normaliza strings para comparación robusta: sin tildes, minúsculas, espacios colapsados. */
 export function normalizeStr(s: string): string {
@@ -213,8 +211,10 @@ export function calcularResumen(
       const ae04 = avg(regsValidos.map(r => r.ae04));
       const general = avg([ae01, ae02, ae03, ae04]);
 
+      const cicloMuestra = regsValidos[0]?.ciclo ?? regs[0]?.ciclo ?? PERIODO_ACADEMICO;
+      const calsDistrib = calificacionesPorCiclo(cicloMuestra);
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
-      for (const cal of CALIFICACIONES) {
+      for (const cal of calsDistrib) {
         const cnt = regsValidos.filter(r => calcularCalificacion(r.nota, r.ciclo) === cal).length;
         distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
