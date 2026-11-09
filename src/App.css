@@ -1347,7 +1347,9 @@
   color: #bbb;
 }
 
-.reports-grid {
+/* Solo la lista de reportes guardados; sin el scope, este max-height cortaba
+   los gráficos de las vistas de reportes y les añadía un scroll interno. */
+.reports-list .reports-grid {
   display: grid;
   gap: 1rem;
   max-height: 70vh;
