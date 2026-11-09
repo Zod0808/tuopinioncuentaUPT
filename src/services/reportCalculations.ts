@@ -240,7 +240,9 @@ export function calcularResumen(
 
       facTotalMatr += totalMatr;
       facTotalEnc += totalEnc;
-      facAE01.push(ae01); facAE02.push(ae02); facAE03.push(ae03); facAE04.push(ae04);
+      if (regsValidos.length > 0) {
+        facAE01.push(ae01); facAE02.push(ae02); facAE03.push(ae03); facAE04.push(ae04);
+      }
     }
 
     const facAE01p = avg(facAE01), facAE02p = avg(facAE02), facAE03p = avg(facAE03), facAE04p = avg(facAE04);
