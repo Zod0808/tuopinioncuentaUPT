@@ -266,6 +266,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
   const [tab, setTab] = useState<Tab>('institucional');
   const [resultado, setResultado] = useState<ResultadosIA | null>(null);
   const [generando, setGenerando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [usarIA, setUsarIA] = useState(false);
   const [filtroCalificacion, setFiltroCalificacion] = useState<'todos' | 'INSATISFACTORIO' | 'SATISFACTORIO'>('todos');
   const [busquedaDocente, setBusquedaDocente] = useState('');
@@ -273,10 +274,13 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
   const handleGenerar = async () => {
     if (datos.length === 0) return;
     setGenerando(true);
+    setError(null);
     try {
       const resumen = calcularResumen(datos, matriculados);
       const res = await generarRecomendaciones(datos, resumen, cicloActual, usarIA);
       setResultado(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setGenerando(false);
     }
@@ -330,7 +334,13 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
         </div>
       </div>
 
-      {!resultado && !generando && (
+      {error && (
+        <div className="ia-error-banner">
+          <strong>Error al generar:</strong> {error}
+        </div>
+      )}
+
+      {!resultado && !generando && !error && (
         <div className="ia-placeholder">
           <div className="ia-placeholder-icon">📊</div>
           <p>Presiona <strong>"Generar recomendaciones"</strong> para analizar los datos del ciclo {cicloActual} y obtener recomendaciones personalizadas de mejora continua a nivel de docente, carrera, facultad e institucional.</p>
