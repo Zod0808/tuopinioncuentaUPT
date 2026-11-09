@@ -32,3 +32,9 @@ desktop.ini
 
 supabase_setup.sql
 .vercel
+.env*
+
+# Tool-generated directories
+.tokensave/
+graphify-out/
+temp_img/
