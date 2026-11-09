@@ -13,6 +13,7 @@ import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, normalizeStr, coreCarreraStr } from '../services/reportCalculations';
 import { Users, TrendingUp, Award, BookOpen } from 'lucide-react';
+import { calificacionesDeDatos, escalaMetadata } from '../config/universityStructure';
 
 ChartJS.register(
   CategoryScale,
@@ -175,7 +176,7 @@ export default function ReportePorCarrera({ datos, onGraficoReady, matriculados 
   };
 
   // Gráfico 3: Distribución de calificaciones
-  const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
+  const calificaciones = calificacionesDeDatos(datosCarrera);
   const distribucionCalificaciones = calificaciones.map(cal => ({
     calificacion: cal,
     cantidad: datosCarrera.filter(d => d.calificacion === cal).length
@@ -185,12 +186,7 @@ export default function ReportePorCarrera({ datos, onGraficoReady, matriculados 
     labels: distribucionCalificaciones.map(c => c.calificacion),
     datasets: [{
       data: distribucionCalificaciones.map(c => c.cantidad),
-      backgroundColor: [
-        '#4472C4',
-        '#ED7D31',
-        '#A5A5A5',
-        '#FFC000',
-      ],
+      backgroundColor: calificaciones.map(c => escalaMetadata(c).color),
       borderWidth: 2
     }]
   };
@@ -354,6 +350,7 @@ export default function ReportePorCarrera({ datos, onGraficoReady, matriculados 
               data={chart3Data} 
               options={{
                 ...chartOptions,
+                scales: {},
                 plugins: {
                   ...chartOptions.plugins,
                   title: {

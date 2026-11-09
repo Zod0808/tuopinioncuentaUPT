@@ -12,7 +12,7 @@ import {
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
 import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
-import { FACULTADES } from '../config/universityStructure';
+import { FACULTADES, calificacionesDeDatos, escalaMetadata } from '../config/universityStructure';
 import { Users, TrendingUp, Award, GraduationCap } from 'lucide-react';
 
 ChartJS.register(
@@ -217,7 +217,7 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
   };
 
   // Gráfico 4: Distribución de calificaciones
-  const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
+  const calificaciones = calificacionesDeDatos(datosFacultad);
   const distribucionCalificaciones = calificaciones.map(cal => ({
     calificacion: cal,
     cantidad: datosFacultad.filter(d => d.calificacion === cal).length
@@ -227,12 +227,7 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
     labels: distribucionCalificaciones.map(c => c.calificacion),
     datasets: [{
       data: distribucionCalificaciones.map(c => c.cantidad),
-      backgroundColor: [
-        '#4472C4',
-        '#ED7D31',
-        '#A5A5A5',
-        '#FFC000',
-      ],
+      backgroundColor: calificaciones.map(c => escalaMetadata(c).color),
       borderWidth: 2
     }]
   };
@@ -415,6 +410,7 @@ export default function ReportePorFacultad({ datos, onGraficoReady, matriculados
               data={chart4Data} 
               options={{
                 ...chartOptions,
+                scales: {},
                 plugins: {
                   ...chartOptions.plugins,
                   title: {

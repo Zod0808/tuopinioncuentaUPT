@@ -149,6 +149,17 @@ export function calificacionesPorCiclo(ciclo: string): Calificacion[] {
 }
 
 /**
+ * Escala a usar según las etiquetas presentes en los datos, para vistas que no
+ * reciben el ciclo. Si aparece alguna etiqueta exclusiva de Res. 200-2019 se usa
+ * la escala legacy; si no, la de Res. 245-2026.
+ */
+export function calificacionesDeDatos(datos: { calificacion: Calificacion }[]): Calificacion[] {
+  const esLegacy = datos.some(d =>
+    d.calificacion === 'DESTACADO' || d.calificacion === 'BUENO' || d.calificacion === 'ACEPTABLE');
+  return esLegacy ? CALIFICACIONES_LEGACY : CALIFICACIONES_2026;
+}
+
+/**
  * Metadata (color, etiqueta, interpretación) de una calificación, resolviendo
  * la tabla correcta según ciclo. Útil cuando `c` puede ser legacy o 2026.
  */

@@ -13,6 +13,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
+import { calificacionesDeDatos } from '../config/universityStructure';
 
 ChartJS.register(
   CategoryScale,
@@ -78,7 +79,7 @@ export default function Charts({ datos, onGraficoReady }: ChartsProps) {
   };
 
   // Gráfico 2: Distribución de calificaciones
-  const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
+  const calificaciones = calificacionesDeDatos(datos);
   const distribucionCalificaciones = calificaciones.map(cal => 
     datos.filter(d => d.calificacion === cal).length
   );
