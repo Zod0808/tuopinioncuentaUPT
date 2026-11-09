@@ -19,7 +19,7 @@ interface Alerta {
 export default function AlertasAutomaticas({ datos, matriculados, cicloActual }: AlertasAutomaticasProps) {
   if (datos.length === 0) return null;
 
-  const resumen = calcularResumen(datos, matriculados);
+  const resumen = calcularResumen(datos, matriculados, cicloActual);
   const alertas: Alerta[] = [];
 
   // 1. Carreras con participación < 70%

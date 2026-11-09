@@ -276,7 +276,7 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
     setGenerando(true);
     setError(null);
     try {
-      const resumen = calcularResumen(datos, matriculados);
+      const resumen = calcularResumen(datos, matriculados, cicloActual);
       const res = await generarRecomendaciones(datos, resumen, cicloActual, usarIA);
       setResultado(res);
     } catch (err) {

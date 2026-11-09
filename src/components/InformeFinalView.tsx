@@ -103,7 +103,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
     );
   }
 
-  const resumen = calcularResumen(datos, matriculados);
+  const resumen = calcularResumen(datos, matriculados, cicloActual);
 
   const handleDescargarDocx = async () => {
     setGenerando(true);

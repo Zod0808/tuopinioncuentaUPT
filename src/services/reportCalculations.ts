@@ -160,7 +160,8 @@ export function resolverCalDisplay(r: EvaluacionData): { label: string; cssClass
 
 export function calcularResumen(
   registros: EvaluacionData[],
-  matriculados: MatriculadosEntry[]
+  matriculados: MatriculadosEntry[],
+  cicloActual?: string,
 ): ResumenInstitucional {
   const matriculadosMap = new Map<string, MatriculadosEntry>();
   const facSums = new Map<string, { mat: number; enc: number }>();
@@ -211,7 +212,7 @@ export function calcularResumen(
       const ae04 = avg(regsValidos.map(r => r.ae04));
       const general = avg([ae01, ae02, ae03, ae04]);
 
-      const cicloMuestra = regsValidos[0]?.ciclo ?? regs[0]?.ciclo ?? PERIODO_ACADEMICO;
+      const cicloMuestra = cicloActual || regsValidos[0]?.ciclo || regs[0]?.ciclo || PERIODO_ACADEMICO;
       const calsDistrib = calificacionesPorCiclo(cicloMuestra);
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
       for (const cal of calsDistrib) {
