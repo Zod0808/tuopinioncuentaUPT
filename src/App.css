@@ -2489,6 +2489,10 @@
 /* ─── Tarjetas de facultad ───────────────────────────────────────────────── */
 .faculty-cards-section {
   margin-bottom: 1.75rem;
+  /* Dentro de .report-header (flex) ocupa toda la fila; sin esto el grid
+     auto-fill colapsa a una sola columna al costado. */
+  flex: 1 1 100%;
+  width: 100%;
 }
 
 .faculty-cards {

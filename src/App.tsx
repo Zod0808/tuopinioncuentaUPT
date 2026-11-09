@@ -146,6 +146,9 @@ function App() {
     if (datos.length > 0 && currentUser) {
       await saveEvaluacionData(cicloActual, datos);
     }
+    // Vaciar datos junto con el cambio de ciclo: si no, el efecto de persistencia
+    // vería (ciclo nuevo, datos viejos) y los copiaría al ciclo nuevo.
+    setDatos([]);
     setCicloActual(nuevoCiclo);
     setMatriculados([]);
     if (currentUser) {
