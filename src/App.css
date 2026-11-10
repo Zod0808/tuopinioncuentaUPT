@@ -45,8 +45,10 @@
   padding: 2rem;
 }
 
+/* Ancho adaptativo: ocupa todo el espacio disponible (el margen lo da el
+   padding de .app-main) en lugar de un tope fijo de 1400px. */
 .container {
-  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
 }
 
