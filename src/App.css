@@ -3750,6 +3750,9 @@
 }
 .ia-toggle-ia input { cursor: pointer; }
 .ia-btn-generar { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1.2rem; }
+.ia-export-bar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.ia-btn-export { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 1rem; font-size: 0.875rem; border: 1px solid #3182ce; color: #3182ce; background: #fff; border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.ia-btn-export:hover { background: #3182ce; color: #fff; }
 .ia-spinner {
   width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4);
   border-top-color: #fff; border-radius: 50%;

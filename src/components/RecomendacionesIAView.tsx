@@ -4,6 +4,7 @@ import { MatriculadosEntry, calcularResumen } from '../services/reportCalculatio
 import { generarRecomendaciones } from '../ai/recommendations';
 import { ResultadosIA, RecomendacionDocente, RecomendacionCarrera, RecomendacionFacultad } from '../ai/types';
 import { ASPECTOS_EVALUADOS } from '../config/universityStructure';
+import { generarPDFRecomendacionesIA } from '../services/pdfService';
 
 type Tab = 'institucional' | 'facultades' | 'carreras' | 'docentes';
 
@@ -350,6 +351,14 @@ export default function RecomendacionesIAView({ datos, matriculados, cicloActual
 
       {resultado && (
         <>
+          <div className="ia-export-bar">
+            <button
+              className="btn-secondary ia-btn-export"
+              onClick={() => generarPDFRecomendacionesIA(resultado, cicloActual)}
+            >
+              ⬇ Exportar PDF
+            </button>
+          </div>
           {/* ── Resumen estadístico ── */}
           <div className="ia-stats-row">
             <div className="ia-stat-card ia-stat-red">

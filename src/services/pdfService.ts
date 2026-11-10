@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { ReporteData, EvaluacionData } from '../types';
+import { ResultadosIA } from '../ai/types';
 
 export async function generarPDF(reporte: ReporteData, graficosElements: HTMLElement[]): Promise<void> {
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -1179,5 +1180,271 @@ export async function generarPDFReporteVI(
   }
   const slugVI = facultad || 'GENERAL';
   doc.save(`ReporteVI_EncuestasTotales_${slugVI}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF de Recomendaciones IA
+// ─────────────────────────────────────────────────────────────────────────────
+export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual: string): void {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const ml = 14; // margin left
+  const mr = 14; // margin right
+  const cw = W - ml - mr; // content width
+  let y = 0;
+
+  const AZUL: [number, number, number] = [22, 40, 92];
+  const ROJO: [number, number, number] = [197, 48, 48];
+  const VERDE: [number, number, number] = [39, 103, 73];
+  const AZUL_MED: [number, number, number] = [43, 108, 176];
+  const NARANJA: [number, number, number] = [192, 86, 33];
+  const GRIS: [number, number, number] = [100, 100, 100];
+
+  const calColor = (cal: ResultadosIA['docentes'][0]['calificacion'] | string): [number, number, number] => {
+    const c = cal as string;
+    if (c === 'INSATISFACTORIO' || c === 'MUY_INSATISFACTORIO') return ROJO;
+    if (c === 'EXCELENTE' || c === 'DESTACADO') return VERDE;
+    if (c === 'MUY_SATISFACTORIO' || c === 'BUENO') return AZUL_MED;
+    return NARANJA;
+  };
+
+  const checkPage = (needed = 10) => {
+    if (y + needed > H - 14) { doc.addPage(); y = 16; }
+  };
+
+  const sectionTitle = (title: string) => {
+    checkPage(14);
+    doc.setFillColor(...AZUL);
+    doc.rect(ml, y, cw, 7, 'F');
+    doc.setFontSize(10).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+    doc.text(title, ml + 3, y + 5);
+    y += 10;
+    doc.setTextColor(0, 0, 0);
+  };
+
+  const wrappedText = (text: string, fontSize: number, fontStyle: 'normal' | 'bold' = 'normal', color: [number, number, number] = [30, 30, 30]) => {
+    doc.setFontSize(fontSize).setFont('helvetica', fontStyle).setTextColor(...color);
+    const lines = doc.splitTextToSize(text, cw);
+    checkPage(lines.length * (fontSize * 0.4) + 2);
+    doc.text(lines, ml, y);
+    y += lines.length * (fontSize * 0.4) + 2;
+  };
+
+  // ── Cabecera ──────────────────────────────────────────────────────────────
+  doc.setFillColor(...AZUL);
+  doc.rect(0, 0, W, 32, 'F');
+  doc.setFontSize(16).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+  doc.text('Recomendaciones de Mejora Continua', ml, 13);
+  doc.setFontSize(11).setFont('helvetica', 'normal');
+  doc.text(`Ciclo Académico ${cicloActual}`, ml, 21);
+  doc.setFontSize(9).setTextColor(200, 220, 255);
+  const fechaGen = new Date(resultado.generadoEn).toLocaleString('es-PE');
+  doc.text(`Generado: ${fechaGen}${resultado.usandoIA ? '  ·  Enriquecido con IA' : '  ·  Basado en reglas'}`, ml, 28);
+  y = 38;
+
+  // ── Tarjetas de resumen ───────────────────────────────────────────────────
+  doc.setTextColor(0, 0, 0);
+  const cards = [
+    { label: 'Secciones Insatisfactorias', val: String(resultado.docentes.filter(d => d.calificacion === 'INSATISFACTORIO').length), color: ROJO },
+    { label: 'Secciones Satisfactorias', val: String(resultado.docentes.filter(d => d.calificacion === 'SATISFACTORIO').length), color: NARANJA },
+    { label: 'Carreras con plan de mejora', val: String(resultado.carreras.length), color: AZUL_MED },
+    { label: 'Indicador Plan Estratégico', val: `${resultado.institucional.indicadorActual.toFixed(1)}%`, color: VERDE },
+  ];
+  const cw4 = (cw - 6) / 4;
+  cards.forEach((c, i) => {
+    const cx = ml + i * (cw4 + 2);
+    doc.setFillColor(240, 243, 250);
+    doc.roundedRect(cx, y, cw4, 16, 2, 2, 'F');
+    doc.setFillColor(...c.color);
+    doc.roundedRect(cx, y, cw4, 4, 2, 2, 'F');
+    doc.rect(cx, y + 2, cw4, 2, 'F');
+    doc.setFontSize(14).setFont('helvetica', 'bold').setTextColor(...c.color);
+    doc.text(c.val, cx + cw4 / 2, y + 10, { align: 'center' });
+    doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(...GRIS);
+    const lbl = doc.splitTextToSize(c.label, cw4 - 2);
+    doc.text(lbl, cx + cw4 / 2, y + 13, { align: 'center' });
+  });
+  y += 22;
+
+  // ── Resumen ejecutivo ─────────────────────────────────────────────────────
+  sectionTitle('RESUMEN EJECUTIVO');
+  wrappedText(resultado.institucional.resumenEjecutivo, 9.5);
+  y += 3;
+
+  // ── Índices de mejora ─────────────────────────────────────────────────────
+  sectionTitle('ÍNDICES DE MEJORA CONTINUA');
+  autoTable(doc, {
+    startY: y,
+    margin: { left: ml, right: mr },
+    head: [['Indicador', 'Actual', 'Meta', 'Estrategia']],
+    body: resultado.institucional.indicesMejora.map(ind => [
+      ind.nombre,
+      `${ind.valorActual.toFixed(1)}${ind.unidad}`,
+      `${ind.valorMeta.toFixed(1)}${ind.unidad}`,
+      ind.estrategia,
+    ]),
+    headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8.5, cellPadding: 2 },
+    columnStyles: { 0: { cellWidth: 42 }, 1: { cellWidth: 16, halign: 'center' }, 2: { cellWidth: 16, halign: 'center' }, 3: { cellWidth: cw - 74 } },
+    alternateRowStyles: { fillColor: [245, 247, 252] },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+
+  // ── Planes estratégicos ───────────────────────────────────────────────────
+  sectionTitle('PLANES ESTRATÉGICOS INSTITUCIONALES');
+  resultado.institucional.planesEstrategicos.forEach((p, i) => {
+    checkPage(10);
+    doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(...AZUL);
+    doc.text(`${i + 1}.`, ml, y);
+    doc.setFont('helvetica', 'normal').setTextColor(30, 30, 30);
+    const lines = doc.splitTextToSize(p, cw - 8);
+    doc.text(lines, ml + 6, y);
+    y += lines.length * 3.8 + 2;
+  });
+  y += 2;
+
+  // ── Por facultad ──────────────────────────────────────────────────────────
+  if (resultado.facultades.length > 0) {
+    checkPage(16);
+    sectionTitle('RECOMENDACIONES POR FACULTAD');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: ml, right: mr },
+      head: [['Facultad', 'Promedio', 'Indicador', 'Criterio más débil', 'Diagnóstico']],
+      body: resultado.facultades
+        .sort((a, b) => a.indicadorActual - b.indicadorActual)
+        .map(f => [
+          f.facultad,
+          f.promedioGeneral.toFixed(2),
+          `${f.indicadorActual.toFixed(1)}%  →  ${f.indicadorMeta.toFixed(1)}%`,
+          `${f.criterioMasDebil}`,
+          f.diagnostico.slice(0, 120) + (f.diagnostico.length > 120 ? '…' : ''),
+        ]),
+      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 36 },
+        1: { cellWidth: 16, halign: 'center' },
+        2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 14, halign: 'center' },
+        4: { cellWidth: cw - 90 },
+      },
+      alternateRowStyles: { fillColor: [245, 247, 252] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1) {
+          const v = parseFloat(data.cell.text[0]);
+          data.cell.styles.textColor = v >= 15 ? VERDE : v >= 12 ? AZUL_MED : ROJO;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+  }
+
+  // ── Por carrera ───────────────────────────────────────────────────────────
+  if (resultado.carreras.length > 0) {
+    checkPage(16);
+    sectionTitle('PLAN DE MEJORA POR CARRERA');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: ml, right: mr },
+      head: [['Carrera', 'Facultad', 'Promedio', '% Insatisf.', 'Secciones críticas', 'Indicador → Meta']],
+      body: resultado.carreras
+        .sort((a, b) => (b.porcInsatisfactorio + b.porcAceptable) - (a.porcInsatisfactorio + a.porcAceptable))
+        .map(c => [
+          c.carrera,
+          c.facultad,
+          c.promedioGeneral.toFixed(2),
+          `${c.porcInsatisfactorio.toFixed(1)}%`,
+          `${c.seccionesCriticas} / ${c.seccionesTotal}`,
+          `${c.indicadorActual.toFixed(1)}% → ${c.indicadorMeta.toFixed(1)}%`,
+        ]),
+      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 46 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 16, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 20, halign: 'center' },
+        5: { cellWidth: cw - 128 },
+      },
+      alternateRowStyles: { fillColor: [245, 247, 252] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 2) {
+          const v = parseFloat(data.cell.text[0]);
+          data.cell.styles.textColor = v >= 15 ? VERDE : v >= 12 ? AZUL_MED : ROJO;
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.section === 'body' && data.column.index === 3) {
+          const v = parseFloat(data.cell.text[0]);
+          if (v > 10) { data.cell.styles.textColor = ROJO; data.cell.styles.fontStyle = 'bold'; }
+        }
+      },
+    });
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+  }
+
+  // ── Por docente (solo con recomendación) ──────────────────────────────────
+  const docentesCrit = resultado.docentes.sort((a, b) => a.nota - b.nota);
+  if (docentesCrit.length > 0) {
+    checkPage(16);
+    sectionTitle(`RECOMENDACIONES POR DOCENTE (${docentesCrit.length} secciones)`);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: ml, right: mr },
+      head: [['Docente', 'Curso', 'Secc.', 'Calificación', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Meta']],
+      body: docentesCrit.map(d => [
+        d.docente || '(Anónimo)',
+        d.curso.slice(0, 30) + (d.curso.length > 30 ? '…' : ''),
+        d.seccion,
+        d.calificacion,
+        d.nota.toFixed(2),
+        d.ae01.toFixed(2),
+        d.ae02.toFixed(2),
+        d.ae03.toFixed(2),
+        d.ae04.toFixed(2),
+        d.metaProximoCiclo.toFixed(1),
+      ]),
+      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7.5, cellPadding: 1.5 },
+      columnStyles: {
+        0: { cellWidth: 44 },
+        1: { cellWidth: 38 },
+        2: { cellWidth: 10, halign: 'center' },
+        3: { cellWidth: 24, halign: 'center' },
+        4: { cellWidth: 11, halign: 'center' },
+        5: { cellWidth: 11, halign: 'center' },
+        6: { cellWidth: 11, halign: 'center' },
+        7: { cellWidth: 11, halign: 'center' },
+        8: { cellWidth: 11, halign: 'center' },
+        9: { cellWidth: 11, halign: 'center' },
+      },
+      alternateRowStyles: { fillColor: [245, 247, 252] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 3) {
+          data.cell.styles.textColor = calColor(data.cell.text[0]);
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.section === 'body' && data.column.index === 4) {
+          const v = parseFloat(data.cell.text[0]);
+          data.cell.styles.textColor = v >= 15 ? VERDE : v >= 12 ? AZUL_MED : ROJO;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+  }
+
+  // ── Pie de página en cada hoja ────────────────────────────────────────────
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(...GRIS);
+    doc.text(`Universidad Privada de Tacna — Tu Opinión Cuenta · Ciclo ${cicloActual}`, ml, H - 7);
+    doc.text(`${p} / ${pageCount}`, W - mr, H - 7, { align: 'right' });
+  }
+
+  doc.save(`RecomendacionesIA_${cicloActual}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
