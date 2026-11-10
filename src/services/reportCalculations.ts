@@ -216,7 +216,9 @@ export function calcularResumen(
       const calsDistrib = calificacionesPorCiclo(cicloMuestra);
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
       for (const cal of calsDistrib) {
-        const cnt = regsValidos.filter(r => calcularCalificacion(r.nota, r.ciclo) === cal).length;
+        // Use cicloMuestra as fallback so records with undefined r.ciclo still
+        // get classified under the correct scale (not silently falling to legacy).
+        const cnt = regsValidos.filter(r => calcularCalificacion(r.nota, r.ciclo || cicloMuestra) === cal).length;
         distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
 
