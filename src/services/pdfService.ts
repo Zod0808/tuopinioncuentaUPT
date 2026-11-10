@@ -1186,12 +1186,18 @@ export async function generarPDFReporteVI(
 // PDF de Recomendaciones IA
 // ─────────────────────────────────────────────────────────────────────────────
 export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual: string): void {
+  // jsPDF Helvetica only supports Latin-1; replace unsupported Unicode chars
+  const san = (s: string) => s
+    .replace(/→/g, '->').replace(/←/g, '<-').replace(/↔/g, '<->')
+    .replace(/—/g, '--').replace(/–/g, '-').replace(/…/g, '...')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+
   const doc = new jsPDF('p', 'mm', 'a4');
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const ml = 14; // margin left
-  const mr = 14; // margin right
-  const cw = W - ml - mr; // content width
+  const ml = 14;
+  const mr = 14;
+  const cw = W - ml - mr; // 182 mm
   let y = 0;
 
   const AZUL: [number, number, number] = [22, 40, 92];
@@ -1269,38 +1275,45 @@ export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual
 
   // ── Resumen ejecutivo ─────────────────────────────────────────────────────
   sectionTitle('RESUMEN EJECUTIVO');
-  wrappedText(resultado.institucional.resumenEjecutivo, 9.5);
+  wrappedText(san(resultado.institucional.resumenEjecutivo), 9.5);
   y += 3;
 
   // ── Índices de mejora ─────────────────────────────────────────────────────
   sectionTitle('ÍNDICES DE MEJORA CONTINUA');
+  const fmtVal = (v: number, u: string) => u === '%' ? `${v.toFixed(1)}%` : `${v.toFixed(1)} ${u.slice(0, 3)}.`;
   autoTable(doc, {
     startY: y,
     margin: { left: ml, right: mr },
     head: [['Indicador', 'Actual', 'Meta', 'Estrategia']],
     body: resultado.institucional.indicesMejora.map(ind => [
-      ind.nombre,
-      `${ind.valorActual.toFixed(1)}${ind.unidad}`,
-      `${ind.valorMeta.toFixed(1)}${ind.unidad}`,
-      ind.estrategia,
+      san(ind.nombre),
+      fmtVal(ind.valorActual, ind.unidad),
+      fmtVal(ind.valorMeta, ind.unidad),
+      san(ind.estrategia),
     ]),
     headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8.5, cellPadding: 2 },
-    columnStyles: { 0: { cellWidth: 42 }, 1: { cellWidth: 16, halign: 'center' }, 2: { cellWidth: 16, halign: 'center' }, 3: { cellWidth: cw - 74 } },
+    bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
+    columnStyles: {
+      0: { cellWidth: 50 },
+      1: { cellWidth: 18, halign: 'center' },
+      2: { cellWidth: 18, halign: 'center' },
+      3: { cellWidth: cw - 86 },
+    },
     alternateRowStyles: { fillColor: [245, 247, 252] },
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
 
   // ── Planes estratégicos ───────────────────────────────────────────────────
   sectionTitle('PLANES ESTRATÉGICOS INSTITUCIONALES');
-  resultado.institucional.planesEstrategicos.forEach((p, i) => {
-    checkPage(10);
+  resultado.institucional.planesEstrategicos.forEach((plan, i) => {
+    const texto = san(plan);
+    const lines = doc.splitTextToSize(texto, cw - 8);
+    checkPage(lines.length * 4 + 3);
     doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(...AZUL);
     doc.text(`${i + 1}.`, ml, y);
     doc.setFont('helvetica', 'normal').setTextColor(30, 30, 30);
-    const lines = doc.splitTextToSize(p, cw - 8);
     doc.text(lines, ml + 6, y);
-    y += lines.length * 3.8 + 2;
+    y += lines.length * 4 + 2;
   });
   y += 2;
 
@@ -1308,27 +1321,29 @@ export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual
   if (resultado.facultades.length > 0) {
     checkPage(16);
     sectionTitle('RECOMENDACIONES POR FACULTAD');
+    // col widths: 46 + 17 + 30 + 14 + rest = 182
+    const diagW = cw - 46 - 17 - 30 - 14; // ~75 mm
     autoTable(doc, {
       startY: y,
       margin: { left: ml, right: mr },
-      head: [['Facultad', 'Promedio', 'Indicador', 'Criterio más débil', 'Diagnóstico']],
+      head: [['Facultad', 'Prom.', 'Actual -> Meta', 'Criterio\ndébil', 'Diagnóstico']],
       body: resultado.facultades
         .sort((a, b) => a.indicadorActual - b.indicadorActual)
         .map(f => [
-          f.facultad,
+          san(f.facultad),
           f.promedioGeneral.toFixed(2),
-          `${f.indicadorActual.toFixed(1)}%  →  ${f.indicadorMeta.toFixed(1)}%`,
-          `${f.criterioMasDebil}`,
-          f.diagnostico.slice(0, 120) + (f.diagnostico.length > 120 ? '…' : ''),
+          `${f.indicadorActual.toFixed(1)}% -> ${f.indicadorMeta.toFixed(1)}%`,
+          f.criterioMasDebil,
+          san(f.diagnostico.slice(0, 130) + (f.diagnostico.length > 130 ? '...' : '')),
         ]),
-      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, cellPadding: 2.5 },
       columnStyles: {
-        0: { cellWidth: 36 },
-        1: { cellWidth: 16, halign: 'center' },
-        2: { cellWidth: 24, halign: 'center' },
+        0: { cellWidth: 46 },
+        1: { cellWidth: 17, halign: 'center' },
+        2: { cellWidth: 30, halign: 'center' },
         3: { cellWidth: 14, halign: 'center' },
-        4: { cellWidth: cw - 90 },
+        4: { cellWidth: diagW },
       },
       alternateRowStyles: { fillColor: [245, 247, 252] },
       didParseCell: (data) => {
@@ -1346,29 +1361,30 @@ export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual
   if (resultado.carreras.length > 0) {
     checkPage(16);
     sectionTitle('PLAN DE MEJORA POR CARRERA');
+    // 50 + 32 + 16 + 16 + 20 + rest = 182 → rest = 48
     autoTable(doc, {
       startY: y,
       margin: { left: ml, right: mr },
-      head: [['Carrera', 'Facultad', 'Promedio', '% Insatisf.', 'Secciones críticas', 'Indicador → Meta']],
+      head: [['Carrera', 'Facultad', 'Prom.', '% Insatisf.', 'Secc. criticas', 'Actual -> Meta']],
       body: resultado.carreras
         .sort((a, b) => (b.porcInsatisfactorio + b.porcAceptable) - (a.porcInsatisfactorio + a.porcAceptable))
         .map(c => [
-          c.carrera,
-          c.facultad,
+          san(c.carrera),
+          san(c.facultad),
           c.promedioGeneral.toFixed(2),
           `${c.porcInsatisfactorio.toFixed(1)}%`,
           `${c.seccionesCriticas} / ${c.seccionesTotal}`,
-          `${c.indicadorActual.toFixed(1)}% → ${c.indicadorMeta.toFixed(1)}%`,
+          `${c.indicadorActual.toFixed(1)}% -> ${c.indicadorMeta.toFixed(1)}%`,
         ]),
-      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, cellPadding: 2.5 },
       columnStyles: {
-        0: { cellWidth: 46 },
-        1: { cellWidth: 28 },
+        0: { cellWidth: 50 },
+        1: { cellWidth: 32 },
         2: { cellWidth: 16, halign: 'center' },
         3: { cellWidth: 18, halign: 'center' },
         4: { cellWidth: 20, halign: 'center' },
-        5: { cellWidth: cw - 128 },
+        5: { cellWidth: cw - 136 },
       },
       alternateRowStyles: { fillColor: [245, 247, 252] },
       didParseCell: (data) => {
@@ -1396,8 +1412,8 @@ export function generarPDFRecomendacionesIA(resultado: ResultadosIA, cicloActual
       margin: { left: ml, right: mr },
       head: [['Docente', 'Curso', 'Secc.', 'Calificación', 'Nota', 'AE-01', 'AE-02', 'AE-03', 'AE-04', 'Meta']],
       body: docentesCrit.map(d => [
-        d.docente || '(Anónimo)',
-        d.curso.slice(0, 30) + (d.curso.length > 30 ? '…' : ''),
+        san(d.docente || '(Anonimo)'),
+        san(d.curso.slice(0, 30) + (d.curso.length > 30 ? '...' : '')),
         d.seccion,
         d.calificacion,
         d.nota.toFixed(2),
