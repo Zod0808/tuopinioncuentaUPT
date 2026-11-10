@@ -46,6 +46,10 @@ function App() {
   const cicloRef = useRef<string>(CICLO_DEFAULT);
   useEffect(() => { cicloRef.current = cicloActual; }, [cicloActual]);
 
+  // true mientras `datos` venga del reporte público (anonimizado): esos datos
+  // nunca deben persistirse en la cuenta ni en localStorage.
+  const datosPublicosRef = useRef(false);
+
   async function loadPublicDataForAnon(ciclo: string) {
     if (!isSupabaseConfigured()) return;
     setLoadingData(true);
@@ -54,6 +58,7 @@ function App() {
     try {
       const [ciclos, report] = await Promise.all([getPublicCiclos(), loadPublicReport(ciclo)]);
       setCiclosPublicos(ciclos);
+      datosPublicosRef.current = true;
       if (report) {
         setDatos(report.datos.map(anonimizar));
         setMatriculados(report.matriculados);
@@ -122,11 +127,13 @@ function App() {
         setMatriculados(matr);
 
         if (datosCiclo !== null) {
+          datosPublicosRef.current = false;
           setDatos(datosCiclo);
           localStorage.setItem(LS_KEY(ciclo), JSON.stringify(datosCiclo));
           return;
         }
       }
+      datosPublicosRef.current = false;
       const local = localStorage.getItem(LS_KEY(ciclo));
       if (local) {
         const parsed = JSON.parse(local);
@@ -163,6 +170,10 @@ function App() {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Al iniciar sesión, currentUser cambia antes de que lleguen los datos del
+    // usuario: sin este corte se guardaría el reporte público sin docentes.
+    if (datosPublicosRef.current) return;
+
     // localStorage siempre como backup
     try {
       if (datos.length > 0) {
@@ -175,7 +186,7 @@ function App() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (savingRef.current) return;
+      if (savingRef.current || datosPublicosRef.current) return;
       savingRef.current = true;
 
       const save = async () => {
