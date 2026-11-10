@@ -429,10 +429,11 @@ function tablaCriteriosEvaluacion(): Table {
 function tablaEscalaCalificacion(): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
     new TableRow({ children: [celdaH('Escala de calificación'), celdaH('Juicio de valor'), celdaH('Interpretación')] }),
-    new TableRow({ children: [celda('11 puntos a menos', true, true), celda('INSATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.INSATISFACTORIO.interpretacion)] }),
-    new TableRow({ children: [celda('De 12 a 14 puntos', true, true), celda('SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.SATISFACTORIO.interpretacion)] }),
-    new TableRow({ children: [celda('De 15 a 17 puntos', true, true), celda('MUY_SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.MUY_SATISFACTORIO.interpretacion)] }),
-    new TableRow({ children: [celda('De 18 a 20 puntos', true, true), celda('EXCELENTE', true, true), celda(ESCALA_CALIFICACION.EXCELENTE.interpretacion)] }),
+    new TableRow({ children: [celda('0.00 – 7.99 puntos', true, true), celda('MUY_INSATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.MUY_INSATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('8.00 – 11.99 puntos', true, true), celda('INSATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.INSATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('12.00 – 14.99 puntos', true, true), celda('SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.SATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('15.00 – 17.99 puntos', true, true), celda('MUY_SATISFACTORIO', true, true), celda(ESCALA_CALIFICACION.MUY_SATISFACTORIO.interpretacion)] }),
+    new TableRow({ children: [celda('18.00 – 20.00 puntos', true, true), celda('EXCELENTE', true, true), celda(ESCALA_CALIFICACION.EXCELENTE.interpretacion)] }),
   ]});
 }
 
@@ -501,10 +502,10 @@ function tablaAEInstitucional(resumen: ResumenInstitucional): Table {
   const rows: TableRow[] = [
     new TableRow({ children: [
       celdaH('Facultad'),
-      celdaH('AE-01\nCalidad presentación y contenido silábico'),
-      celdaH('AE-02\nEjecución del proceso enseñanza aprendizaje'),
-      celdaH('AE-03\nAplicación de la evaluación'),
-      celdaH('AE-04\nFormación actitudinal y relaciones interpersonales'),
+      celdaH(`AE-01\n${ASPECTOS_EVALUADOS['AE-01']}`),
+      celdaH(`AE-02\n${ASPECTOS_EVALUADOS['AE-02']}`),
+      celdaH(`AE-03\n${ASPECTOS_EVALUADOS['AE-03']}`),
+      celdaH(`AE-04\n${ASPECTOS_EVALUADOS['AE-04']}`),
       celdaH('PROMEDIO POR FACULTAD'),
     ]}),
   ];
@@ -562,7 +563,7 @@ function tablaAEPorCarrera(cod: string, f: DatosFacultad): Table {
 }
 
 function tablaDistribucion(c: DatosCarrera): Table {
-  const califs = ['EXCELENTE','MUY_SATISFACTORIO','SATISFACTORIO','INSATISFACTORIO'] as const;
+  const califs = ['EXCELENTE','MUY_SATISFACTORIO','SATISFACTORIO','INSATISFACTORIO','MUY_INSATISFACTORIO'] as const;
   const rows: TableRow[] = [
     new TableRow({ children: [celdaH('Juicio de valor'), celdaH('N° secciones calificadas'), celdaH('%')] }),
   ];
@@ -655,11 +656,11 @@ function tablaPlanEstrategico(ciclo: string): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
-      fila('Indicador', 'Porcentaje de estudiantes que considera como bueno y muy bueno el proceso de enseñanza aprendizaje.'),
+      fila('Indicador', 'Porcentaje de secciones evaluadas con calificación MUY_SATISFACTORIO o EXCELENTE (nota ≥ 15.00), conforme al Anexo 05 de la Res. N°245-2026-UPT-CU.'),
       fila('Periodicidad de la medición', `Semestral\n(${ciclo})`),
       fila('Fórmula', '% promedio de las facultades.'),
       fila('Frecuencia de reporte', 'Único'),
-      fila('Resultado a obtener', 'Estudiantes encuestados que consideran como bueno o muy bueno el proceso de enseñanza aprendizaje'),
+      fila('Resultado a obtener', 'Secciones con calificación MUY_SATISFACTORIO o EXCELENTE según escala vigesimal de la Res. N°245-2026-UPT-CU (Anexo 05).'),
     ],
   });
 }
@@ -686,6 +687,7 @@ function seccion1(ciclo: string, config: ConfigInforme): (Paragraph | Table)[] {
 
     titulo('1.1. Antecedentes Normativos', HeadingLevel.HEADING_2), salto(),
     viñeta('Con Resolución N°200-2019-UPT-CU se aprueba el Reglamento de evaluación de desempeño docente de la Universidad Privada de Tacna.'),
+    viñeta('Con Resolución N°245-2026-UPT-CU se aprueba la actualización del Reglamento de evaluación de desempeño docente de la Universidad Privada de Tacna, estableciendo la nueva escala de calificación de cinco niveles vigesimales (Anexo 05) y los umbrales variables de participación (Art. 23), vigente a partir del ciclo 2026-II.'),
     viñeta(`Con Resolución N°190-2025-UPT-CU se aprueba la Directiva N°006-2025-UPT-VRAC Distribución de carga horaria semestre académico ${ciclo}.`),
     viñeta('Con Resolución Rectoral N°562-2025-UPT-R se aprueba el Plan de trabajo de la oficina de gestión de procesos académicos y docencia para el año 2025.'),
     salto(),
@@ -770,8 +772,8 @@ export async function generarInformeFinalDocx(
   const coloresParticipacion = ['#2B3A67', '#C4A35A'];
   const etiqParticipacion    = ['Encuestados', 'No Encuestados'];
   // Colores calificación: igual al original PDF (INSATISFACTORIO primero → EXCELENTE último)
-  const etiqDistrib   = ['INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
-  const coloresDistrib = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
+  const etiqDistrib   = ['MUY_INSATISFACTORIO', 'INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
+  const coloresDistrib = ['#C53030', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Pie institucional (3.1)
   const pieInstitucionalPromise = canvasPieToUint8(
@@ -1150,8 +1152,8 @@ export async function generarInformeFacultadDocx(
   const carreras = [...f.carreras.values()];
   const esSimple = carreras.length === 1;
 
-  const etiqDistribFac   = ['INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
-  const coloresDistribFac = ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
+  const etiqDistribFac   = ['MUY_INSATISFACTORIO', 'INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const;
+  const coloresDistribFac = ['#C53030', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Generar gráficos
   const pieFac = await canvasPieToUint8(
