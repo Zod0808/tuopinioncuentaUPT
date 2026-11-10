@@ -65,6 +65,22 @@ const chartOptions = (titulo: string) => ({
   scales: { y: { beginAtZero: true } },
 });
 
+/**
+ * Eje Y ajustado al rango real de las notas (con margen) en lugar de 0–20 fijo:
+ * entre ciclos las diferencias suelen ser de décimas y en 0–20 se ven planas.
+ */
+function ejeNotaAjustado(valores: number[]) {
+  const v = valores.filter(n => n > 0);
+  const lo = v.length ? Math.min(...v) : 0;
+  const hi = v.length ? Math.max(...v) : 20;
+  const margen = Math.max(0.2, (hi - lo) * 0.15);
+  return {
+    min: Math.max(0, Math.floor((lo - margen) * 10) / 10),
+    max: Math.min(20, Math.ceil((hi + margen) * 10) / 10),
+    ticks: { callback: (value: string | number) => Number(value).toFixed(2) },
+  };
+}
+
 interface ComparativaCiclosProps {
   cicloActual: string;
   datosCicloActual: EvaluacionData[];
@@ -207,6 +223,9 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
     scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
   };
 
+  const ejeNotas = ejeNotaAjustado(metrics.map(m => m.notaPromedio));
+  const ejeAspectos = ejeNotaAjustado(metrics.flatMap(m => [m.ae01, m.ae02, m.ae03, m.ae04]));
+
   const hayCambioReglamento = metrics.some(m => m.reglamentoNuevo) && metrics.some(m => !m.reglamentoNuevo);
 
   return (
@@ -262,13 +281,13 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
       <div className="comparativa-charts-grid">
         <div className="comp-chart-card comp-chart-wide">
           <div className="chart-wrapper" style={{ height: 300 }}>
-            <Line data={notaTendChart} options={{ ...chartOptions('Tendencia de Nota Promedio por Ciclo'), scales: { y: { min: 0, max: 20 } } }} />
+            <Line data={notaTendChart} options={{ ...chartOptions('Tendencia de Nota Promedio por Ciclo'), scales: { y: ejeNotas } }} />
           </div>
         </div>
 
         <div className="comp-chart-card">
           <div className="chart-wrapper" style={{ height: 300 }}>
-            <Bar data={notaPromChart} options={{ ...chartOptions('Nota Promedio por Ciclo'), scales: { y: { min: 0, max: 20 } } }} />
+            <Bar data={notaPromChart} options={{ ...chartOptions('Nota Promedio por Ciclo'), scales: { y: ejeNotas } }} />
           </div>
         </div>
 
@@ -286,7 +305,7 @@ export default function ComparativaCiclos({ cicloActual, datosCicloActual }: Com
 
         <div className="comp-chart-card comp-chart-wide">
           <div className="chart-wrapper" style={{ height: 320 }}>
-            <Bar data={aspectosChart} options={{ ...chartOptions('Promedios AE-01 al AE-04 por Ciclo'), scales: { y: { min: 0, max: 20 } } }} />
+            <Bar data={aspectosChart} options={{ ...chartOptions('Promedios AE-01 al AE-04 por Ciclo'), scales: { y: ejeAspectos } }} />
           </div>
         </div>
       </div>
