@@ -98,7 +98,7 @@ export default function DataEntryView({
             <details className="dev-manual-toggle">
               <summary>Agregar registro manualmente</summary>
               <div className="dev-manual-body">
-                <DataInput onDataAdd={onDataAdd} datosExistentes={datos} />
+                <DataInput onDataAdd={onDataAdd} datosExistentes={datos} cicloActual={cicloActual} />
               </div>
             </details>
           </div>

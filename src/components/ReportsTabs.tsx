@@ -116,7 +116,7 @@ export default function ReportsTabs({ datos, onGraficoReady, esPublico = false, 
             case 'calificacion-carrera': return <ReporteCalificacionPorCarrera datos={datos} />;
             case 'calificacion-facultad': return <ReporteCalificacionPorFacultad datos={datos} />;
             case 'calificacion-institucional': return <ReporteCalificacionInstitucional datos={datos} />;
-            case 'exportacion': return <ExportacionReportes datos={datos} />;
+            case 'exportacion': return <ExportacionReportes datos={datos} cicloActual={cicloActual} />;
             default: return null;
           }
         })()}

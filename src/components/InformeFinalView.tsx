@@ -5,8 +5,7 @@ import { EvaluacionData } from '../types';
 import { MatriculadosEntry, calcularResumen, DatosCarrera, interpretarTablaAE, interpretarDistribucion, interpretarParticipacion, interpretarInstitucionAE, generarConclusion1, generarRecomendacion1 } from '../services/reportCalculations';
 import { generarInformeFinalDocx, generarInformesFacultadDocx, ConfigInforme } from '../services/docxReportService';
 import { exportarBaseDatos } from '../services/excelService';
-import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, calificacionesPorCiclo, escalaMetadata } from '../config/universityStructure';
-import type { Calificacion } from '../config/universityStructure';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, calificacionesPorCiclo, escalaMetadata, esNuevoReglamento } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -16,9 +15,6 @@ interface InformeFinalViewProps {
   matriculados: MatriculadosEntry[];
   cicloActual: string;
 }
-
-const CALIFICACIONES: Calificacion[] = calificacionesPorCiclo(PERIODO_ACADEMICO);
-const COLORES = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000'];
 
 function PieParticipacion({ enc, total }: { enc: number; total: number }) {
   const noEnc = Math.max(0, total - enc);
@@ -55,12 +51,17 @@ function PieParticipacion({ enc, total }: { enc: number; total: number }) {
   );
 }
 
-function PieCarrera({ carrera }: { carrera: DatosCarrera }) {
+const COLORES_NUEVO  = ['#1F3864', '#9DC3E6', '#FFD966', '#D9D9D9', '#C53030'];
+const COLORES_LEGACY = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
+
+function PieCarrera({ carrera, cicloActual }: { carrera: DatosCarrera; cicloActual: string }) {
+  const califs = calificacionesPorCiclo(cicloActual);
+  const colores = esNuevoReglamento(cicloActual) ? COLORES_NUEVO : COLORES_LEGACY;
   const data = {
-    labels: CALIFICACIONES,
+    labels: califs,
     datasets: [{
-      data: CALIFICACIONES.map(c => carrera.distribucion[c]?.cantidad ?? 0),
-      backgroundColor: COLORES,
+      data: califs.map(c => carrera.distribucion[c]?.cantidad ?? 0),
+      backgroundColor: colores,
       borderWidth: 1,
     }],
   };
@@ -104,6 +105,9 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
   }
 
   const resumen = calcularResumen(datos, matriculados, cicloActual);
+  const calificaciones = calificacionesPorCiclo(cicloActual);
+  const colores = esNuevoReglamento(cicloActual) ? COLORES_NUEVO : COLORES_LEGACY;
+  const indLbl = esNuevoReglamento(cicloActual) ? 'MUY_SATISFACTORIO Y EXCELENTE' : 'BUENO Y DESTACADO';
 
   const handleDescargarDocx = async () => {
     setGenerando(true);
@@ -522,7 +526,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                               </tr>
                             </thead>
                             <tbody>
-                              {CALIFICACIONES.map(cal => (
+                              {calificaciones.map(cal => (
                                 <tr key={cal}>
                                   <td>
                                     <span className="cal-badge" style={{ backgroundColor: escalaMetadata(cal).color, color: '#fff' }}>
@@ -559,11 +563,11 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
 
                         {/* Gráfico de torta */}
                         <div className="informe-pie-wrapper">
-                          <PieCarrera carrera={c} />
+                          <PieCarrera carrera={c} cicloActual={cicloActual} />
                           <div className="pie-leyenda">
-                            {CALIFICACIONES.map((cal, i) => (
+                            {calificaciones.map((cal, i) => (
                               <div key={cal} className="pie-leyenda-item">
-                                <span className="pie-leyenda-color" style={{ backgroundColor: COLORES[i] }} />
+                                <span className="pie-leyenda-color" style={{ backgroundColor: colores[i] }} />
                                 <span>{cal}</span>
                               </div>
                             ))}
@@ -625,7 +629,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
             </table>
             <p className="informe-interpretacion">
               El indicador del plan estratégico institucional para el ciclo {cicloActual} es del{' '}
-              <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>, que representa la proporción de secciones con calificación MUY_SATISFACTORIO o EXCELENTE.
+              <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>, que representa la proporción de secciones con calificación {indLbl}.
               {resumen.indicadorPlanEstrategico >= 70
                 ? ' Se alcanza la meta institucional del 70%.'
                 : ' No se alcanza aún la meta institucional del 70%.'}
@@ -653,14 +657,17 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                 <p>
                   El promedio general institucional del desempeño docente para el ciclo {cicloActual} es de{' '}
                   <strong>{resumen.promedioGeneral.toFixed(2)}</strong>, lo que corresponde a la categoría{' '}
-                  <strong>{resumen.promedioGeneral > 17 ? 'EXCELENTE' : resumen.promedioGeneral > 14 ? 'MUY_SATISFACTORIO' : resumen.promedioGeneral > 11 ? 'SATISFACTORIO' : 'INSATISFACTORIO'}</strong>{' '}
+                  <strong>{esNuevoReglamento(cicloActual)
+                    ? (resumen.promedioGeneral >= 18 ? 'EXCELENTE' : resumen.promedioGeneral >= 15 ? 'MUY_SATISFACTORIO' : resumen.promedioGeneral >= 12 ? 'SATISFACTORIO' : resumen.promedioGeneral >= 8 ? 'INSATISFACTORIO' : 'MUY_INSATISFACTORIO')
+                    : (resumen.promedioGeneral >= 17.1 ? 'DESTACADO' : resumen.promedioGeneral >= 15.1 ? 'BUENO' : resumen.promedioGeneral >= 11 ? 'ACEPTABLE' : 'INSATISFACTORIO')
+                  }</strong>{' '}
                   según la escala de calificación institucional.
                 </p>
               </div>
               <div className="informe-conclusion-item">
                 <span className="informe-conclusion-num">3.</span>
                 <p>
-                  El indicador del Plan Estratégico Institucional (secciones calificadas como MUY_SATISFACTORIO o EXCELENTE) alcanzó el{' '}
+                  El indicador del Plan Estratégico Institucional (secciones calificadas como {indLbl}) alcanzó el{' '}
                   <strong>{resumen.indicadorPlanEstrategico.toFixed(2)}%</strong>
                   {resumen.indicadorPlanEstrategico >= 70
                     ? ', superando la meta institucional del 70%.'

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileDown, Loader } from 'lucide-react';
 import { EvaluacionData, ReporteData } from '../types';
+import { calificacionesPorCiclo, PERIODO_ACADEMICO } from '../config/universityStructure';
 import { generarPDF } from '../services/pdfService';
 import { generarInterpretacion } from '../services/openaiService';
 
@@ -34,8 +35,9 @@ export default function ReportGenerator({ datos, graficosElements }: ReportGener
 
     // Interpretación para gráfico 2: Distribución de calificaciones
     if (datos.length > 0) {
-      const calificaciones = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
-      const distribucion = calificaciones.map(cal => 
+      const cicloInf = datos[0]?.ciclo ?? PERIODO_ACADEMICO;
+      const calificaciones = calificacionesPorCiclo(cicloInf) as string[];
+      const distribucion = calificaciones.map(cal =>
         datos.filter(d => d.calificacion === cal).length
       );
       

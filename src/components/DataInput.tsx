@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { EvaluacionData } from '../types';
 import { Plus, X } from 'lucide-react';
+import { calcularCalificacion, calificacionesPorCiclo, PERIODO_ACADEMICO } from '../config/universityStructure';
 
 interface DataInputProps {
   onDataAdd: (data: EvaluacionData) => void;
   datosExistentes: EvaluacionData[];
+  cicloActual?: string;
 }
 
 // Mapeo de facultades con sus carreras profesionales
@@ -46,14 +48,16 @@ const carrerasPorFacultad: Record<string, string[]> = {
   ]
 };
 
-export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps) {
+export default function DataInput({ onDataAdd, datosExistentes, cicloActual }: DataInputProps) {
+  const ciclo = cicloActual ?? PERIODO_ACADEMICO;
+  const calificacionesDisponibles = calificacionesPorCiclo(ciclo) as string[];
   const [formData, setFormData] = useState<EvaluacionData>({
     facultad: 'FAING',
     carreraProfesional: carrerasPorFacultad['FAING'][0],
     docente: '',
     curso: '',
     seccion: '',
-    calificacion: 'MUY_SATISFACTORIO',
+    calificacion: calificacionesDisponibles[0] as EvaluacionData['calificacion'],
     ae01: 0,
     ae02: 0,
     ae03: 0,
@@ -90,10 +94,13 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const notaCalculada = (formData.ae01 + formData.ae02 + formData.ae03 + formData.ae04) / 4;
+    const notaFinal = notaCalculada || formData.nota;
     const dataWithId = {
       ...formData,
       id: Date.now().toString(),
-      nota: notaCalculada || formData.nota
+      nota: notaFinal,
+      ciclo,
+      calificacion: calcularCalificacion(notaFinal, ciclo) as EvaluacionData['calificacion'],
     };
     onDataAdd(dataWithId);
     setFormData({
@@ -102,7 +109,7 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
       docente: '',
       curso: '',
       seccion: '',
-      calificacion: 'MUY_SATISFACTORIO',
+      calificacion: calificacionesDisponibles[0] as EvaluacionData['calificacion'],
       ae01: 0,
       ae02: 0,
       ae03: 0,
@@ -207,10 +214,9 @@ export default function DataInput({ onDataAdd, datosExistentes }: DataInputProps
                 onChange={handleChange}
                 required
               >
-                <option value="EXCELENTE">EXCELENTE</option>
-                <option value="MUY_SATISFACTORIO">MUY_SATISFACTORIO</option>
-                <option value="SATISFACTORIO">SATISFACTORIO</option>
-                <option value="INSATISFACTORIO">INSATISFACTORIO</option>
+                {calificacionesDisponibles.map(cal => (
+                  <option key={cal} value={cal}>{cal}</option>
+                ))}
               </select>
             </div>
             <div className="form-group">

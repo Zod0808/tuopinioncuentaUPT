@@ -5,7 +5,7 @@ import {
 } from 'chart.js';
 import { Download, FileSpreadsheet, FileText, Filter, AlertTriangle } from 'lucide-react';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, umbralParticipacionPorSeccion } from '../config/universityStructure';
+import { calcularCalificacion, FACULTADES, ORDEN_FACULTADES, umbralParticipacionPorSeccion, esNuevoReglamento, PERIODO_ACADEMICO } from '../config/universityStructure';
 import { esValidoParaReporte } from '../services/reportCalculations';
 import {
   exportarReporteI, exportarReporteII, exportarReporteIII,
@@ -19,11 +19,14 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
-interface Props { datos: EvaluacionData[] }
+interface Props { datos: EvaluacionData[]; cicloActual?: string }
 
-const COLORES_CAL = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
-const LABELS_CAL = ['Destacado', 'Bueno', 'Aceptable', 'Insatisfactorio'];
-const CAL_KEYS = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO'];
+const COLORES_CAL_NUEVO  = ['#1F3864', '#9DC3E6', '#FFD966', '#D9D9D9', '#C53030'];
+const LABELS_CAL_NUEVO   = ['Excelente', 'Muy Satisfactorio', 'Satisfactorio', 'Insatisfactorio', 'Muy Insatisfactorio'];
+const CALKEYS_NUEVO      = ['EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO', 'MUY_INSATISFACTORIO'];
+const COLORES_CAL_LEGACY = ['#276749', '#2b6cb0', '#c05621', '#c53030'];
+const LABELS_CAL_LEGACY  = ['Destacado', 'Bueno', 'Aceptable', 'Insatisfactorio'];
+const CALKEYS_LEGACY     = ['DESTACADO', 'BUENO', 'ACEPTABLE', 'INSATISFACTORIO'];
 
 type TipoReporte = 'BD' | 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
 type Formato = 'pdf' | 'excel';
@@ -52,7 +55,12 @@ function matchesFacultad(recordFacultad: string, codigo: string): boolean {
   return rn.includes(normComp(codigo)) || rn.includes(normComp(fac.nombre));
 }
 
-export default function ExportacionReportes({ datos }: Props) {
+export default function ExportacionReportes({ datos, cicloActual }: Props) {
+  const cicloInferido = cicloActual ?? datos[0]?.ciclo ?? PERIODO_ACADEMICO;
+  const nuevo = esNuevoReglamento(cicloInferido);
+  const COLORES_CAL = nuevo ? COLORES_CAL_NUEVO  : COLORES_CAL_LEGACY;
+  const LABELS_CAL  = nuevo ? LABELS_CAL_NUEVO   : LABELS_CAL_LEGACY;
+  const CAL_KEYS    = nuevo ? CALKEYS_NUEVO       : CALKEYS_LEGACY;
   const [facultadFiltro, setFacultadFiltro] = useState('');
   const [carreraFiltro, setCarreraFiltro] = useState('');
   const [docenteFiltro, setDocenteFiltro] = useState('');
