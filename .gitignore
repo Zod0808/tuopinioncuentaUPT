@@ -38,3 +38,4 @@ supabase_setup.sql
 .tokensave/
 graphify-out/
 temp_img/
+data/google_forms/
