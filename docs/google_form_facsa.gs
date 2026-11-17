@@ -16,14 +16,18 @@
  *
  * FLUJO DEL ESTUDIANTE:
  *   Sección 0 → selecciona Escuela
- *     → Sección Ciclo (filtrada por escuela) → selecciona Ciclo
+ *     → Sección Ciclo (filtrada por escuela) → selecciona el ciclo DE LA ASIGNATURA
+ *       (un estudiante con cursos de II y IV hace un envío por docente, eligiendo
+ *        en cada uno el ciclo al que pertenece esa asignatura)
  *       → Sección Curso (filtrada por escuela+ciclo) → selecciona Curso
  *         → Sección Docente (filtrada por escuela+ciclo+curso) → selecciona Docente
  *           → Secciones de evaluación AE-01 a AE-04
  *             → Sección de comentarios
  *
  * CRITERIO DE INCLUSIÓN (fuente: CARGA_DOCENTE, ESTADO=Vigente):
- *   - Solo ciclos PARES vigentes + INTERNADO (último ciclo de cada escuela).
+ *   - Solo ciclos PARES vigentes. El último ciclo se muestra como INTERNADO en
+ *     Medicina, Laboratorio y Terapia; en Odontología se mantiene "Ciclo X"
+ *     porque ese ciclo tiene otras asignaturas además de la práctica pre profesional.
  *   - Toda asignatura con ≥ 1 sección distinta de A (coordinadores excluidos).
  *   - Los coordinadores (Sección A) son evaluados por intranet, no aparecen aquí.
  * ============================================================================
@@ -296,7 +300,6 @@ function crearFormularioFACSA() {
       'VI': {
         'CIRUGÍA BUCAL II': [
           'ROMERO MAYTA RICHARD ALFONSO',
-          'ZEBALLOS ADRIAZOLA MERCEDES',
         ],
         'ENDODONCIA I': [
           'CALJARO CHAMBI SUGEY MARJHORY',
@@ -304,18 +307,24 @@ function crearFormularioFACSA() {
         'OCLUSIÓN II': [
           'MONTOYA PORTUGAL JORGE EFRAIN',
         ],
+        // Subcursos según "CAMBIO DE LA EPO" (27/10/2026), nombres normalizados
         'OPERATORIA DENTAL II': [
           'CALJARO CHAMBI SUGEY MARJHORY',
-          'CONDORI SALINAS YESICA EULALIA',
           'ESPADA SALGADO FERNANDO MAURICIO',
-          'JUAREZ VIZCARRA CESAR',
           'LOAYZA ORTIZ SANDRA XIMENA',
-          'MUÑOA ALVARADO JULIANA ESTHER',
           'PINTO TEJADA SANTOS FRANCISCO',
           'RAMOS GOMEZ FREDERICK',
-          'SANCHEZ MACCHIAVELLO ALONSO',
-          'TOZO BURGOS JOSE GIANCARLO',
           'FERNANDEZ GARCIA LUIS HUMBERTO',
+        ],
+        'OPERATORIA DENTAL II - DIAGNÓSTICO': [
+          'CONDORI SALINAS YESICA EULALIA',
+          'JUAREZ VIZCARRA CESAR',
+          'SANCHEZ MACCHIAVELLO ALONSO',
+        ],
+        'OPERATORIA DENTAL II - RADIOLOGÍA': [
+          'MUÑOA ALVARADO JULIANA ESTHER',
+          'TOZO BURGOS JOSE GIANCARLO',
+          'ZEBALLOS ADRIAZOLA MERCEDES',
         ],
         'PERIODONCIA I': [
           'PORTUGAL MOTOCANCHE GLADYS KARINA',
@@ -359,7 +368,10 @@ function crearFormularioFACSA() {
           'SANCHEZ TITO MARCO ANTONIO',
         ],
       },
-      'INTERNADO': {
+      // Odontología: el X ciclo NO es solo internado — además de la práctica
+      // pre profesional incluye Seminarios Expositivos y Trabajo de Investigación,
+      // por eso se mantiene como "Ciclo X".
+      'X': {
         'PRÁCTICA PRE PROFESIONAL EN ESTOMATOLOGÍA': [
           'CONDORI SALINAS YESICA EULALIA',
           'FLORES TIPACTI ROBERTO',
@@ -484,20 +496,26 @@ function crearFormularioFACSA() {
     .setDescription(
       'Universidad Privada de Tacna — Vicerrectorado Académico\n' +
       'Encuesta de Evaluación del Desempeño Docente — Periodo 2026-II\n' +
-      'Facultad de Ciencias de la Salud (FACSA)\n\n' +
+      'Facultad de Ciencias de la Salud (FACSA)\n' +
+      'Versión: CARGA_DOCENTE vigente — 12/11/2026\n\n' +
       'Tu opinión es confidencial y será utilizada únicamente con fines de ' +
       'mejora continua del proceso de enseñanza-aprendizaje.\n' +
       'Base normativa: Resolución N° 245-2026-UPT-CU, Anexo 05.\n\n' +
-      '📋 Completa este formulario UNA VEZ POR CADA DOCENTE que deseas evaluar. ' +
-      'Si llevas asignaturas de más de un ciclo, selecciona el ciclo correspondiente ' +
-      'a cada asignatura en cada envío.\n\n' +
+      '📋 Completa este formulario UNA VEZ POR CADA DOCENTE que deseas evaluar.\n' +
+      '📚 Si llevas asignaturas de más de un ciclo (por ejemplo, II y IV), en cada envío ' +
+      'selecciona el ciclo AL QUE PERTENECE LA ASIGNATURA, no el ciclo en que estás matriculado.\n\n' +
       '⚠️ IMPORTANTE: Debes acceder con tu correo institucional (@virtual.upt.pe). ' +
       'Las respuestas enviadas desde cuentas no institucionales no serán consideradas válidas.'
     )
     .setCollectEmail(true)
     .setLimitOneResponsePerUser(false)
     .setAllowResponseEdits(false)
-    .setShowLinkToRespondAgain(true);
+    .setShowLinkToRespondAgain(true)
+    .setConfirmationMessage(
+      '✅ ¡Gracias! Tu evaluación fue registrada.\n\n' +
+      'Si te falta evaluar a otro docente —incluidas asignaturas de otro ciclo que estés ' +
+      'llevando (por ejemplo, II y IV)— usa el enlace "Enviar otra respuesta".'
+    );
 
   // Helper: etiqueta legible para el ciclo (INTERNADO no lleva el prefijo "Ciclo")
   function cicloLabel(ciclo) {
@@ -544,10 +562,15 @@ function crearFormularioFACSA() {
 
   for (const esc of escuelas) {
     pbCiclo[esc] = form.addPageBreakItem()
-      .setTitle('Ciclo académico — ' + esc);
+      .setTitle('Ciclo de la asignatura — ' + esc)
+      .setHelpText(
+        'Selecciona el ciclo al que pertenece la asignatura que vas a evaluar en este envío.\n' +
+        'Si llevas asignaturas de más de un ciclo (por ejemplo, II y IV), elige aquí el ciclo ' +
+        'de UNA de ellas; al terminar podrás enviar otra respuesta para las asignaturas del otro ciclo.'
+      );
 
     cicloItems[esc] = form.addMultipleChoiceItem()
-      .setTitle('¿En qué ciclo académico te encuentras actualmente?')
+      .setTitle('¿A qué ciclo pertenece la asignatura que deseas evaluar?')
       .setRequired(true);
   }
 

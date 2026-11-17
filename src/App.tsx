@@ -218,18 +218,25 @@ function App() {
   };
 
   const handleDataImport = async (newData: EvaluacionData[], ciclo: string) => {
+    // Upsert: los nuevos registros reemplazan a los existentes con mismo docente+curso
+    const upsert = (existing: EvaluacionData[], incoming: EvaluacionData[]) => {
+      const key = (d: EvaluacionData) =>
+        `${d.docente}||${d.curso}`.toLowerCase().trim();
+      const incomingKeys = new Set(incoming.map(key));
+      return [...existing.filter(d => !incomingKeys.has(key(d))), ...incoming];
+    };
+
     if (ciclo !== cicloActual) {
-      // Guardar ciclo actual y cambiar al ciclo destino antes de importar
       if (datos.length > 0 && currentUser) {
         await saveEvaluacionData(cicloActual, datos);
       }
       const existingData = currentUser ? (await loadEvaluacionData(ciclo) || []) : [];
-      const merged = [...existingData, ...newData];
+      const merged = upsert(existingData, newData);
       setCicloActual(ciclo);
       setDatos(merged);
       localStorage.setItem(LS_KEY(ciclo), JSON.stringify(merged));
     } else {
-      setDatos(prev => [...prev, ...newData]);
+      setDatos(prev => upsert(prev, newData));
     }
   };
 

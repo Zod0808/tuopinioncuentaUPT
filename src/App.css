@@ -4070,6 +4070,28 @@
   gap: 1rem;
 }
 
+/* Sub-tabs Google Forms / Excel */
+.import-subtabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 0.25rem;
+}
+.import-subtab-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  color: #64748b;
+  transition: color 0.15s, border-color 0.15s;
+}
+.import-subtab-btn:hover { color: #003087; }
+.import-subtab-btn.active { color: #003087; border-bottom-color: #003087; font-weight: 600; }
+
 /* Agregar manualmente — collapsible */
 .dev-manual-toggle {
   border: 1px solid #e2e8f0;

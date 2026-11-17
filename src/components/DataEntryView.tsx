@@ -4,12 +4,14 @@ import { EvaluacionData } from '../types';
 import { MatriculadosEntry } from '../services/reportCalculations';
 import DataInput from './DataInput';
 import ExcelImporter from './ExcelImporter';
+import GoogleFormsImporter from './GoogleFormsImporter';
 import DataExporter from './DataExporter';
 import DataTable from './DataTable';
 import MatriculadosImporter from './MatriculadosImporter';
 import GestionDatosPanel from './GestionDatosPanel';
 
 type TabId = 'importar' | 'matriculados' | 'registros' | 'gestion';
+type ImportarSubTab = 'excel' | 'googleforms';
 
 interface DataEntryViewProps {
   datos: EvaluacionData[];
@@ -47,6 +49,7 @@ export default function DataEntryView({
   onRefreshCiclos,
 }: DataEntryViewProps) {
   const [tab, setTab] = useState<TabId>('importar');
+  const [importarSubTab, setImportarSubTab] = useState<ImportarSubTab>('googleforms');
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'importar',     label: 'Importar Excel',    icon: <Upload size={16} /> },
@@ -90,11 +93,38 @@ export default function DataEntryView({
 
         {tab === 'importar' && (
           <div className="dev-tab-importar">
-            <ExcelImporter
-              onDataImport={onDataImport}
-              cicloActual={cicloActual}
-              ciclosDisponibles={ciclosDisponibles}
-            />
+            {/* Sub-tabs de importación */}
+            <div className="import-subtabs">
+              <button
+                className={`import-subtab-btn ${importarSubTab === 'googleforms' ? 'active' : ''}`}
+                onClick={() => setImportarSubTab('googleforms')}
+              >
+                Google Forms
+              </button>
+              <button
+                className={`import-subtab-btn ${importarSubTab === 'excel' ? 'active' : ''}`}
+                onClick={() => setImportarSubTab('excel')}
+              >
+                Excel normal
+              </button>
+            </div>
+
+            {importarSubTab === 'googleforms' && (
+              <GoogleFormsImporter
+                onDataImport={onDataImport}
+                cicloActual={cicloActual}
+                ciclosDisponibles={ciclosDisponibles}
+                datosExistentes={datos}
+              />
+            )}
+            {importarSubTab === 'excel' && (
+              <ExcelImporter
+                onDataImport={onDataImport}
+                cicloActual={cicloActual}
+                ciclosDisponibles={ciclosDisponibles}
+              />
+            )}
+
             <details className="dev-manual-toggle">
               <summary>Agregar registro manualmente</summary>
               <div className="dev-manual-body">
