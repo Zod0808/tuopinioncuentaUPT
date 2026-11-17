@@ -3587,6 +3587,19 @@
   border-color: #2E5C8A;
 }
 
+.config-auto-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 4px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
 .informe-footer-actions {
   display: flex;
   flex-direction: column;

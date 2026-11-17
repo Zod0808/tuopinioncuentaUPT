@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { EvaluacionData } from '../types';
@@ -7,6 +7,8 @@ import { generarInformeFinalDocx, generarInformesFacultadDocx, ConfigInforme } f
 import { exportarBaseDatos } from '../services/excelService';
 import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, calificacionesPorCiclo, escalaMetadata, esNuevoReglamento } from '../config/universityStructure';
 import AlertasAutomaticas from './AlertasAutomaticas';
+import { loadEvaluacionData } from '../services/supabaseService';
+import { loadMatriculados } from '../services/matriculadosService';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -81,6 +83,14 @@ function cargarConfig(): ConfigInforme {
   } catch { return {}; }
 }
 
+function cicloPrevio(ciclo: string): string | null {
+  const [year, sem] = ciclo.split('-');
+  if (!year || !sem) return null;
+  if (sem === 'II') return `${year}-I`;
+  const y = parseInt(year, 10);
+  return isNaN(y) ? null : `${y - 1}-II`;
+}
+
 export default function InformeFinalView({ datos, matriculados, cicloActual }: InformeFinalViewProps) {
   const [generando, setGenerando] = useState(false);
   const [generandoFacultad, setGenerandoFacultad] = useState<string | null>(null);
@@ -88,13 +98,36 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
   const [configAbierta, setConfigAbierta] = useState(false);
   const [config, setConfig] = useState<ConfigInforme>(cargarConfig);
 
-  const actualizarConfig = (campo: keyof ConfigInforme, valor: string) => {
+  const actualizarConfig = (campo: keyof ConfigInforme, valor: string | number) => {
     setConfig(prev => {
       const nuevo = { ...prev, [campo]: valor };
       try { localStorage.setItem(CONFIG_KEY, JSON.stringify(nuevo)); } catch { /* quota */ }
       return nuevo;
     });
   };
+
+  // Auto-cargar semesterAnterior y participacionAnteriorPct del ciclo previo en la BD
+  useEffect(() => {
+    const prev = cicloPrevio(cicloActual);
+    if (!prev) return;
+
+    setConfig(c => {
+      if (!c.semesterAnterior) return { ...c, semesterAnterior: prev };
+      return c;
+    });
+
+    setConfig(c => {
+      if (c.participacionAnteriorPct && c.participacionAnteriorPct > 0) return c;
+      // Cargar del ciclo anterior
+      Promise.all([loadEvaluacionData(prev), loadMatriculados(prev)]).then(([dp, mp]) => {
+        if (!dp || dp.length === 0) return;
+        const r = calcularResumen(dp, mp ?? [], prev);
+        const pct = Math.round(r.porcentajeEncuestados * 100) / 100;
+        if (pct > 0) actualizarConfig('participacionAnteriorPct', pct);
+      });
+      return c;
+    });
+  }, [cicloActual]);
 
   if (datos.length === 0) {
     return (
@@ -214,6 +247,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
             </label>
             <label>
               Ciclo Anterior (comparativo)
+              {config.semesterAnterior && <span className="config-auto-badge">auto</span>}
               <input
                 type="text"
                 value={config.semesterAnterior ?? ''}
@@ -223,6 +257,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
             </label>
             <label>
               % Participación Ciclo Anterior
+              {config.participacionAnteriorPct ? <span className="config-auto-badge">auto · BD</span> : null}
               <input
                 type="number"
                 step="0.01"
