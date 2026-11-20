@@ -121,7 +121,7 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
     ? resumenesPorFacultad.filter(r => r.facultad === facultadSeleccionada)
     : resumenesPorFacultad;
 
-  const handleExportarPDF = async () => {
+  const handleExportarPDF = async (modo: 'curso' | 'docente') => {
     try {
       const resumenesParaPDF = facultadesAMostrar.map(resumen => {
         const datosFacultad = datos.filter(d => d.facultad === resumen.facultad);
@@ -139,7 +139,7 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
           promediosPorDocente: new Map<string, number>(resumen.docentes.map(d => [d.docente, d.promedioNota])),
         };
       });
-      await generarPDFResumenDocente(resumenesParaPDF, 'facultad', 'Reporte general de evaluación por docente', facultadSeleccionada || undefined, cicloActual);
+      await generarPDFResumenDocente(resumenesParaPDF, 'facultad', 'Reporte general de evaluación por docente', facultadSeleccionada || undefined, cicloActual, modo);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al exportar el PDF. Por favor, intente nuevamente.');
@@ -168,9 +168,13 @@ export default function ResumenDocentePorFacultad({ datos, cicloActual = '' }: R
         </div>
         <div className="report-header-right">
           <h2>Resumen Docente por Facultad</h2>
-          <button onClick={handleExportarPDF} className="btn-export-pdf" title="Exportar a PDF">
+          <button onClick={() => handleExportarPDF('curso')} className="btn-export-pdf" title="Una fila por curso y sección">
             <Download size={20} />
-            <span>Exportar PDF</span>
+            <span>PDF por curso/sección</span>
+          </button>
+          <button onClick={() => handleExportarPDF('docente')} className="btn-export-pdf" title="Una fila por docente: promedio, cantidad de cursos y calificación">
+            <Download size={20} />
+            <span>PDF por docente</span>
           </button>
         </div>
       </div>

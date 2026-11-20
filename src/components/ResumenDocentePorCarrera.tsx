@@ -121,7 +121,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
     ? resumenesPorCarrera.filter(r => r.carrera === carreraSeleccionada)
     : resumenesPorCarrera;
 
-  const handleExportarPDF = async () => {
+  const handleExportarPDF = async (modo: 'curso' | 'docente') => {
     try {
       const resumenesParaPDF = carrerasAMostrar.map(resumen => {
         const datosCarrera = datos.filter(d => d.carreraProfesional === resumen.carrera);
@@ -144,7 +144,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
           docentesExcluidos: resumen.docentesExcluidos,
         };
       });
-      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte general de evaluación por docente', carreraSeleccionada || undefined, cicloActual);
+      await generarPDFResumenDocente(resumenesParaPDF, 'carrera', 'Reporte general de evaluación por docente', carreraSeleccionada || undefined, cicloActual, modo);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al exportar el PDF. Por favor, intente nuevamente.');
@@ -173,9 +173,13 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
         </div>
         <div className="report-header-right">
           <h2>Resumen Docente por Carrera Profesional</h2>
-          <button onClick={handleExportarPDF} className="btn-export-pdf" title="Exportar a PDF">
+          <button onClick={() => handleExportarPDF('curso')} className="btn-export-pdf" title="Una fila por curso y sección">
             <Download size={20} />
-            <span>Exportar PDF</span>
+            <span>PDF por curso/sección</span>
+          </button>
+          <button onClick={() => handleExportarPDF('docente')} className="btn-export-pdf" title="Una fila por docente: promedio, cantidad de cursos y calificación">
+            <Download size={20} />
+            <span>PDF por docente</span>
           </button>
         </div>
       </div>

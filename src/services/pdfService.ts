@@ -187,6 +187,53 @@ interface ResumenData {
   docentesExcluidos?: { docente: string; cantidadCursos: number; motivo: string }[];
 }
 
+// Tabla de una fila por docente: promedio entre todos sus cursos válidos,
+// cantidad de cursos y calificación (igual que la vista web).
+function tablaResumenPorDocente(doc: jsPDF, resumen: ResumenData, nombre: string, y: number, margin: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  if (y > doc.internal.pageSize.getHeight() - 80) { doc.addPage(); y = margin; }
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(22, 40, 92);
+  doc.text(`Resumen por Docente - ${nombre}`, margin, y);
+  y += 8;
+
+  const body: (string | { content: string; styles: object })[][] = resumen.docentes.map((d, i) => [
+    (i + 1).toString(), limpiarNombrePdf(d.docente), d.promedioNota.toFixed(2),
+    d.cantidadCursos.toString(), d.calificacion,
+  ]);
+  const bold = { fontStyle: 'bold', fillColor: [227, 240, 252] };
+  body.push([
+    { content: '', styles: bold }, { content: 'PROMEDIO GENERAL', styles: bold },
+    { content: resumen.promedioGeneral.toFixed(2), styles: bold },
+    { content: resumen.totalCursos.toString(), styles: bold }, { content: '', styles: bold },
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [['N°', 'Docente', 'Promedio Nota', 'Cantidad Cursos', 'Calificación']],
+    body: body as any,
+    styles: { fontSize: 9, cellPadding: 2.5, lineWidth: 0.1 },
+    headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: {
+      0: { cellWidth: 14, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 35, halign: 'right' },
+      3: { cellWidth: 35, halign: 'center' },
+      4: { cellWidth: 50, halign: 'center', fontStyle: 'bold' },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 4 && data.row.index < resumen.docentes.length) {
+        data.cell.styles.textColor = colorDeNivel(String(data.cell.raw));
+      }
+    },
+    margin: { left: margin, right: margin },
+    tableWidth: pageWidth - margin * 2,
+  });
+  return (doc as any).lastAutoTable.finalY + 10;
+}
+
 // Mapeo de siglas de facultades a nombres completos
 const nombresFacultades: Record<string, string> = {
   'FAU': 'Facultad de Arquitectura y Urbanismo',
@@ -202,7 +249,10 @@ export async function generarPDFResumenDocente(
   tipo: 'carrera' | 'facultad' | 'institucional',
   titulo: string,
   nombreFiltro?: string,
-  ciclo?: string
+  ciclo?: string,
+  // 'curso': una fila por curso/sección. 'docente': una fila por docente con
+  // su promedio entre todos sus cursos, cantidad de cursos y calificación.
+  modo: 'curso' | 'docente' = 'curso'
 ): Promise<void> {
   const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -253,6 +303,9 @@ export async function generarPDFResumenDocente(
     });
     yPosition += 8;
 
+    if (modo === 'docente') {
+      yPosition = tablaResumenPorDocente(doc, resumen, nombreMostrar, yPosition, margin);
+    } else {
     // Tabla de Detalle de Cursos
     if (yPosition > pageHeight - 80) {
       doc.addPage();
@@ -396,6 +449,7 @@ export async function generarPDFResumenDocente(
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 10;
+    }
 
     // Leyenda de calificación
     if (yPosition > pageHeight - 50) { doc.addPage(); yPosition = margin; }
@@ -456,7 +510,8 @@ export async function generarPDFResumenDocente(
     yPosition = (doc as any).lastAutoTable.finalY + 15;
 
     // Observaciones (solo si hay tablas adicionales que mostrar)
-    const hayObservaciones = (resumen.cursosNoValidos?.length ?? 0) > 0 || (resumen.docentesExcluidos?.length ?? 0) > 0;
+    const noValidos = modo === 'curso' ? (resumen.cursosNoValidos ?? []) : [];
+    const hayObservaciones = noValidos.length > 0 || (resumen.docentesExcluidos?.length ?? 0) > 0;
     if (hayObservaciones) {
       if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
       doc.setFontSize(12); doc.setFont('helvetica', 'bold');
@@ -473,7 +528,6 @@ export async function generarPDFResumenDocente(
     }
 
     // Tabla 3: Encuestas No Válidas
-    const noValidos = resumen.cursosNoValidos ?? [];
     if (noValidos.length > 0) {
       if (yPosition > pageHeight - 60) { doc.addPage(); yPosition = margin; }
       doc.setFontSize(12); doc.setFont('helvetica', 'bold');
@@ -540,7 +594,7 @@ export async function generarPDFResumenDocente(
   // Guardar PDF
   const sanitizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, ' ').trim();
-  const cicloPart = ciclo ? ` ${ciclo}` : '';
+  const cicloPart = (ciclo ? ` ${ciclo}` : '') + (modo === 'docente' ? ' por docente' : ' por curso');
   let nombreArchivo: string;
   if (tipo === 'facultad') {
     const facPart = nombreFiltro ? ` ${sanitizar(nombreFiltro)}` : '';
@@ -635,6 +689,15 @@ function resolverCal(d: EvaluacionData, cicloSeleccionado?: string): string {
   const cal = calcularCalificacion(d.nota, ciclo);
   if (esNuevoReglamento(ciclo)) return cal;
   return map[cal];
+}
+
+// Color de un nivel de cualquiera de las dos escalas (clave en mayúsculas).
+function colorDeNivel(cal: string): [number, number, number] {
+  const e = (ESCALA_CALIFICACION as Record<string, { color: string }>)[cal]
+    ?? (ESCALA_CALIFICACION_LEGACY as Record<string, { color: string }>)[cal];
+  if (!e) return [0, 0, 0];
+  const h = e.color;
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 }
 
 function colorPorCalificacion(calStr: string): [number, number, number] {
