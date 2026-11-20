@@ -313,7 +313,7 @@ export async function generarPDFResumenDocente(
         dato.docente,
         dato.curso,
         dato.seccion,
-        resolverCal(dato),
+        resolverCal(dato, ciclo),
         dato.ae01.toFixed(2),
         dato.ae02.toFixed(2),
         dato.ae03.toFixed(2),
@@ -402,33 +402,24 @@ export async function generarPDFResumenDocente(
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 40, 92);
     doc.text('Escala de calificación', margin, yPosition);
     yPosition += 5;
+    const filasEscala = filasEscalaCalificacion(ciclo);
     autoTable(doc, {
       startY: yPosition,
       head: [['Escala de calificación', 'Juicio de valor', 'Interpretación']],
-      body: [
-        ['11 puntos a menos',  'INSATISFACTORIO', 'El docente no tiene un buen desempeño, tiene que replantear radicalmente su desempeño profesional.'],
-        ['De 12 a 14 puntos',  'SATISFACTORIO',        'El docente debe examinar los resultados de su evaluación y afianzar los aspectos observados.'],
-        ['De 15 a 17 puntos',  'MUY_SATISFACTORIO',            'Tiene un buen desempeño, pero puede superarlo atendiendo los aspectos que requieren mejora.'],
-        ['De 18 a 20 puntos',  'EXCELENTE',        'El docente tiene excelente desempeño y merece ser reconocido.'],
-      ],
+      body: filasEscala.map(f => [f.rango, f.juicio, f.interpretacion]),
       styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
       headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
       bodyStyles: { textColor: [0, 0, 0] },
       columnStyles: {
         0: { cellWidth: 38, halign: 'center' },
-        1: { cellWidth: 35, halign: 'center', fontStyle: 'bold' },
+        1: { cellWidth: 38, halign: 'center', fontStyle: 'bold' },
         2: { cellWidth: 'auto' },
       },
       didParseCell: (data) => {
         if (data.section === 'body') {
-          const fills: Record<number, [number, number, number]> = {
-            0: [255, 255, 255],
-            1: [255, 217, 102],
-            2: [157, 195, 230],
-            3: [31, 56, 100],
-          };
-          data.cell.styles.fillColor = fills[data.row.index] ?? [255, 255, 255];
-          if (data.row.index === 3) data.cell.styles.textColor = [255, 255, 255];
+          const fila = filasEscala[data.row.index];
+          data.cell.styles.fillColor = fila.fill;
+          if (fila.textoBlanco) data.cell.styles.textColor = [255, 255, 255];
         }
       },
       margin: { left: margin, right: margin },
@@ -498,7 +489,7 @@ export async function generarPDFResumenDocente(
         body: noValidos.map((d, i) => [
           (i + 1).toString(), d.docente, d.curso, d.seccion,
           d.encuestados.toString(), d.noEncuestados.toString(),
-          resolverCal(d), d.nota.toFixed(2),
+          resolverCal(d, ciclo), d.nota.toFixed(2),
         ]),
         styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
         headStyles: { fillColor: [22, 40, 92], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
@@ -565,7 +556,7 @@ export async function generarPDFResumenDocente(
 // Módulo de Exportación por Facultad — Reportes I–VI (todas las facultades)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calcularCalificacion, Calificacion, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, umbralParticipacionPorSeccion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
+import { calcularCalificacion, Calificacion, esNuevoReglamento, ESCALA_CALIFICACION, ESCALA_CALIFICACION_LEGACY, CALIFICACIONES_2026, CALIFICACIONES_LEGACY, FACULTADES, ASPECTOS_EVALUADOS, PERIODO_ACADEMICO, umbralParticipacionPorSeccion, QUORUM_MINIMO_ENCUESTADOS } from '../config/universityStructure';
 
 const AZUL_UPT: [number, number, number] = [22, 40, 92];
 const ROJO_INSATISFACTORIO: [number, number, number] = [197, 48, 48];
@@ -603,7 +594,27 @@ function limpiarNombrePdf(s: string): string {
   return s.replace(/\s*-\s*,/g, ',').replace(/,\s*-\s+/g, ', ').replace(/\s{2,}/g, ' ').trim();
 }
 
-function resolverCal(d: EvaluacionData): string {
+// Leyenda de la escala del ciclo (peor → mejor): 5 niveles de Res. 245-2026
+// desde 2026-II, 4 niveles de Res. 200-2019 antes.
+function filasEscalaCalificacion(ciclo?: string) {
+  const nuevo = !!ciclo && esNuevoReglamento(ciclo);
+  const claves = [...(nuevo ? CALIFICACIONES_2026 : CALIFICACIONES_LEGACY)].reverse();
+  const tabla = (nuevo ? ESCALA_CALIFICACION : ESCALA_CALIFICACION_LEGACY) as Record<string, { min: number; max: number; interpretacion: string }>;
+  const fillsMejorAPeor: [number, number, number][] = [[31, 56, 100], [157, 195, 230], [255, 217, 102], [255, 255, 255], [248, 215, 215]];
+  return claves.map((c, i) => {
+    const e = tabla[c];
+    const posDesdeMejor = claves.length - 1 - i;
+    return {
+      rango: e.min === 0 ? `Menos de ${(e.max + 0.01).toFixed(2)}` : `${e.min.toFixed(2)} – ${e.max.toFixed(2)}`,
+      juicio: c,
+      interpretacion: e.interpretacion,
+      fill: fillsMejorAPeor[posDesdeMejor],
+      textoBlanco: posDesdeMejor === 0,
+    };
+  });
+}
+
+function resolverCal(d: EvaluacionData, cicloSeleccionado?: string): string {
   if (d.validez !== 'Válido') return 'N/A';
   if (d.encuestados === 0) return 'No Aplica';
   if (d.nota === 0) return 'Sin Evaluar';
@@ -619,7 +630,11 @@ function resolverCal(d: EvaluacionData): string {
     INSATISFACTORIO: 'Insatisfactorio', MUY_INSATISFACTORIO: 'Insatisfactorio',
     DESTACADO: 'Destacado', BUENO: 'Bueno', ACEPTABLE: 'Aceptable',
   };
-  return map[calcularCalificacion(d.nota, d.ciclo)];
+  // Desde 2026-II se muestra el nivel de Res. 245-2026 tal cual (5 niveles).
+  const ciclo = cicloSeleccionado || d.ciclo || '';
+  const cal = calcularCalificacion(d.nota, ciclo);
+  if (esNuevoReglamento(ciclo)) return cal;
+  return map[cal];
 }
 
 function colorPorCalificacion(calStr: string): [number, number, number] {
@@ -628,6 +643,10 @@ function colorPorCalificacion(calStr: string): [number, number, number] {
   if (calStr === 'Bueno') return [43, 108, 176];
   if (calStr === 'Aceptable') return [192, 86, 33];
   if (calStr === 'Baja Participación') return [107, 33, 168]; // purple
+  if (calStr in ESCALA_CALIFICACION) {
+    const hex = ESCALA_CALIFICACION[calStr as keyof typeof ESCALA_CALIFICACION].color;
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
   return [113, 128, 150]; // N/A, No Aplica, Sin Evaluar → gris
 }
 
