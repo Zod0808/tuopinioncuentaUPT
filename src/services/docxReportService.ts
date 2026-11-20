@@ -383,7 +383,7 @@ function colorCalif(calif: string): string | undefined {
   const map: Record<string, string> = {
     EXCELENTE: COLOR_DESTACADO, MUY_SATISFACTORIO: COLOR_BUENO,
     SATISFACTORIO: COLOR_ACEPTABLE, INSATISFACTORIO: COLOR_INSATISFACTORIO,
-    MUY_INSATISFACTORIO: 'C53030',
+    MUY_INSATISFACTORIO: 'ED7D31',
     DESTACADO: COLOR_DESTACADO, BUENO: COLOR_BUENO, ACEPTABLE: COLOR_ACEPTABLE,
   };
   return map[calif];
@@ -830,7 +830,7 @@ export async function generarInformeFinalDocx(
     ? (['MUY_INSATISFACTORIO', 'INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const)
     : (['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const);
   const coloresDistrib = esNuevoReglamento(ciclo)
-    ? ['#C53030', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864']
+    ? ['#ED7D31', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864']
     : ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Pie institucional (3.1)
@@ -1214,7 +1214,7 @@ export async function generarInformeFacultadDocx(
     ? (['MUY_INSATISFACTORIO', 'INSATISFACTORIO', 'SATISFACTORIO', 'MUY_SATISFACTORIO', 'EXCELENTE'] as const)
     : (['INSATISFACTORIO', 'ACEPTABLE', 'BUENO', 'DESTACADO'] as const);
   const coloresDistribFac = esNuevoReglamento(ciclo)
-    ? ['#C53030', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864']
+    ? ['#ED7D31', '#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864']
     : ['#D9D9D9', '#FFD966', '#9DC3E6', '#1F3864'];
 
   // Generar gráficos
@@ -1354,8 +1354,13 @@ export async function generarInformeFacultadDocx(
 // 6 REPORTES INDIVIDUALES POR FACULTAD
 // ═════════════════════════════════════════════════════════════════════════════
 
-/** Calificación efectiva de un registro (prioriza el campo calificacion del Excel) */
-function getCalifReg(r: EvaluacionData): Calificacion {
+/**
+ * Calificación efectiva de un registro. Desde 2026-II se recalcula con la
+ * escala Res. 245-2026 (el Excel puede traer etiquetas legacy); antes se
+ * prioriza el campo calificacion del Excel.
+ */
+function getCalifReg(r: EvaluacionData, ciclo: string): Calificacion {
+  if (esNuevoReglamento(ciclo)) return calcularCalificacion(r.nota, ciclo);
   const valid: Calificacion[] = [
     'EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO', 'MUY_INSATISFACTORIO',
     'DESTACADO', 'BUENO', 'ACEPTABLE',
@@ -1466,7 +1471,7 @@ async function saveDocx(doc: Document, filename: string): Promise<void> {
 async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
-  const malos     = todosReg.filter(r => esValidoParaReporte(r) && getCalifReg(r) === 'INSATISFACTORIO');
+  const malos     = todosReg.filter(r => esValidoParaReporte(r) && ['INSATISFACTORIO', 'MUY_INSATISFACTORIO'].includes(getCalifReg(r, ciclo)));
 
   const seccionesValidas1 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
@@ -1697,7 +1702,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     ];
     const subQuorumRegs: EvaluacionData[] = [];
     for (const r of c.registros) {
-      const calif = r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r);
+      const calif = r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r, ciclo);
       const califFill = colorCalif(calif);
       const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
       if (esSubQ) subQuorumRegs.push(r);

@@ -216,9 +216,10 @@ export function calcularResumen(
       const calsDistrib = calificacionesPorCiclo(cicloMuestra);
       const distrib = {} as Record<Calificacion, { cantidad: number; porcentaje: number }>;
       for (const cal of calsDistrib) {
-        // Use cicloMuestra as fallback so records with undefined r.ciclo still
-        // get classified under the correct scale (not silently falling to legacy).
-        const cnt = regsValidos.filter(r => calcularCalificacion(r.nota, r.ciclo || cicloMuestra) === cal).length;
+        // Se clasifica con el ciclo del informe, no con r.ciclo: hay registros de
+        // 2026-II etiquetados como 2026-I, que caerían en la escala legacy y
+        // dejarían todos los niveles 2026 en 0.
+        const cnt = regsValidos.filter(r => calcularCalificacion(r.nota, cicloMuestra) === cal).length;
         distrib[cal] = { cantidad: cnt, porcentaje: regsValidos.length ? (cnt / regsValidos.length) * 100 : 0 };
       }
 
