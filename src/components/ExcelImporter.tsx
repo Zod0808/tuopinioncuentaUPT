@@ -3,7 +3,7 @@ import { FileSpreadsheet, CheckCircle, AlertCircle, X, Calendar, Upload } from '
 // @ts-ignore
 import readXlsxFile from 'read-excel-file';
 import { EvaluacionData } from '../types';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, normalizarCarrera } from '../config/universityStructure';
 import { limpiarTexto } from '../services/excelService';
 
 const TODOS_LOS_CICLOS = [
@@ -135,7 +135,7 @@ export default function ExcelImporter({ onDataImport, cicloActual, ciclosDisponi
             id: `${Date.now()}-${i}`,
             ciclo: cicloSeleccionado,
             facultad,
-            carreraProfesional: String(row[columnIndices.carreraProfesional] || '').trim() || 'No especificada',
+            carreraProfesional: normalizarCarrera(facultad, String(row[columnIndices.carreraProfesional] || '').trim()) || 'No especificada',
             docente, curso, seccion, calificacion, ae01, ae02, ae03, ae04, nota,
             encuestados: parseInteger(row[columnIndices.encuestados]),
             noEncuestados: parseInteger(row[columnIndices.noEncuestados]),

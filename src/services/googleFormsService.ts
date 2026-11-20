@@ -1,5 +1,5 @@
 import { EvaluacionData } from '../types';
-import { calcularCalificacion } from '../config/universityStructure';
+import { calcularCalificacion, normalizarCarrera } from '../config/universityStructure';
 
 export interface GoogleFormsStats {
   totalRespuestas: number;
@@ -133,7 +133,7 @@ export function procesarGoogleForms(rows: unknown[][], ciclo: string): GoogleFor
       id: `gf-${Date.now()}-${data.length}`,
       ciclo,
       facultad: 'FACSA',
-      carreraProfesional: g.escuela,
+      carreraProfesional: normalizarCarrera('FACSA', g.escuela),
       docente: g.docente,
       curso: g.curso,
       seccion: g.ciclo,

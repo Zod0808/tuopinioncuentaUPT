@@ -21,7 +21,7 @@ import {
   loadPublicReport,
   getPublicCiclos,
 } from './services/supabaseService';
-import { getCicloFromDate } from './config/universityStructure';
+import { getCicloFromDate, normalizarCarreras } from './config/universityStructure';
 import './App.css';
 
 const CICLO_DEFAULT = getCicloFromDate();
@@ -137,7 +137,7 @@ function App() {
       const local = localStorage.getItem(LS_KEY(ciclo));
       if (local) {
         const parsed = JSON.parse(local);
-        setDatos(Array.isArray(parsed) ? parsed : []);
+        setDatos(Array.isArray(parsed) ? normalizarCarreras(parsed) : []);
       } else {
         setDatos([]);
       }

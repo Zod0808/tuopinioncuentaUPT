@@ -5,7 +5,7 @@ import {
   calcularCalificacion,
   calificacionesPorCiclo,
   escalaMetadata,
-  FACULTADES,
+  FACULTADES, normalizarCarrera,
   PERIODO_ACADEMICO,
   umbralParticipacionPorSeccion,
   QUORUM_MINIMO_ENCUESTADOS,
@@ -119,9 +119,7 @@ function resolveFacultadCode(facultad: string): string {
 }
 
 function resolveCarreraName(facultadCode: string, carrera: string): string {
-  const canonicas = FACULTADES[facultadCode]?.carreras ?? [];
-  const norm = normalizeStr(carrera);
-  return canonicas.find(c => normalizeStr(c) === norm) ?? carrera;
+  return normalizarCarrera(facultadCode, carrera);
 }
 
 function avg(arr: number[]): number {

@@ -50,6 +50,37 @@ export const FACULTADES: Record<string, { nombre: string; carreras: string[] }> 
   },
 };
 
+/** Núcleo comparable de un nombre de carrera: sin tildes, mayúsculas, prefijos
+ *  institucionales ("Escuela Profesional de", "Carrera de", "T.M.") ni guiones. */
+function nucleoCarrera(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(escuela profesional de |carrera profesional de |carrera de |t\.? ?m\.? )/, '')
+    .trim();
+}
+
+/**
+ * Nombre oficial de la carrera según FACULTADES. Las fuentes (Excel, Google
+ * Forms) usan variantes como "Medicina Humana" o "T.M. Terapia Física y
+ * Rehabilitación" que, sin esto, aparecen como carreras distintas y sin
+ * matriculados. Si no hay coincidencia se devuelve el nombre tal cual.
+ */
+export function normalizarCarrera(facultad: string, carrera: string): string {
+  const fac = FACULTADES[facultad]
+    ?? Object.values(FACULTADES).find(f => nucleoCarrera(f.nombre) === nucleoCarrera(facultad));
+  const candidatas = fac ? fac.carreras : Object.values(FACULTADES).flatMap(f => f.carreras);
+  const n = nucleoCarrera(carrera);
+  return candidatas.find(c => nucleoCarrera(c) === n) ?? carrera;
+}
+
+/** Aplica normalizarCarrera a una lista de registros. */
+export function normalizarCarreras<T extends { facultad: string; carreraProfesional: string }>(datos: T[]): T[] {
+  return datos.map(d => {
+    const c = normalizarCarrera(d.facultad, d.carreraProfesional);
+    return c === d.carreraProfesional ? d : { ...d, carreraProfesional: c };
+  });
+}
+
 export const ORDEN_FACULTADES = ['FADE', 'FAEDCOH', 'FAING', 'FACEM', 'FAU', 'FACSA'];
 
 // ─────────────────────────────────────────────────────────────────────────────

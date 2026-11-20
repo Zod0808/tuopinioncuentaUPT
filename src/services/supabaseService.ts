@@ -1,5 +1,6 @@
 import { createClient, User } from '@supabase/supabase-js';
 import { EvaluacionData } from '../types';
+import { normalizarCarreras } from '../config/universityStructure';
 import { MatriculadosEntry } from './reportCalculations';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -94,7 +95,7 @@ export async function loadEvaluacionData(ciclo: string): Promise<EvaluacionData[
     .maybeSingle();
 
   if (error || !data) return null;
-  return data.datos as EvaluacionData[];
+  return normalizarCarreras(data.datos as EvaluacionData[]);
 }
 
 export async function getCiclosDisponibles(): Promise<string[]> {
@@ -127,7 +128,7 @@ export async function loadAllCyclesData(): Promise<Record<string, EvaluacionData
   const result: Record<string, EvaluacionData[]> = {};
   for (const row of data as { ciclo: string; datos: EvaluacionData[] }[]) {
     if (row.datos && row.datos.length > 0) {
-      result[row.ciclo] = row.datos;
+      result[row.ciclo] = normalizarCarreras(row.datos);
     }
   }
   return result;
@@ -153,7 +154,7 @@ export async function loadPublicReport(ciclo: string): Promise<{ datos: Evaluaci
     .maybeSingle();
   if (error || !data) return null;
   return {
-    datos: data.datos as EvaluacionData[],
+    datos: normalizarCarreras(data.datos as EvaluacionData[]),
     matriculados: data.matriculados as MatriculadosEntry[],
   };
 }
