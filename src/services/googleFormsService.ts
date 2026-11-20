@@ -16,12 +16,12 @@ export interface GoogleFormsResult {
 
 const QUORUM_MINIMO = 3;
 
-// AE → índices de preguntas (base 0 sobre las 10 preguntas Likert)
+// AE → índices de preguntas (base 0 sobre las 10 preguntas Likert, Res. 245-2026)
 const AE_PREGUNTAS: Record<string, number[]> = {
   ae01: [0, 1],       // Q1, Q2 — Responsabilidad y planificación
-  ae02: [2, 3, 4, 5], // Q3-Q6 — Dominio metodológico
-  ae03: [6, 7],       // Q7, Q8 — Evaluación del aprendizaje
-  ae04: [8, 9],       // Q9, Q10 — Relaciones humanas
+  ae02: [2, 3, 5, 6], // Q3, Q4, Q6, Q7 — Estrategias didácticas y uso de tecnología
+  ae03: [7, 8],       // Q8, Q9 — Evaluación y retroalimentación
+  ae04: [4, 9],       // Q5, Q10 — Clima del aula, participación y relaciones humanas
 };
 
 function primerValor(row: unknown[], desde: number, hasta: number): string {

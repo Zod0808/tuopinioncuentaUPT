@@ -3426,9 +3426,21 @@
 .informe-subseccion h4 {
   font-size: 0.92rem;
   color: #2E5C8A;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 0.4rem;
   margin-bottom: 0.75rem;
+}
+.informe-secciones-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2f6b3e;
+  background: #d1fae5;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  white-space: nowrap;
 }
 
 .informe-carrera-bloque {

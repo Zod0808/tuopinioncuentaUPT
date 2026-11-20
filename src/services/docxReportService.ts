@@ -432,12 +432,17 @@ function imagenCentrada(data: Uint8Array, w = 350, h = 270): Paragraph {
 
 function tablaCriteriosEvaluacion(ciclo: string): Table {
   const ae = esNuevoReglamento(ciclo) ? ASPECTOS_EVALUADOS : ASPECTOS_EVALUADOS_LEGACY;
+  const q = esNuevoReglamento(ciclo)
+    ? { ae01: '1, 2', ae02: '3, 4, 6, 7', ae03: '8, 9', ae04: '5, 10' }
+    : { ae01: '2, 3, 4', ae02: '5, 6, 7, 8', ae03: '9, 10, 11', ae04: '12, 13, 14, 15' };
+  const totalItems = esNuevoReglamento(ciclo) ? '10 ítems' : '15 ítems';
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
     new TableRow({ children: [celdaH('N° de preguntas'), celdaH('Código'), celdaH('Aspecto evaluado')] }),
-    new TableRow({ children: [celda('2, 3, 4', true), celda('AE-01', true, true), celda(ae['AE-01'])] }),
-    new TableRow({ children: [celda('5, 6, 7, 8', true), celda('AE-02', true, true), celda(ae['AE-02'])] }),
-    new TableRow({ children: [celda('9, 10, 11', true), celda('AE-03', true, true), celda(ae['AE-03'])] }),
-    new TableRow({ children: [celda('12, 13, 14, 15', true), celda('AE-04', true, true), celda(ae['AE-04'])] }),
+    new TableRow({ children: [celda(q.ae01, true), celda('AE-01', true, true), celda(ae['AE-01'])] }),
+    new TableRow({ children: [celda(q.ae02, true), celda('AE-02', true, true), celda(ae['AE-02'])] }),
+    new TableRow({ children: [celda(q.ae03, true), celda('AE-03', true, true), celda(ae['AE-03'])] }),
+    new TableRow({ children: [celda(q.ae04, true), celda('AE-04', true, true), celda(ae['AE-04'])] }),
+    new TableRow({ children: [celda(totalItems, true, true, GRIS_ROW), celda('TOTAL', true, true, GRIS_ROW), celda('', false, false, GRIS_ROW)] }),
   ]});
 }
 
@@ -587,6 +592,10 @@ function tablaAEPorCarrera(cod: string, f: DatosFacultad, ciclo: string): Table 
     celda('PROMEDIO', true, true, GRIS_ROW), celda('', false, false, GRIS_ROW),
     ...carreras.map(c => celdaN(c.promedioGeneral, 2, true)),
   ]}));
+  rows.push(new TableRow({ children: [
+    celda('N° Secciones calificadas', true, true, GRIS_ROW), celda('', false, false, GRIS_ROW),
+    ...carreras.map(c => celda(c.seccionesCalificadas.toString(), true, false, GRIS_ROW)),
+  ]}));
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows });
 }
 
@@ -733,15 +742,27 @@ function seccion1(ciclo: string, config: ConfigInforme): (Paragraph | Table)[] {
     viñeta('Identificar las fortalezas y debilidades de los docentes en su desempeño durante el desarrollo del proceso académico.'),
     viñeta('Lograr la participación activa y responsable de los estudiantes en la verificación de la calidad de la formación profesional que reciben.'),
     viñeta('Recopilar y analizar datos de evaluación para medir la eficacia de las mejoras educativas.'),
-    parrafo('En relación a los criterios a evaluar:'),
-    negrita('Calidad de la presentación y contenido silábico de la asignatura'),
-    parrafo('Evaluar la pertinencia, coherencia y actualización del contenido silábico, asegurando su alineación con los resultados de aprendizaje y los objetivos curriculares establecidos.'),
-    negrita('Ejecución del proceso de enseñanza-aprendizaje'),
-    parrafo('Analizar la efectividad de las estrategias metodológicas y didácticas implementadas por el docente para promover un aprendizaje significativo y participativo en los estudiantes.'),
-    negrita('Aplicación de la evaluación de la asignatura'),
-    parrafo('Examinar la adecuación, transparencia y consistencia de los mecanismos e instrumentos de evaluación empleados, verificando su correspondencia con las competencias y resultados de aprendizaje previstos.'),
-    negrita('Formación actitudinal y relaciones interpersonales con los estudiantes'),
-    parrafo('Valorar el desarrollo de actitudes éticas, comunicativas y colaborativas del docente, así como la calidad de las relaciones interpersonales que establece con los estudiantes en el proceso formativo.'),
+    ...(esNuevoReglamento(ciclo) ? [
+      parrafo('La encuesta académica consta de 10 ítems distribuidos en 4 indicadores de evaluación (Res. N°245-2026-UPT-CU):'),
+      negrita('AE-01 — Responsabilidad y planificación'),
+      parrafo('Evalúa el cumplimiento del horario, la presentación del sílabo al inicio del semestre y su cumplimiento a lo largo del ciclo académico.'),
+      negrita('AE-02 — Estrategias didácticas y uso de tecnología'),
+      parrafo('Evalúa la preparación del docente para la clase, el empleo de estrategias didácticas variadas, el dominio y actualización del contenido temático, y la claridad en la comunicación de los criterios e instrumentos de evaluación.'),
+      negrita('AE-03 — Evaluación y retroalimentación'),
+      parrafo('Evalúa la entrega oportuna de resultados y retroalimentación constructiva, así como el fomento de la participación activa y el pensamiento crítico en los estudiantes.'),
+      negrita('AE-04 — Clima del aula, participación y relaciones humanas'),
+      parrafo('Evalúa la integración adecuada de las TICs y el entorno virtual (EVA-UPT), y el trato respetuoso, empático y profesional del docente con los estudiantes.'),
+    ] : [
+      parrafo('En relación a los criterios a evaluar:'),
+      negrita('Calidad de la presentación y contenido silábico de la asignatura'),
+      parrafo('Evaluar la pertinencia, coherencia y actualización del contenido silábico, asegurando su alineación con los resultados de aprendizaje y los objetivos curriculares establecidos.'),
+      negrita('Ejecución del proceso de enseñanza-aprendizaje'),
+      parrafo('Analizar la efectividad de las estrategias metodológicas y didácticas implementadas por el docente para promover un aprendizaje significativo y participativo en los estudiantes.'),
+      negrita('Aplicación de la evaluación de la asignatura'),
+      parrafo('Examinar la adecuación, transparencia y consistencia de los mecanismos e instrumentos de evaluación empleados, verificando su correspondencia con las competencias y resultados de aprendizaje previstos.'),
+      negrita('Formación actitudinal y relaciones interpersonales con los estudiantes'),
+      parrafo('Valorar el desarrollo de actitudes éticas, comunicativas y colaborativas del docente, así como la calidad de las relaciones interpersonales que establece con los estudiantes en el proceso formativo.'),
+    ]),
     salto(),
 
     titulo('1.3. Responsabilidades', HeadingLevel.HEADING_2), salto(),
@@ -1374,7 +1395,11 @@ function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Parag
 
 
 /** Tabla de leyenda AE-01→AE-04 para insertar al pie de cada reporte. */
-function leyendaAEFooter(): (Paragraph | Table)[] {
+function leyendaAEFooter(ciclo: string): (Paragraph | Table)[] {
+  const ae = esNuevoReglamento(ciclo) ? ASPECTOS_EVALUADOS : ASPECTOS_EVALUADOS_LEGACY;
+  const q = esNuevoReglamento(ciclo)
+    ? { ae01: '1, 2', ae02: '3, 4, 6, 7', ae03: '8, 9', ae04: '5, 10' }
+    : { ae01: '2, 3, 4', ae02: '5, 6, 7, 8', ae03: '9, 10, 11', ae04: '12, 13, 14, 15' };
   return [
     salto(),
     negrita('Leyenda — Aspectos Evaluados'),
@@ -1382,10 +1407,10 @@ function leyendaAEFooter(): (Paragraph | Table)[] {
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({ children: [celdaH('Código'), celdaH('Aspecto evaluado'), celdaH('Preguntas')] }),
-        new TableRow({ children: [celda('AE-01', true, true), celda(ASPECTOS_EVALUADOS['AE-01']), celda('2, 3, 4', true)] }),
-        new TableRow({ children: [celda('AE-02', true, true), celda(ASPECTOS_EVALUADOS['AE-02']), celda('5, 6, 7, 8', true)] }),
-        new TableRow({ children: [celda('AE-03', true, true), celda(ASPECTOS_EVALUADOS['AE-03']), celda('9, 10, 11', true)] }),
-        new TableRow({ children: [celda('AE-04', true, true), celda(ASPECTOS_EVALUADOS['AE-04']), celda('12, 13, 14, 15', true)] }),
+        new TableRow({ children: [celda('AE-01', true, true), celda(ae['AE-01']), celda(q.ae01, true)] }),
+        new TableRow({ children: [celda('AE-02', true, true), celda(ae['AE-02']), celda(q.ae02, true)] }),
+        new TableRow({ children: [celda('AE-03', true, true), celda(ae['AE-03']), celda(q.ae03, true)] }),
+        new TableRow({ children: [celda('AE-04', true, true), celda(ae['AE-04']), celda(q.ae04, true)] }),
       ],
     }),
     salto(),
@@ -1636,7 +1661,7 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     salto(),
     tablaEscalaCalificacion(ciclo),
     salto(),
-    ...leyendaAEFooter(),
+    ...leyendaAEFooter(ciclo),
   );
   await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
     `2. Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
@@ -1704,7 +1729,7 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
   }
 
   children.push(
-    ...leyendaAEFooter(),
+    ...leyendaAEFooter(ciclo),
     salto(),
     negrita('Escala de calificación'),
     salto(),

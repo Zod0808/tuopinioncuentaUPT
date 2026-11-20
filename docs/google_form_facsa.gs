@@ -624,31 +624,31 @@ function crearFormularioFACSA() {
 
   addEscala('1. El docente asiste puntualmente y cumple el horario establecido de clases.');
   addEscala('2. El docente presenta el sílabo al inicio del semestre y lo cumple durante el desarrollo del curso.');
-  addEscala('3. El docente llega preparado con los materiales y recursos necesarios para la clase.');
 
   // ── SECCIÓN AE-02: Estrategias didácticas y uso de tecnología ────────────
   form.addPageBreakItem()
     .setTitle('3. Estrategias didácticas y uso de tecnología (AE-02)')
     .setHelpText('Califica cada afirmación de 1 (Totalmente en desacuerdo) a 5 (Totalmente de acuerdo).');
 
+  addEscala('3. El docente llega preparado con los materiales y recursos necesarios para la clase.');
   addEscala('4. El docente emplea estrategias didácticas variadas (ABP, casos clínicos, simulaciones, debates, etc.) que facilitan el aprendizaje.');
-  addEscala('5. El docente integra adecuadamente las TICs y el entorno virtual (EVA-UPT) como apoyo al proceso de enseñanza-aprendizaje.');
   addEscala('6. El docente muestra dominio y manejo actualizado del contenido temático del curso.');
-
-  // ── SECCIÓN AE-03: Evaluación del aprendizaje ────────────────────────────
-  form.addPageBreakItem()
-    .setTitle('4. Evaluación del aprendizaje (AE-03)')
-    .setHelpText('Califica cada afirmación de 1 (Totalmente en desacuerdo) a 5 (Totalmente de acuerdo).');
-
   addEscala('7. El docente comunica con claridad los criterios e instrumentos de evaluación que utiliza.');
-  addEscala('8. El docente entrega resultados y retroalimentación oportuna y constructiva sobre las evaluaciones.');
 
-  // ── SECCIÓN AE-04: Relaciones humanas y clima de aula ────────────────────
+  // ── SECCIÓN AE-03: Evaluación y retroalimentación ────────────────────────
   form.addPageBreakItem()
-    .setTitle('5. Relaciones humanas y clima de aula (AE-04)')
+    .setTitle('4. Evaluación y retroalimentación (AE-03)')
     .setHelpText('Califica cada afirmación de 1 (Totalmente en desacuerdo) a 5 (Totalmente de acuerdo).');
 
+  addEscala('8. El docente entrega resultados y retroalimentación oportuna y constructiva sobre las evaluaciones.');
   addEscala('9. El docente fomenta la participación, el pensamiento crítico y el respeto entre estudiantes.');
+
+  // ── SECCIÓN AE-04: Clima del aula, participación y relaciones humanas ────
+  form.addPageBreakItem()
+    .setTitle('5. Clima del aula, participación y relaciones humanas (AE-04)')
+    .setHelpText('Califica cada afirmación de 1 (Totalmente en desacuerdo) a 5 (Totalmente de acuerdo).');
+
+  addEscala('5. El docente integra adecuadamente las TICs y el entorno virtual (EVA-UPT) como apoyo al proceso de enseñanza-aprendizaje.');
   addEscala('10. El docente mantiene un trato respetuoso, empático y profesional, promoviendo un clima de aula adecuado.');
 
   // ── SECCIÓN: Comentarios adicionales ─────────────────────────────────────

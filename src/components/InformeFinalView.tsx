@@ -490,7 +490,12 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
               if (!f) return null;
               return (
                 <div key={cod} className="informe-subseccion">
-                  <h4>{FACULTADES[cod]?.nombre ?? cod}</h4>
+                  <h4>
+                    {FACULTADES[cod]?.nombre ?? cod}
+                    <span className="informe-secciones-badge">
+                      {[...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0)} secciones calificadas
+                    </span>
+                  </h4>
                   {[...f.carreras.values()].map(c => (
                     <div key={c.carrera} className="informe-carrera-bloque">
                       <h5>{c.carrera}</h5>
