@@ -23,19 +23,21 @@ interface DocenteExcluido {
   motivo: string;
 }
 
-function resolverCalDisplay(d: EvaluacionData): string {
+// `ciclo` es el ciclo seleccionado: manda sobre d.ciclo porque hay registros
+// importados con el ciclo mal etiquetado (p. ej. 2026-II guardado como 2026-I).
+function resolverCalDisplay(d: EvaluacionData, ciclo: string): string {
   if (d.encuestados === 0) return 'No Aplica';
   if (d.nota === 0) return 'Sin Evaluar';
   const total = d.encuestados + d.noEncuestados;
   if (total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total)) return 'Baja Participación';
-  return calcularCalificacion(d.nota, d.ciclo);
+  return calcularCalificacion(d.nota, ciclo || d.ciclo);
 }
 
 function badgeClaseCal(cal: string): string {
   const map: Record<string, string> = {
-    EXCELENTE: 'badge-destacado', MUY_SATISFACTORIO: 'badge-bueno',
-    SATISFACTORIO: 'badge-aceptable', INSATISFACTORIO: 'badge-insatisfactorio', MUY_INSATISFACTORIO: 'badge-insatisfactorio',
-    DESTACADO: 'badge-destacado', BUENO: 'badge-bueno', ACEPTABLE: 'badge-aceptable',
+    EXCELENTE: 'badge-excelente', MUY_SATISFACTORIO: 'badge-muy-satisfactorio',
+    SATISFACTORIO: 'badge-satisfactorio', INSATISFACTORIO: 'badge-insatisfactorio', MUY_INSATISFACTORIO: 'badge-muy-insatisfactorio',
+    DESTACADO: 'badge-excelente', BUENO: 'badge-satisfactorio', ACEPTABLE: 'badge-insatisfactorio',
     'Baja Participación': 'badge-baja-participacion',
   };
   return map[cal] ?? 'badge-warning';
@@ -78,7 +80,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
       const promedioNota = cantidadCursos === 1
         ? cursos[0].nota
         : cursos.reduce((sum, c) => sum + c.nota, 0) / cantidadCursos;
-      return { docente, promedioNota, cantidadCursos, calificacion: calcularCalificacion(promedioNota, cursos[0]?.ciclo) };
+      return { docente, promedioNota, cantidadCursos, calificacion: calcularCalificacion(promedioNota, cicloActual || cursos[0]?.ciclo) };
     });
     docentesResumen.sort((a, b) => a.docente.localeCompare(b.docente));
 
@@ -225,7 +227,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
                         <td className="text-right">{docente.promedioNota.toFixed(2)}</td>
                         <td className="text-center">{docente.cantidadCursos}</td>
                         <td className="text-center">
-                          <span className={`badge badge-${docente.calificacion.toLowerCase()}`}>
+                          <span className={`badge ${badgeClaseCal(docente.calificacion)}`}>
                             {docente.calificacion}
                           </span>
                         </td>
@@ -281,7 +283,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
                       }
                       return datosCarreraOrdenados.map((dato, index) => {
                         const promedioDocente = promediosPorDocente.get(dato.docente) ?? dato.nota;
-                        const calificacionCorrecta = resolverCalDisplay(dato);
+                        const calificacionCorrecta = resolverCalDisplay(dato, cicloActual);
                         const rowSpanPromedio = rowSpanMap.get(index);
                         let estaDentroDeGrupo = false;
                         for (const [inicio, span] of rowSpanMap.entries()) {
@@ -363,7 +365,7 @@ export default function ResumenDocentePorCarrera({ datos, cicloActual = '' }: Re
                             <td className="text-center">{dato.encuestados}</td>
                             <td className="text-center">{dato.noEncuestados}</td>
                             <td className="text-center">
-                              <span className={`badge ${badgeClaseCal(resolverCalDisplay(dato))}`}>{resolverCalDisplay(dato)}</span>
+                              <span className={`badge ${badgeClaseCal(resolverCalDisplay(dato, cicloActual))}`}>{resolverCalDisplay(dato, cicloActual)}</span>
                             </td>
                             <td className="text-right">{dato.nota.toFixed(2)}</td>
                           </tr>
