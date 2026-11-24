@@ -295,15 +295,21 @@ export function calcularResumen(
     ? allRegsGlobal.filter(r => r.nota >= 18).length / allRegsGlobal.length * 100
     : 0;
 
+  // Promedios AE institucionales: media de promedios de facultad (coherente con
+  // la jerarquía sección → carrera → facultad → institución). Usar media plana
+  // de secciones daría más peso a facultades con más secciones, haciendo que el
+  // PROMEDIO de la tabla 3.3.1 no coincidiera con la media de las filas de facultad.
+  const facConDatos = allFac.filter(f => f.promedioGeneral > 0);
+
   return {
     totalMatriculados: totalMatr, totalEncuestados: totalEnc,
     totalNoEncuestados: totalMatr - totalEnc,
     porcentajeEncuestados: totalMatr > 0 ? (totalEnc / totalMatr) * 100 : 0,
-    promedioAE01: avg(allRegsGlobal.map(r => r.ae01)),
-    promedioAE02: avg(allRegsGlobal.map(r => r.ae02)),
-    promedioAE03: avg(allRegsGlobal.map(r => r.ae03)),
-    promedioAE04: avg(allRegsGlobal.map(r => r.ae04)),
-    promedioGeneral: avg(allRegsGlobal.map(r => (r.ae01 + r.ae02 + r.ae03 + r.ae04) / 4)),
+    promedioAE01: avg(facConDatos.map(f => f.promedioAE01)),
+    promedioAE02: avg(facConDatos.map(f => f.promedioAE02)),
+    promedioAE03: avg(facConDatos.map(f => f.promedioAE03)),
+    promedioAE04: avg(facConDatos.map(f => f.promedioAE04)),
+    promedioGeneral: avg(facConDatos.map(f => f.promedioGeneral)),
     indicadorPlanEstrategico: allRegsGlobal.length ? (nivelesAltosGlobal / allRegsGlobal.length) * 100 : 0,
     porcMuySatisfactorio: pMuySatInst,
     porcExcelente: pExcelenteInst,
