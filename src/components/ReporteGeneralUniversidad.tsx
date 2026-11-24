@@ -11,7 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { EvaluacionData } from '../types';
-import { MatriculadosEntry, normalizeStr } from '../services/reportCalculations';
+import { MatriculadosEntry, normalizeStr, calcularResumen } from '../services/reportCalculations';
 import { FACULTADES } from '../config/universityStructure';
 import { Users, TrendingUp, Award } from 'lucide-react';
 
@@ -84,22 +84,13 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
     ? ((totalEncuestados / totalEstudiantes) * 100).toFixed(2)
     : '0.00';
 
-  // Calcular promedios institucionales
-  const promedioAE01 = datos.length > 0 
-    ? datos.reduce((sum, d) => sum + d.ae01, 0) / datos.length 
-    : 0;
-  const promedioAE02 = datos.length > 0 
-    ? datos.reduce((sum, d) => sum + d.ae02, 0) / datos.length 
-    : 0;
-  const promedioAE03 = datos.length > 0 
-    ? datos.reduce((sum, d) => sum + d.ae03, 0) / datos.length 
-    : 0;
-  const promedioAE04 = datos.length > 0 
-    ? datos.reduce((sum, d) => sum + d.ae04, 0) / datos.length 
-    : 0;
-  const notaPromedioGeneral = datos.length > 0
-    ? datos.reduce((sum, d) => sum + d.nota, 0) / datos.length
-    : 0;
+  // Promedios AE: misma jerarquía sección→carrera→facultad→institución que el Informe Final (3.3.1).
+  const resumen = calcularResumen(datos, matriculados);
+  const promedioAE01 = resumen.promedioAE01;
+  const promedioAE02 = resumen.promedioAE02;
+  const promedioAE03 = resumen.promedioAE03;
+  const promedioAE04 = resumen.promedioAE04;
+  const notaPromedioGeneral = resumen.promedioGeneral;
 
   // Agrupar por facultad
   const facultades = ['FADE', 'FAEDCOH', 'FAING', 'FACEM', 'FAU', 'FACSA']; // Orden correcto según el usuario
@@ -114,19 +105,12 @@ export default function ReporteGeneralUniversidad({ datos, onGraficoReady, matri
     const total = totalMatr;
     const porcentajeEnc = total > 0 ? ((encuestados / total) * 100).toFixed(2) : '0.00';
     
-    // Calcular promedios por aspectos académicos por facultad
-    const promedioAE01Fac = datosFacultad.length > 0
-      ? datosFacultad.reduce((sum, d) => sum + d.ae01, 0) / datosFacultad.length
-      : 0;
-    const promedioAE02Fac = datosFacultad.length > 0
-      ? datosFacultad.reduce((sum, d) => sum + d.ae02, 0) / datosFacultad.length
-      : 0;
-    const promedioAE03Fac = datosFacultad.length > 0
-      ? datosFacultad.reduce((sum, d) => sum + d.ae03, 0) / datosFacultad.length
-      : 0;
-    const promedioAE04Fac = datosFacultad.length > 0
-      ? datosFacultad.reduce((sum, d) => sum + d.ae04, 0) / datosFacultad.length
-      : 0;
+    // AE por facultad: valores desde calcularResumen para coincidir con el Informe Final (3.3.1).
+    const fData = resumen.facultades.get(facultad);
+    const promedioAE01Fac = fData?.promedioAE01 ?? 0;
+    const promedioAE02Fac = fData?.promedioAE02 ?? 0;
+    const promedioAE03Fac = fData?.promedioAE03 ?? 0;
+    const promedioAE04Fac = fData?.promedioAE04 ?? 0;
     
     return {
       facultad,
