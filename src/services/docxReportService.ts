@@ -5,6 +5,7 @@ import {
   LevelFormat,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
 import {
   ResumenInstitucional, DatosCarrera, DatosFacultad,
   interpretarTablaAE, interpretarDistribucion, interpretarParticipacion,
@@ -12,6 +13,7 @@ import {
   esValidoParaReporte,
 } from './reportCalculations';
 import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, ESCALA_CALIFICACION_LEGACY, calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS, Calificacion, esNuevoReglamento } from '../config/universityStructure';
+import { generarPDFResumenDocenteFacultadBlob } from './pdfService';
 
 const ASPECTOS_EVALUADOS_LEGACY: Record<string, string> = {
   'AE-01': 'Calidad presentación y contenido silábico',
@@ -1462,13 +1464,9 @@ function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Tab
   });
 }
 
-async function saveDocx(doc: Document, filename: string): Promise<void> {
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, filename);
-}
 
 // ── Reporte 1: Docentes Insatisfactorios ─────────────────────────────────────
-async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
+async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
   const malos     = todosReg.filter(r => esValidoParaReporte(r) && ['INSATISFACTORIO', 'MUY_INSATISFACTORIO'].includes(getCalifReg(r, ciclo)));
@@ -1526,14 +1524,14 @@ async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad
     salto(),
     tablaEscalaCalificacion(ciclo),
   );
-  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `3. Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`);
+  const filename3 = `3. Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`;
+  return { filename: filename3, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
 }
 
 // rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
 
 // ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
-async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
+async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
   const nombreFac    = FACULTADES[cod]?.nombre ?? cod;
   const totalSec     = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
   const totalEnc     = f.totalEncuestados;
@@ -1591,12 +1589,12 @@ async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacult
   children.push(
     parrafo(interpretarParticipacion(totalEnc, f.totalMatriculados, nombreFac)),
   );
-  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `1. Reporte_Nro_Encuestados_por_Carrera_Profesional_${ciclo}_${cod}.docx`);
+  const filename1 = `1. Reporte_Nro_Encuestados_por_Carrera_Profesional_${ciclo}_${cod}.docx`;
+  return { filename: filename1, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
 }
 
 // ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
-async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
+async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const seccionesValidas4 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
   const children: (Paragraph | Table)[] = [
@@ -1668,15 +1666,15 @@ async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad
     salto(),
     ...leyendaAEFooter(ciclo),
   );
-  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `2. Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`);
+  const filename2 = `2. Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`;
+  return { filename: filename2, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
 }
 
 // ── Reporte 5 (ex-6): General de Evaluación por Docente ──────────────────────
 // Unifica el anterior Reporte 2 (Notas Plana Docente) y el anterior Reporte 6
 // (General de Evaluación). Ahora incluye las columnas de control Enc./No Enc./Validez
 // Y la fila de PROMEDIO por carrera, eliminando la duplicidad documental.
-async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad): Promise<void> {
+async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
   const nombreFac = FACULTADES[cod]?.nombre ?? cod;
   const todosRegKPI    = [...f.carreras.values()].flatMap(c => c.registros);
   const docentesUnicos = new Set(todosRegKPI.map(r => r.docente)).size;
@@ -1740,8 +1738,8 @@ async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad):
     salto(),
     tablaEscalaCalificacion(ciclo),
   );
-  await saveDocx(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] }),
-    `4. Reporte_General_Evaluacion_${ciclo}_${cod}.docx`);
+  const filename4 = `4. Reporte_General_Evaluacion_${ciclo}_${cod}.docx`;
+  return { filename: filename4, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
 }
 
 // ── Función pública: genera los 5 reportes de la facultad ────────────────────
@@ -1751,9 +1749,21 @@ export async function generarInformesFacultadDocx(
   cod: string,
   f: DatosFacultad,
 ): Promise<void> {
-  const pausa = () => new Promise(r => setTimeout(r, 350));
-  await rpt3EstudiantesCarrera(ciclo, cod, f); await pausa();
-  await rpt4PorcentajeJuicio(ciclo, cod, f);   await pausa();
-  await rpt1Insatisfactorios(ciclo, cod, f);   await pausa();
-  await rpt6GeneralDocente(ciclo, cod, f);
+  const [r3, r4, r1, r6] = await Promise.all([
+    rpt3EstudiantesCarrera(ciclo, cod, f),
+    rpt4PorcentajeJuicio(ciclo, cod, f),
+    rpt1Insatisfactorios(ciclo, cod, f),
+    rpt6GeneralDocente(ciclo, cod, f),
+  ]);
+  const todosRegistros = [...f.carreras.values()].flatMap(c => c.registros);
+  const r5 = await generarPDFResumenDocenteFacultadBlob(todosRegistros, cod, ciclo);
+  const zip = new JSZip();
+  const carpeta = zip.folder(cod)!;
+  carpeta.file(r1.filename, r1.blob);
+  carpeta.file(r3.filename, r3.blob);
+  carpeta.file(r4.filename, r4.blob);
+  carpeta.file(r6.filename, r6.blob);
+  carpeta.file(r5.filename, r5.blob);
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  saveAs(zipBlob, `Informe_Facultad_${cod}_${ciclo}.zip`);
 }

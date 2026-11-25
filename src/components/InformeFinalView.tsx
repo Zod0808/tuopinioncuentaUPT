@@ -758,7 +758,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
         </button>
 
         <div className="informe-facultad-descargas">
-          <p className="informe-facultad-descargas-titulo">Informes individuales por facultad:</p>
+          <p className="informe-facultad-descargas-titulo">Informes por facultad (ZIP con 5 reportes):</p>
           <div className="informe-facultad-descargas-grid">
             {ORDEN_FACULTADES.map(cod => {
               const f = resumen.facultades.get(cod);
@@ -772,7 +772,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   className="btn-secondary btn-descarga-facultad"
                   onClick={() => handleDescargarFacultad(cod)}
                   disabled={ocupado}
-                  title={`Generar 5 reportes DOCX — ${FACULTADES[cod]?.nombre ?? cod}`}
+                  title={`Generar ZIP con 5 reportes (4 DOCX + 1 PDF) — ${FACULTADES[cod]?.nombre ?? cod}`}
                 >
                   {esteGenerando ? 'Generando...' : `⬇ ${cod}`}
                 </button>

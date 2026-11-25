@@ -244,16 +244,14 @@ const nombresFacultades: Record<string, string> = {
   'FACEM': 'Facultad de Ciencias Empresariales'
 };
 
-export async function generarPDFResumenDocente(
+async function _buildPDF(
   resumenes: ResumenData[],
   tipo: 'carrera' | 'facultad' | 'institucional',
   titulo: string,
   nombreFiltro?: string,
   ciclo?: string,
-  // 'curso': una fila por curso/sección. 'docente': una fila por docente con
-  // su promedio entre todos sus cursos, cantidad de cursos y calificación.
   modo: 'curso' | 'docente' = 'curso'
-): Promise<void> {
+): Promise<{ doc: jsPDF; filename: string }> {
   const doc = new jsPDF('l', 'mm', 'a4'); // 'l' para landscape (horizontal)
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -603,7 +601,78 @@ export async function generarPDFResumenDocente(
     const escuelaPart = nombreFiltro ? ` Escuela ${sanitizar(nombreFiltro)}` : '';
     nombreArchivo = `Reporte general de evaluacion por docente${escuelaPart}${cicloPart}.pdf`;
   }
-  doc.save(nombreArchivo);
+  return { doc, filename: nombreArchivo };
+}
+
+export async function generarPDFResumenDocente(
+  resumenes: ResumenData[],
+  tipo: 'carrera' | 'facultad' | 'institucional',
+  titulo: string,
+  nombreFiltro?: string,
+  ciclo?: string,
+  modo: 'curso' | 'docente' = 'curso'
+): Promise<void> {
+  const { doc, filename } = await _buildPDF(resumenes, tipo, titulo, nombreFiltro, ciclo, modo);
+  doc.save(filename);
+}
+
+export async function generarPDFResumenDocenteFacultadBlob(
+  datos: EvaluacionData[],
+  facultadCod: string,
+  ciclo: string,
+  modo: 'curso' | 'docente' = 'curso'
+): Promise<{ blob: Blob; filename: string }> {
+  const docentesMap = new Map<string, EvaluacionData[]>();
+  datos.filter(d => {
+    if (d.validez !== 'Válido') return false;
+    if (d.encuestados === 0 || d.nota === 0) return false;
+    const total = d.encuestados + d.noEncuestados;
+    if (total > 0 && d.encuestados / total < umbralParticipacionPorSeccion(total)) return false;
+    return true;
+  }).forEach(d => {
+    if (!docentesMap.has(d.docente)) docentesMap.set(d.docente, []);
+    docentesMap.get(d.docente)!.push(d);
+  });
+  const docentes = [...docentesMap.entries()].map(([docente, cursos]) => {
+    const promedioNota = cursos.reduce((s, c) => s + c.nota, 0) / cursos.length;
+    return { docente, promedioNota, cantidadCursos: cursos.length, calificacion: calcularCalificacion(promedioNota, ciclo) };
+  }).sort((a, b) => a.docente.localeCompare(b.docente));
+  const promedioGeneral = docentes.length > 0
+    ? docentes.reduce((s, d) => s + d.promedioNota, 0) / docentes.length : 0;
+  const todosNombresDocs = [...new Set(datos.map(d => d.docente))];
+  const docentesExcluidos = todosNombresDocs.filter(doc => !docentesMap.has(doc)).map(doc => {
+    const cursos = datos.filter(d => d.docente === doc);
+    const razones = new Set(cursos.map(d => {
+      if (d.validez !== 'Válido') return 'no_valido';
+      if (d.encuestados === 0 || d.nota === 0) return 'sin_datos';
+      return 'baja_participacion';
+    }));
+    let motivo: string;
+    if (razones.has('sin_datos') && !razones.has('baja_participacion'))
+      motivo = 'Sin estudiantes registrados (0 encuestados y/o nota 0)';
+    else if (!razones.has('sin_datos') && razones.has('baja_participacion'))
+      motivo = 'Baja participación: menos del 50% de la sección respondió la encuesta';
+    else
+      motivo = 'Combinación: cursos sin datos y/o secciones con baja participación';
+    return { docente: doc, cantidadCursos: cursos.length, motivo };
+  }).sort((a, b) => a.docente.localeCompare(b.docente));
+  const datosDetalle = [...datos].sort((a, b) => a.docente.localeCompare(b.docente));
+  const promediosPorDocente = new Map(docentes.map(d => [d.docente, d.promedioNota]));
+  const resumen: ResumenData = {
+    nombre: facultadCod,
+    docentes,
+    docentesExcluidos,
+    totalDocentes: docentes.length,
+    totalCursos: datos.length,
+    promedioGeneral,
+    datosDetalle,
+    promediosPorDocente,
+  };
+  const nombreFac = nombresFacultades[facultadCod] ?? facultadCod;
+  const tituloPDF = `Reporte General de Evaluación Docente — ${nombreFac}`;
+  const { doc } = await _buildPDF([resumen], 'facultad', tituloPDF, nombreFac, ciclo, modo);
+  const filename = `5. Resumen_Docente_${ciclo}_${facultadCod}.pdf`;
+  return { blob: doc.output('blob') as Blob, filename };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
