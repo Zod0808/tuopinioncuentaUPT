@@ -772,7 +772,7 @@ export default function InformeFinalView({ datos, matriculados, cicloActual }: I
                   className="btn-secondary btn-descarga-facultad"
                   onClick={() => handleDescargarFacultad(cod)}
                   disabled={ocupado}
-                  title={`Generar ZIP con 5 reportes (4 DOCX + 1 PDF) — ${FACULTADES[cod]?.nombre ?? cod}`}
+                  title={`Generar ZIP con 5 reportes PDF — ${FACULTADES[cod]?.nombre ?? cod}`}
                 >
                   {esteGenerando ? 'Generando...' : `⬇ ${cod}`}
                 </button>

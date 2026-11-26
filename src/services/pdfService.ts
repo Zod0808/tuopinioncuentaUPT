@@ -881,16 +881,16 @@ function agregarLeyendaAEPdf(doc: jsPDF, y: number): number {
 }
 
 // Reporte I – General de Evaluación por Docente (landscape, cortes por carrera)
-export async function generarPDFReporteI(
+async function _buildReporteI(
   datos: EvaluacionData[],
   facultad: string,
   carrera: string,
   docente: string
-): Promise<void> {
+): Promise<{ doc: jsPDF; filename: string } | null> {
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, docente).sort((a, b) =>
     a.carreraProfesional.localeCompare(b.carreraProfesional) || a.docente.localeCompare(b.docente)
   );
-  if (filtrados.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+  if (filtrados.length === 0) { alert('No hay datos para los filtros seleccionados.'); return null; }
 
   // KPI computation
   const validosKpiI = filtrados.filter(d => {
@@ -952,15 +952,38 @@ export async function generarPDFReporteI(
   }
   agregarLeyendaAEPdf(doc, y + 4);
   const slug = facultad || 'GENERAL';
-  doc.save(`ReporteI_EvaluacionDocente_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `ReporteI_EvaluacionDocente_${slug}_${new Date().toISOString().split('T')[0]}.pdf`;
+  return { doc, filename };
+}
+
+export async function generarPDFReporteI(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  docente: string
+): Promise<void> {
+  const result = await _buildReporteI(datos, facultad, carrera, docente);
+  if (!result) return;
+  result.doc.save(result.filename);
+}
+
+export async function generarPDFReporteIBlob(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  docente: string
+): Promise<{ blob: Blob; filename: string } | null> {
+  const result = await _buildReporteI(datos, facultad, carrera, docente);
+  if (!result) return null;
+  return { blob: result.doc.output('blob') as Blob, filename: result.filename };
 }
 
 // Reporte II – Docentes Insatisfactorios
-export async function generarPDFReporteII(
+async function _buildReporteII(
   datos: EvaluacionData[],
   facultad: string,
   carrera: string
-): Promise<void> {
+): Promise<{ doc: jsPDF; filename: string } | null> {
   const baseInsatisf = filtrarPorFacultad(datos, facultad, carrera, '')
     .filter(d => {
       if (d.nota <= 0 || d.nota > 10.9 || d.validez !== 'Válido' || d.encuestados === 0) return false;
@@ -975,7 +998,7 @@ export async function generarPDFReporteII(
 
   if (filtrados.length === 0 && sinQuorum.length === 0) {
     alert('No hay docentes insatisfactorios con secciones válidas para los filtros seleccionados.');
-    return;
+    return null;
   }
 
   const insuf = filtrados.map(d => {
@@ -1064,7 +1087,28 @@ export async function generarPDFReporteII(
   agregarLeyendaAEPdf(doc, yFinal + 2);
 
   const slug = facultad || 'GENERAL';
-  doc.save(`ReporteII_Insatisfactorios_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `ReporteII_Insatisfactorios_${slug}_${new Date().toISOString().split('T')[0]}.pdf`;
+  return { doc, filename };
+}
+
+export async function generarPDFReporteII(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string
+): Promise<void> {
+  const result = await _buildReporteII(datos, facultad, carrera);
+  if (!result) return;
+  result.doc.save(result.filename);
+}
+
+export async function generarPDFReporteIIBlob(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string
+): Promise<{ blob: Blob; filename: string } | null> {
+  const result = await _buildReporteII(datos, facultad, carrera);
+  if (!result) return null;
+  return { blob: result.doc.output('blob') as Blob, filename: result.filename };
 }
 
 // Reporte III – Notas de Criterios AE por Carrera (con gráfico de barras agrupadas)
@@ -1123,19 +1167,19 @@ export async function generarPDFReporteIII(
 }
 
 // Reporte IV – % Juicio de Valor por Carrera (con gráfico de barras apiladas)
-export async function generarPDFReporteIV(
+async function _buildReporteIV(
   datos: EvaluacionData[],
   facultad: string,
   carrera: string,
   graficoEl: HTMLElement | null
-): Promise<void> {
+): Promise<{ doc: jsPDF; filename: string } | null> {
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '').filter(d => {
     if (d.validez !== 'Válido' || d.encuestados === 0 || d.nota === 0) return false;
     const total = d.encuestados + d.noEncuestados;
     return total === 0 || d.encuestados / total >= umbralParticipacionPorSeccion(total);
   });
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
-  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return null; }
 
   const doc = new jsPDF('l', 'mm', 'a4');
   const margin = 12;
@@ -1183,19 +1227,42 @@ export async function generarPDFReporteIV(
     } catch { /* sin gráfico */ }
   }
   const slug = facultad || 'GENERAL';
-  doc.save(`ReporteIV_JuicioValor_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `ReporteIV_JuicioValor_${slug}_${new Date().toISOString().split('T')[0]}.pdf`;
+  return { doc, filename };
 }
 
-// Reporte V – Estudiantes Encuestados por Carrera (con barras apiladas)
-export async function generarPDFReporteV(
+export async function generarPDFReporteIV(
   datos: EvaluacionData[],
   facultad: string,
   carrera: string,
   graficoEl: HTMLElement | null
 ): Promise<void> {
+  const result = await _buildReporteIV(datos, facultad, carrera, graficoEl);
+  if (!result) return;
+  result.doc.save(result.filename);
+}
+
+export async function generarPDFReporteIVBlob(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<{ blob: Blob; filename: string } | null> {
+  const result = await _buildReporteIV(datos, facultad, carrera, graficoEl);
+  if (!result) return null;
+  return { blob: result.doc.output('blob') as Blob, filename: result.filename };
+}
+
+// Reporte V – Estudiantes Encuestados por Carrera (con barras apiladas)
+async function _buildReporteV(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<{ doc: jsPDF; filename: string } | null> {
   const filtrados = filtrarPorFacultad(datos, facultad, carrera, '');
   const carreras = carrera ? [carrera] : [...new Set(filtrados.map(d => d.carreraProfesional))].sort();
-  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return; }
+  if (carreras.length === 0) { alert('No hay datos para los filtros seleccionados.'); return null; }
 
   const doc = new jsPDF('l', 'mm', 'a4');
   const margin = 12;
@@ -1256,7 +1323,30 @@ export async function generarPDFReporteV(
     } catch { /* sin gráfico */ }
   }
   const slug = facultad || 'GENERAL';
-  doc.save(`ReporteV_EstudiantesEncuestados_${slug}_${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `ReporteV_EstudiantesEncuestados_${slug}_${new Date().toISOString().split('T')[0]}.pdf`;
+  return { doc, filename };
+}
+
+export async function generarPDFReporteV(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<void> {
+  const result = await _buildReporteV(datos, facultad, carrera, graficoEl);
+  if (!result) return;
+  result.doc.save(result.filename);
+}
+
+export async function generarPDFReporteVBlob(
+  datos: EvaluacionData[],
+  facultad: string,
+  carrera: string,
+  graficoEl: HTMLElement | null
+): Promise<{ blob: Blob; filename: string } | null> {
+  const result = await _buildReporteV(datos, facultad, carrera, graficoEl);
+  if (!result) return null;
+  return { blob: result.doc.output('blob') as Blob, filename: result.filename };
 }
 
 // Reporte VI – Encuestas Totales por Carrera (con barras de deserción)

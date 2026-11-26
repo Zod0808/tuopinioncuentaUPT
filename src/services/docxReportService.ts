@@ -1,4 +1,4 @@
-import {
+﻿import {
   Document, Packer, Paragraph, Table, TableRow, TableCell,
   WidthType, AlignmentType, TextRun, HeadingLevel, ImageRun,
   PageBreak, ShadingType, TableOfContents, convertInchesToTwip,
@@ -10,10 +10,9 @@ import {
   ResumenInstitucional, DatosCarrera, DatosFacultad,
   interpretarTablaAE, interpretarDistribucion, interpretarParticipacion,
   interpretarInstitucionAE, generarConclusion1, generarRecomendacion1,
-  esValidoParaReporte,
 } from './reportCalculations';
-import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, ESCALA_CALIFICACION_LEGACY, calcularCalificacion, QUORUM_MINIMO_ENCUESTADOS, Calificacion, esNuevoReglamento } from '../config/universityStructure';
-import { generarPDFResumenDocenteFacultadBlob } from './pdfService';
+import { FACULTADES, ORDEN_FACULTADES, ASPECTOS_EVALUADOS, ESCALA_CALIFICACION, ESCALA_CALIFICACION_LEGACY, esNuevoReglamento } from '../config/universityStructure';
+import { generarPDFResumenDocenteFacultadBlob, generarPDFReporteIBlob, generarPDFReporteIIBlob, generarPDFReporteIVBlob, generarPDFReporteVBlob } from './pdfService';
 
 const ASPECTOS_EVALUADOS_LEGACY: Record<string, string> = {
   'AE-01': 'Calidad presentación y contenido silábico',
@@ -21,7 +20,6 @@ const ASPECTOS_EVALUADOS_LEGACY: Record<string, string> = {
   'AE-03': 'Aplicación de la evaluación',
   'AE-04': 'Formación actitudinal y relaciones interpersonales',
 };
-import { EvaluacionData } from '../types';
 
 // ── Configuración del informe (provista por el usuario) ───────────────────────
 
@@ -55,7 +53,7 @@ const COLOR_DESTACADO       = '1F3864'; // azul marino
 const COLOR_BUENO           = '9DC3E6'; // celeste
 const COLOR_ACEPTABLE       = 'FFD966'; // oro
 const COLOR_INSATISFACTORIO = 'FFFFFF'; // blanco
-const COLOR_SUBQUORUM       = 'FFF3CD';
+
 
 // ── Generación de gráficos de torta con Canvas ────────────────────────────────
 
@@ -1352,418 +1350,27 @@ export async function generarInformeFacultadDocx(
   saveAs(blob, `Informe_${cod}_TuOpinionCuenta_${ciclo}.docx`);
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 6 REPORTES INDIVIDUALES POR FACULTAD
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Calificación efectiva de un registro. Desde 2026-II se recalcula con la
- * escala Res. 245-2026 (el Excel puede traer etiquetas legacy); antes se
- * prioriza el campo calificacion del Excel.
- */
-function getCalifReg(r: EvaluacionData, ciclo: string): Calificacion {
-  if (esNuevoReglamento(ciclo)) return calcularCalificacion(r.nota, ciclo);
-  const valid: Calificacion[] = [
-    'EXCELENTE', 'MUY_SATISFACTORIO', 'SATISFACTORIO', 'INSATISFACTORIO', 'MUY_INSATISFACTORIO',
-    'DESTACADO', 'BUENO', 'ACEPTABLE',
-  ];
-  if (valid.includes(r.calificacion as Calificacion)) {
-    return r.calificacion as Calificacion;
-  }
-  return calcularCalificacion(r.nota, r.ciclo);
-}
-
-/** Encabezado estándar para los 5 reportes de facultad */
-function cabeceraReporte(tipo: string, nombreFac: string, ciclo: string): (Paragraph | Table)[] {
-  return [
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
-      children: [new TextRun({ text: 'UNIVERSIDAD PRIVADA DE TACNA', bold: true, size: 28, color: AZUL_OSCURO })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
-      children: [new TextRun({ text: nombreFac, bold: true, size: 24, color: AZUL_HEADER })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
-      children: [new TextRun({ text: tipo.toUpperCase(), bold: true, size: 24 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
-      children: [new TextRun({ text: `TU OPINIÓN CUENTA — ${ciclo}`, bold: true, size: 24, color: AZUL_HEADER })],
-    }),
-    salto(),
-  ];
-}
-
-
-/** Tabla de leyenda AE-01→AE-04 para insertar al pie de cada reporte. */
-function leyendaAEFooter(ciclo: string): (Paragraph | Table)[] {
-  const ae = esNuevoReglamento(ciclo) ? ASPECTOS_EVALUADOS : ASPECTOS_EVALUADOS_LEGACY;
-  const q = esNuevoReglamento(ciclo)
-    ? { ae01: '1, 2', ae02: '3, 4, 6, 7', ae03: '8, 9', ae04: '5, 10' }
-    : { ae01: '2, 3, 4', ae02: '5, 6, 7, 8', ae03: '9, 10, 11', ae04: '12, 13, 14, 15' };
-  return [
-    salto(),
-    negrita('Leyenda — Aspectos Evaluados'),
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({ children: [celdaH('Código'), celdaH('Aspecto evaluado'), celdaH('Preguntas')] }),
-        new TableRow({ children: [celda('AE-01', true, true), celda(ae['AE-01']), celda(q.ae01, true)] }),
-        new TableRow({ children: [celda('AE-02', true, true), celda(ae['AE-02']), celda(q.ae02, true)] }),
-        new TableRow({ children: [celda('AE-03', true, true), celda(ae['AE-03']), celda(q.ae03, true)] }),
-        new TableRow({ children: [celda('AE-04', true, true), celda(ae['AE-04']), celda(q.ae04, true)] }),
-      ],
-    }),
-    salto(),
-  ];
-}
-
-/** Pie de tabla con fuente de datos. */
-function fuenteTabla(): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.RIGHT,
-    spacing: { before: 40, after: 80 },
-    children: [new TextRun({ text: 'Fuente: INTRANET UPT', italics: true, size: 16, color: '666666' })],
-  });
-}
-
-/** Cuadro de KPIs horizontales para insertar al inicio de cada reporte. */
-function tablaKPI(kpis: { label: string; value: string; color?: string }[]): Table {
-  const FONDO_LABEL = 'FAFAFA';
-  const FONDO_VALOR = 'EBF3FB';
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({ children: kpis.map(k => new TableCell({
-        shading: { type: ShadingType.CLEAR, fill: FONDO_LABEL },
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 60, after: 20 },
-          children: [new TextRun({ text: k.label, bold: true, size: 20, color: '555555' })],
-        })],
-      })) }),
-      new TableRow({ children: kpis.map(k => {
-        const fill = k.color ?? FONDO_VALOR;
-        const textColor = isLightFill(fill) ? AZUL_OSCURO : 'FFFFFF';
-        return new TableCell({
-          shading: { type: ShadingType.CLEAR, fill },
-          children: [new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 80, after: 80 },
-            children: [new TextRun({ text: k.value, bold: true, size: 28, color: textColor })],
-          })],
-        });
-      }) }),
-    ],
-  });
-}
-
-
-// ── Reporte 1: Docentes Insatisfactorios ─────────────────────────────────────
-async function rpt1Insatisfactorios(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
-  const todosReg  = [...f.carreras.values()].flatMap(c => c.registros);
-  const malos     = todosReg.filter(r => esValidoParaReporte(r) && ['INSATISFACTORIO', 'MUY_INSATISFACTORIO'].includes(getCalifReg(r, ciclo)));
-
-  const seccionesValidas1 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte de Docentes Insatisfactorios por Secciones', nombreFac, ciclo),
-  ];
-  const ROJO = 'FFB3B3'; // rojo claro para filas INSATISFACTORIO
-
-  children.push(tablaKPI([
-    { label: 'Secciones INSATISFACTORIO', value: malos.length.toString(), color: ROJO },
-    { label: 'Secciones Válidas (total)', value: seccionesValidas1.toString() },
-    { label: 'Promedio Facultad', value: f.promedioGeneral.toFixed(2) },
-    { label: '% Insatisfactorio', value: seccionesValidas1 > 0 ? (malos.length / seccionesValidas1 * 100).toFixed(2) + '%' : '—', color: ROJO },
-  ]), salto());
-
-  if (malos.length === 0) {
-    children.push(parrafo('No se registran secciones con calificación INSATISFACTORIO para esta facultad en el ciclo indicado.'));
-  } else {
-    const rows: TableRow[] = [
-      new TableRow({ children: [
-        celdaH('Carrera Profesional'), celdaH('Docente'),
-        celdaH('Curso / Asignatura'), celdaH('Sección'),
-        celdaH('Nota'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
-      ]}),
-    ];
-    const subQuorumMalos: EvaluacionData[] = [];
-    for (const r of malos) {
-      const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
-      if (esSubQ) subQuorumMalos.push(r);
-      const fill = esSubQ ? COLOR_SUBQUORUM : ROJO;
-      rows.push(new TableRow({ children: [
-        celda(r.carreraProfesional, false, false, fill),
-        celda(r.docente,            false, false, fill),
-        celda(r.curso,              false, false, fill),
-        celda(r.seccion,            true,  false, fill),
-        celdaN(r.nota, 2, true),
-        celda(esSubQ ? `${r.encuestados} *` : r.encuestados.toString(), true, false, fill),
-        celda(r.noEncuestados.toString(), true, false, fill),
-      ]}));
-    }
-    children.push(
-      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
-      fuenteTabla(),
-      parrafo(`Total de secciones insatisfactorias: ${malos.length}`),
-    );
-    if (subQuorumMalos.length > 0) {
-      children.push(parrafo(`* ${subQuorumMalos.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
-    }
-  }
-
-  children.push(
-    negrita('Escala de calificación'),
-    salto(),
-    tablaEscalaCalificacion(ciclo),
-  );
-  const filename3 = `3. Reporte_Docentes_Insatisfactorios_${ciclo}_${cod}.docx`;
-  return { filename: filename3, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
-}
-
-// rpt2NotasPorCarrera eliminado — fusionado en rpt6GeneralDocente (ver abajo).
-
-// ── Reporte 3: Nro. Estudiantes Encuestados por Carrera ──────────────────────
-async function rpt3EstudiantesCarrera(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
-  const nombreFac    = FACULTADES[cod]?.nombre ?? cod;
-  const totalSec     = [...f.carreras.values()].reduce((s, c) => s + c.registros.length, 0);
-  const totalEnc     = f.totalEncuestados;
-  const totalNoEnc   = [...f.carreras.values()].reduce((s, c) => s + c.totalNoEncuestados, 0);
-
-  // Gráfico de participación
-  const pieData = await canvasPieToUint8(
-    [totalEnc, totalNoEnc],
-    ['#2B3A67', '#C4A35A'],
-    ['Encuestados', 'No Encuestados'],
-    { title: ['ESTUDIANTES ENCUESTADOS Y', 'ESTUDIANTES NO ENCUESTADOS'], subtitle: `DE ${cod}` },
-  );
-
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte del Nro. de Encuestados por Carrera Profesional', nombreFac, ciclo),
-  ];
-  children.push(tablaKPI([
-    { label: 'Total Secciones',     value: totalSec.toLocaleString('es-PE') },
-    { label: 'Total Encuestados',   value: totalEnc.toLocaleString('es-PE') },
-    { label: 'Total No Encuestados', value: totalNoEnc.toLocaleString('es-PE') },
-  ]), salto());
-
-  const rows: TableRow[] = [
-    new TableRow({ children: [
-      celdaH('Carrera Profesional'),
-      celdaH('N° Secciones Evaluadas'), celdaH('N° Encuestados'), celdaH('N° No Encuestados'),
-    ]}),
-  ];
-  let sumSec = 0, sumEnc = 0, sumNoEnc = 0;
-  for (const [carreraName, c] of f.carreras) {
-    const nSec   = c.registros.length;
-    const nEnc   = c.totalEncuestados;
-    const nNoEnc = c.totalNoEncuestados;
-    rows.push(new TableRow({ children: [
-      celda(carreraName),
-      celda(nSec.toLocaleString('es-PE'), true),
-      celda(nEnc.toLocaleString('es-PE'), true),
-      celda(nNoEnc.toLocaleString('es-PE'), true),
-    ]}));
-    sumSec += nSec; sumEnc += nEnc; sumNoEnc += nNoEnc;
-  }
-  rows.push(new TableRow({ children: [
-    celda('TOTAL', false, true, GRIS_ROW),
-    celda(sumSec.toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(sumEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
-    celda(sumNoEnc.toLocaleString('es-PE'), true, true, GRIS_ROW),
-  ]}));
-
-  children.push(
-    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
-    fuenteTabla(),
-    salto(),
-  );
-  if (pieData) children.push(imagenCentrada(pieData, 400, 290), salto());
-  children.push(
-    parrafo(interpretarParticipacion(totalEnc, f.totalMatriculados, nombreFac)),
-  );
-  const filename1 = `1. Reporte_Nro_Encuestados_por_Carrera_Profesional_${ciclo}_${cod}.docx`;
-  return { filename: filename1, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
-}
-
-// ── Reporte 4: % Juicio de Valor por Carrera ─────────────────────────────────
-async function rpt4PorcentajeJuicio(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
-  const seccionesValidas4 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('Reporte del % de Evaluación a la Plana Docente (Juicio de Valor) por Carrera Profesional', nombreFac, ciclo),
-  ];
-  const nuevo4 = esNuevoReglamento(ciclo);
-  const lbl2nd = nuevo4 ? '% SATISFACTORIO' : '% ACEPTABLE';
-  const lbl3rd = nuevo4 ? '% MUY_SATISFACTORIO' : '% BUENO';
-  const lbl4th = nuevo4 ? '% EXCELENTE' : '% DESTACADO';
-  const lbl5th = nuevo4 ? '% MUY_SATISFACTORIO + EXCELENTE' : '% BUENO + DESTACADO';
-  const k2nd: Calificacion = nuevo4 ? 'SATISFACTORIO' : 'ACEPTABLE';
-  const k3rd: Calificacion = nuevo4 ? 'MUY_SATISFACTORIO' : 'BUENO';
-  const k4th: Calificacion = nuevo4 ? 'EXCELENTE' : 'DESTACADO';
-  const indLblKPI = nuevo4 ? '% MUY_SATISFACTORIO + EXCELENTE' : '% BUENO + DESTACADO';
-
-  children.push(tablaKPI([
-    { label: 'Secciones Válidas', value: seccionesValidas4.toString() },
-    { label: indLblKPI, value: f.indicadorPlanEstrategico.toFixed(2) + '%', color: COLOR_DESTACADO },
-    { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
-  ]), salto());
-
-  const carrerasArr = [...f.carreras.values()];
-  const rows: TableRow[] = [
-    new TableRow({ children: [
-      celdaH('Carrera Profesional'),
-      celdaH('% INSATISFACTORIO'), celdaH(lbl2nd),
-      celdaH(lbl3rd), celdaH(lbl4th),
-      celdaH(lbl5th),
-      celdaH('Total Secc.'),
-    ]}),
-  ];
-  for (const [carreraName, c] of f.carreras) {
-    const bd = c.distribucion[k3rd].porcentaje + c.distribucion[k4th].porcentaje;
-    rows.push(new TableRow({ children: [
-      celda(carreraName),
-      celda(c.distribucion.INSATISFACTORIO.porcentaje.toFixed(2) + '%', true, false),
-      celda(c.distribucion[k2nd].porcentaje.toFixed(2) + '%',           true, false),
-      celda(c.distribucion[k3rd].porcentaje.toFixed(2) + '%',           true, false, COLOR_BUENO),
-      celda(c.distribucion[k4th].porcentaje.toFixed(2) + '%',           true, false, COLOR_DESTACADO),
-      celda(bd.toFixed(2) + '%',                                        true, true,  COLOR_DESTACADO),
-      celda(c.seccionesCalificadas.toString(), true, true),
-    ]}));
-  }
-  const totalSecc     = seccionesValidas4 || 1;
-  const totalInsatisf  = carrerasArr.reduce((s, c) => s + c.distribucion.INSATISFACTORIO.cantidad, 0);
-  const totalAceptable = carrerasArr.reduce((s, c) => s + c.distribucion[k2nd].cantidad, 0);
-  const totalBueno     = carrerasArr.reduce((s, c) => s + c.distribucion[k3rd].cantidad, 0);
-  const totalDestacado = carrerasArr.reduce((s, c) => s + c.distribucion[k4th].cantidad, 0);
-  const promInsatisf  = totalInsatisf  / totalSecc * 100;
-  const promAceptable = totalAceptable / totalSecc * 100;
-  const promBueno     = totalBueno     / totalSecc * 100;
-  const promDestacado = totalDestacado / totalSecc * 100;
-  const promBD        = (totalBueno + totalDestacado) / totalSecc * 100;
-  rows.push(new TableRow({ children: [
-    celda('PROMEDIO', false, true, GRIS_ROW),
-    celda(promInsatisf.toFixed(2)  + '%', true, true, GRIS_ROW),
-    celda(promAceptable.toFixed(2) + '%', true, true, GRIS_ROW),
-    celda(promBueno.toFixed(2)     + '%', true, true, COLOR_BUENO),
-    celda(promDestacado.toFixed(2) + '%', true, true, COLOR_DESTACADO),
-    celda(promBD.toFixed(2)        + '%', true, true, COLOR_DESTACADO),
-    celda(seccionesValidas4.toString(), true, true, GRIS_ROW),
-  ]}));
-
-  children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
-  children.push(
-    negrita('Escala de calificación'),
-    salto(),
-    tablaEscalaCalificacion(ciclo),
-    salto(),
-    ...leyendaAEFooter(ciclo),
-  );
-  const filename2 = `2. Reporte_Porcentaje_Juicio_Valor_${ciclo}_${cod}.docx`;
-  return { filename: filename2, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
-}
-
-// ── Reporte 5 (ex-6): General de Evaluación por Docente ──────────────────────
-// Unifica el anterior Reporte 2 (Notas Plana Docente) y el anterior Reporte 6
-// (General de Evaluación). Ahora incluye las columnas de control Enc./No Enc./Validez
-// Y la fila de PROMEDIO por carrera, eliminando la duplicidad documental.
-async function rpt6GeneralDocente(ciclo: string, cod: string, f: DatosFacultad): Promise<{ filename: string; blob: Blob }> {
-  const nombreFac = FACULTADES[cod]?.nombre ?? cod;
-  const todosRegKPI    = [...f.carreras.values()].flatMap(c => c.registros);
-  const docentesUnicos = new Set(todosRegKPI.map(r => r.docente)).size;
-  const seccionesValidas6 = [...f.carreras.values()].reduce((s, c) => s + c.seccionesCalificadas, 0);
-  const children: (Paragraph | Table)[] = [
-    ...cabeceraReporte('REPORTE GENERAL DE EVALUACIÓN DOCENTE POR SECCION', nombreFac, ciclo),
-  ];
-  children.push(tablaKPI([
-    { label: 'Docentes Únicos', value: docentesUnicos.toString() },
-    { label: 'Secciones Evaluadas', value: seccionesValidas6.toString() },
-    { label: 'Promedio General', value: f.promedioGeneral.toFixed(2) },
-  ]), salto());
-
-  for (const [carreraName, c] of f.carreras) {
-    children.push(negrita(carreraName), salto());
-    const rows: TableRow[] = [
-      new TableRow({ children: [
-        celdaH('Docente'), celdaH('Curso'), celdaH('Sec.'),
-        celdaH('AE-01'), celdaH('AE-02'), celdaH('AE-03'), celdaH('AE-04'),
-        celdaH('Nota'), celdaH('Calif.'),
-        celdaH('Enc.'), celdaH('No Enc.'), celdaH('Validez'),
-      ]}),
-    ];
-    const subQuorumRegs: EvaluacionData[] = [];
-    for (const r of c.registros) {
-      const calif = r.encuestados === 0 ? 'Sin Datos' : getCalifReg(r, ciclo);
-      const califFill = colorCalif(calif);
-      const esSubQ = r.encuestados > 0 && r.encuestados < QUORUM_MINIMO_ENCUESTADOS;
-      if (esSubQ) subQuorumRegs.push(r);
-      rows.push(new TableRow({ children: [
-        celda(r.docente), celda(r.curso), celda(r.seccion, true),
-        celdaN(r.ae01), celdaN(r.ae02), celdaN(r.ae03), celdaN(r.ae04),
-        celdaN(r.nota, 2, true),
-        celda(calif, true, true, califFill),
-        celda(esSubQ ? `${r.encuestados} *` : r.encuestados.toString(), true, false, esSubQ ? COLOR_SUBQUORUM : undefined),
-        celda(r.noEncuestados.toString(), true),
-        celda(r.validez, true),
-      ]}));
-    }
-    // Fila de promedio consolidado por carrera
-    const promCalif = categoriaPromedio(c.promedioGeneral, ciclo);
-    rows.push(new TableRow({ children: [
-      celda('PROMEDIO', false, true, GRIS_ROW),
-      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
-      celdaN(c.promedioAE01), celdaN(c.promedioAE02), celdaN(c.promedioAE03), celdaN(c.promedioAE04),
-      celdaN(c.promedioGeneral, 2, true),
-      celda(promCalif, true, true, colorCalif(promCalif) ?? GRIS_ROW),
-      celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW), celda('', false, false, GRIS_ROW),
-    ]}));
-    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), fuenteTabla(), salto());
-    if (subQuorumRegs.length > 0) {
-      children.push(parrafo(`* ${subQuorumRegs.length} sección(es) con muestra insuficiente (menos de ${QUORUM_MINIMO_ENCUESTADOS} encuestados) — resultado no estadísticamente representativo.`));
-      children.push(salto());
-    }
-  }
-
-  children.push(
-    ...leyendaAEFooter(ciclo),
-    salto(),
-    negrita('Escala de calificación'),
-    salto(),
-    tablaEscalaCalificacion(ciclo),
-  );
-  const filename4 = `4. Reporte_General_Evaluacion_${ciclo}_${cod}.docx`;
-  return { filename: filename4, blob: await Packer.toBlob(new Document({ styles: DOCX_STYLES, sections: [{ properties: {}, children }] })) };
-}
-
-// ── Función pública: genera los 5 reportes de la facultad ────────────────────
 
 export async function generarInformesFacultadDocx(
   ciclo: string,
   cod: string,
   f: DatosFacultad,
 ): Promise<void> {
-  const [r3, r4, r1, r6] = await Promise.all([
-    rpt3EstudiantesCarrera(ciclo, cod, f),
-    rpt4PorcentajeJuicio(ciclo, cod, f),
-    rpt1Insatisfactorios(ciclo, cod, f),
-    rpt6GeneralDocente(ciclo, cod, f),
+  const datos = [...f.carreras.values()].flatMap(c => c.registros);
+  const [rI, rII, rIV, rV, r5] = await Promise.all([
+    generarPDFReporteIBlob(datos, cod, '', ''),
+    generarPDFReporteIIBlob(datos, cod, ''),
+    generarPDFReporteIVBlob(datos, cod, '', null),
+    generarPDFReporteVBlob(datos, cod, '', null),
+    generarPDFResumenDocenteFacultadBlob(datos, cod, ciclo),
   ]);
-  const todosRegistros = [...f.carreras.values()].flatMap(c => c.registros);
-  const r5 = await generarPDFResumenDocenteFacultadBlob(todosRegistros, cod, ciclo);
   const zip = new JSZip();
   const carpeta = zip.folder(cod)!;
-  carpeta.file(r1.filename, r1.blob);
-  carpeta.file(r3.filename, r3.blob);
-  carpeta.file(r4.filename, r4.blob);
-  carpeta.file(r6.filename, r6.blob);
-  carpeta.file(r5.filename, r5.blob);
+  if (rV) carpeta.file(`1. Encuestados_por_Carrera_${ciclo}_${cod}.pdf`, rV.blob);
+  if (rIV) carpeta.file(`2. Juicio_de_Valor_${ciclo}_${cod}.pdf`, rIV.blob);
+  if (rII) carpeta.file(`3. Insatisfactorios_${ciclo}_${cod}.pdf`, rII.blob);
+  if (rI) carpeta.file(`4. General_Evaluacion_${ciclo}_${cod}.pdf`, rI.blob);
+  carpeta.file(`5. Resumen_Docente_${ciclo}_${cod}.pdf`, r5.blob);
   const zipBlob = await zip.generateAsync({ type: 'blob' });
   saveAs(zipBlob, `Informe_Facultad_${cod}_${ciclo}.zip`);
 }
